@@ -50,10 +50,12 @@ function stub(icon, isoDate) {
   return h`
     <div class="ticket-stub">
       <div class="stub-icon">${icon}</div>
-      <div class="stub-day">${d ? parseInt(d, 10) : "–"}</div>
-      <div class="stub-month">${monthLabel}</div>
-    </div>
-    <div class="ticket-divider"></div>`;
+      ${
+        d
+          ? `<div class="stub-date"><span class="stub-day">${parseInt(d, 10)}</span><span class="stub-month">${monthLabel}</span></div>`
+          : ""
+      }
+    </div>`;
 }
 
 function section(container) {
@@ -211,7 +213,7 @@ async function renderFlights(trip) {
     ? flights
         .map(
           (f) => h`
-        <div class="ticket" data-id="${f.id}">
+        <div class="ticket cat-flights" data-id="${f.id}">
           ${stub("✈️", f.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
@@ -269,7 +271,7 @@ async function renderHotels(trip) {
     ? hotels
         .map(
           (hotel) => h`
-        <div class="ticket" data-id="${hotel.id}">
+        <div class="ticket cat-hotels" data-id="${hotel.id}">
           ${stub("🏨", hotel.check_in)}
           <div class="ticket-body">
             <div class="ticket-title-row">
@@ -337,7 +339,7 @@ async function renderItinerary(trip) {
 
   function ticketHtml(item) {
     return h`
-      <div class="ticket" data-id="${item.id}">
+      <div class="ticket cat-itinerary" data-id="${item.id}">
         <div class="drag-handle">⠿</div>
         ${stub("📍", item.date)}
         <div class="ticket-body">
@@ -414,7 +416,7 @@ async function renderTransport(trip) {
     ? items
         .map(
           (t) => h`
-        <div class="ticket" data-id="${t.id}">
+        <div class="ticket cat-transport" data-id="${t.id}">
           ${stub(TRANSPORT_ICONS[t.type] || "🚗", t.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
@@ -479,7 +481,7 @@ async function renderReservations(trip) {
     ? items
         .map(
           (r) => h`
-        <div class="ticket" data-id="${r.id}">
+        <div class="ticket cat-reservations" data-id="${r.id}">
           ${stub(RESERVATION_ICONS[r.type] || "🎟️", r.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
@@ -543,7 +545,7 @@ async function renderExpenses(trip) {
     ? items
         .map(
           (e) => h`
-        <div class="ticket" data-id="${e.id}">
+        <div class="ticket cat-expenses" data-id="${e.id}">
           ${stub("💶", e.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
@@ -607,13 +609,12 @@ async function renderChecklist(trip) {
     ? `<div class="drag-list" data-date="">${items
         .map(
           (item) => h`
-        <div class="ticket compact ${item.completed ? "done" : ""}" data-id="${item.id}">
+        <div class="ticket compact cat-checklist ${item.completed ? "done" : ""}" data-id="${item.id}">
           <div class="drag-handle">⠿</div>
-          <div class="ticket-stub" style="width:52px;">
+          <div class="ticket-stub">
             <input type="checkbox" data-act="toggle" ${item.completed ? "checked" : ""}
-              style="width:24px;height:24px;accent-color:var(--teal);" />
+              style="width:24px;height:24px;accent-color:var(--brand);" />
           </div>
-          <div class="ticket-divider"></div>
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title" style="white-space:normal;">${escapeHtml(item.task)}</p>

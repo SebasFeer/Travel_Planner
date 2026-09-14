@@ -46,7 +46,7 @@ function buildOverlaySkeleton(messageText) {
   const overlay = document.createElement("div");
   overlay.id = "lock-overlay";
   overlay.style.cssText = `
-    position: fixed; inset: 0; z-index: 999; background: var(--ink, #12162a);
+    position: fixed; inset: 0; z-index: 999; background: var(--overlay-bg, #171436);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 22px; color: #f5f0e1; font-family: "IBM Plex Mono", monospace;
   `;
@@ -98,7 +98,7 @@ function attachKeypad(overlay, onSubmit) {
       .map(
         (_, i) =>
           `<div style="width:12px;height:12px;border-radius:50%;border:1px solid #9aa3c4;background:${
-            i < entered.length ? "#e4a421" : "transparent"
+            i < entered.length ? "var(--brand, #6c5ce7)" : "transparent"
           }"></div>`
       )
       .join("");

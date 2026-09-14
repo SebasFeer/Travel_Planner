@@ -372,7 +372,7 @@ async function renderHome() {
 
   const cardsHtml = trips.length
     ? trips
-        .map((trip) => {
+        .map((trip, i) => {
           const days = daysUntil(trip.start_date);
           let countdown = "";
           if (days === null) countdown = "";
@@ -383,7 +383,8 @@ async function renderHome() {
           else countdown = "Finalizado";
 
           return h`
-            <div class="trip-card" data-id="${trip.id}">
+            <div class="trip-card trip-color-${(i % 6) + 1}" data-id="${trip.id}">
+              <div class="trip-card-art">🧭</div>
               <p class="trip-dest">${escapeHtml(trip.destination)}</p>
               <p class="trip-name">${escapeHtml(trip.name)}</p>
               <span class="trip-dates">${formatDatePretty(trip.start_date)} → ${formatDatePretty(trip.end_date)}</span>

@@ -1,28 +1,63 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
-  --ink: #f3ede0;
-  --ink-soft: #ffffff;
-  --ink-line: #e3d9bd;
-  --paper: #ffffff;
-  --paper-dim: #efe8d4;
-  --paper-line: #cdc2a0;
-  --amber: #e4a421;
-  --amber-deep: #b9820f;
-  --teal: #2f6f6b;
-  --rose: #c1483e;
-  --ink-text: #1b2140;
-  --muted: #6b7291;
-  --muted-dark: #454a63;
+  /* Superficies */
+  --bg: #f6f7fc;
+  --surface: #ffffff;
+  --surface-tint: #f1f1fb;
+  --border: #e7e6f5;
+  --text: #201f3d;
+  --muted: #656a92;
+  --muted-dark: #454a70;
+  --overlay-bg: #171436; /* fondo oscuro dedicado para overlays (PIN, modales) */
 
-  --font-display: "Fraunces", Georgia, serif;
+  /* Marca */
+  --brand: #6c5ce7;
+  --brand-deep: #5647c9;
+  --brand-soft: rgba(108, 92, 231, 0.12);
+
+  /* Colores por categoría (estilo Wanderlog: cada sección, su color) */
+  --cat-flights: #228be6;
+  --cat-flights-a: #4dabf7;
+  --cat-hotels: #12b886;
+  --cat-hotels-a: #38d9a9;
+  --cat-itinerary: #e64980;
+  --cat-itinerary-a: #f783ac;
+  --cat-transport: #f76707;
+  --cat-transport-a: #ffa94d;
+  --cat-reservations: #ae3ec9;
+  --cat-reservations-a: #da77f2;
+  --cat-expenses: #fa5252;
+  --cat-expenses-a: #ff8787;
+  --cat-checklist: #74b816;
+  --cat-checklist-a: #a9e34b;
+  --cat-calendar: #5c7cfa;
+  --cat-map: #22b8cf;
+
+  --teal: #12b886;
+  --rose: #fa5252;
+
+  --font-display: "Baloo 2", "Inter", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-body: "Inter", -apple-system, system-ui, sans-serif;
 
-  --radius-card: 20px;
-  --radius-btn: 12px;
+  --radius-card: 24px;
+  --radius-btn: 14px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14132b;
+    --surface: #1e1c3d;
+    --surface-tint: #272451;
+    --border: #322f5c;
+    --text: #f3f1ff;
+    --muted: #a5a3c9;
+    --muted-dark: #8785b3;
+    --overlay-bg: #0d0c22;
+  }
 }
 
 * {
@@ -33,14 +68,46 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--ink);
-  color: var(--ink-text);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-body);
   height: 100%;
 }
 
 body {
   overscroll-behavior-y: none;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Manchas de color decorativas de fondo — dan vida en pantallas anchas
+   y no interfieren con el contenido (z-index detrás de #app). */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(6px);
+  opacity: 0.16;
+  z-index: 0;
+  pointer-events: none;
+}
+body::before {
+  top: -120px;
+  left: -110px;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, var(--cat-flights) 0%, transparent 70%);
+}
+body::after {
+  bottom: -150px;
+  right: -120px;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, var(--cat-itinerary) 0%, transparent 70%);
+}
+@media (prefers-color-scheme: dark) {
+  body::before, body::after { opacity: 0.26; }
 }
 
 #app {
@@ -50,6 +117,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  z-index: 1;
 }
 
 button {
@@ -60,8 +128,8 @@ button {
 a { color: inherit; }
 
 ::selection {
-  background: var(--amber);
-  color: var(--ink-text);
+  background: var(--brand);
+  color: #fff;
 }
 
 /* ============================================================
@@ -76,7 +144,7 @@ a { color: inherit; }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: linear-gradient(180deg, var(--ink) 70%, rgba(18,22,42,0));
+  background: linear-gradient(180deg, var(--bg) 75%, rgba(246, 247, 252, 0));
 }
 
 .topbar .icon-btn {
@@ -91,7 +159,7 @@ a { color: inherit; }
 .topbar-eyebrow {
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--muted);
   margin: 0 0 2px;
   white-space: nowrap;
@@ -101,8 +169,8 @@ a { color: inherit; }
 
 .topbar-title {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 23px;
+  font-weight: 700;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -110,19 +178,41 @@ a { color: inherit; }
 }
 
 .icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  border: 1px solid var(--ink-line);
-  background: var(--ink-soft);
-  color: var(--ink-text);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 6px rgba(32, 31, 61, 0.05);
 }
 
+.icon-btn:hover {
+  border-color: var(--brand);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.18);
+}
 .icon-btn:active { transform: scale(0.94); }
+
+.icon-btn.logged-in {
+  position: relative;
+  border-color: var(--cat-hotels);
+}
+.icon-btn.logged-in::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cat-hotels);
+  border: 2px solid var(--surface);
+}
 
 /* ============================================================
    CONTENIDO
@@ -140,85 +230,102 @@ a { color: inherit; }
   font-size: 15px;
   font-weight: 600;
   color: var(--muted);
-  text-transform: none;
   margin: 22px 0 10px;
 }
 
 .section-title:first-child { margin-top: 6px; }
 
 /* ============================================================
-   TICKET CARDS (billete de embarque)
+   TARJETAS DE ELEMENTOS (vuelos, hoteles, itinerario...)
+   Estilo "Wanderlog": tarjeta redondeada + insignia de color por
+   categoría en vez del billete de embarque anterior.
    ============================================================ */
 
 .ticket {
   position: relative;
-  background: var(--paper);
-  color: var(--ink-text);
+  background: var(--surface);
+  color: var(--text);
   border-radius: var(--radius-card);
+  border: 1px solid var(--border);
   display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px;
   margin-bottom: 14px;
-  overflow: hidden;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+  box-shadow: 0 8px 20px rgba(32, 31, 61, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+@media (hover: hover) {
+  .ticket:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(32, 31, 61, 0.1);
+  }
+}
+
+/* Colores por categoría: cada una define su propio degradado */
+.ticket.cat-flights      { --accent-a: var(--cat-flights-a);      --accent-b: var(--cat-flights);      --accent: var(--cat-flights); }
+.ticket.cat-hotels       { --accent-a: var(--cat-hotels-a);       --accent-b: var(--cat-hotels);       --accent: var(--cat-hotels); }
+.ticket.cat-itinerary    { --accent-a: var(--cat-itinerary-a);    --accent-b: var(--cat-itinerary);    --accent: var(--cat-itinerary); }
+.ticket.cat-transport    { --accent-a: var(--cat-transport-a);    --accent-b: var(--cat-transport);    --accent: var(--cat-transport); }
+.ticket.cat-reservations { --accent-a: var(--cat-reservations-a); --accent-b: var(--cat-reservations); --accent: var(--cat-reservations); }
+.ticket.cat-expenses     { --accent-a: var(--cat-expenses-a);     --accent-b: var(--cat-expenses);     --accent: var(--cat-expenses); }
+
 .ticket-stub {
-  width: 74px;
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
   flex-shrink: 0;
-  background: var(--paper-dim);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 14px 6px;
-  position: relative;
-  text-align: center;
+  background: linear-gradient(135deg, var(--accent-a, var(--brand)), var(--accent-b, var(--brand-deep)));
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
 }
 
 .ticket-stub .stub-icon {
-  font-size: 22px;
-  margin-bottom: 6px;
+  font-size: 30px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
 }
 
-.ticket-stub .stub-day {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.ticket-stub .stub-month {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted-dark);
-  text-transform: uppercase;
-  margin-top: 2px;
-}
-
-/* perforación entre el talón y el cuerpo del billete */
-.ticket-divider {
-  width: 0;
-  border-left: 2px dashed var(--paper-line);
-  position: relative;
-  flex-shrink: 0;
-}
-
-.ticket-divider::before,
-.ticket-divider::after {
-  content: "";
+.stub-date {
   position: absolute;
-  left: -8px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--ink);
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 2px 8px;
+  display: flex;
+  gap: 3px;
+  align-items: baseline;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
 }
-.ticket-divider::before { top: -8px; }
-.ticket-divider::after { bottom: -8px; }
+
+.stub-day {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stub-month {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* El talón perforado ya no se usa visualmente, se deja oculto por si
+   quedara algún resto en el DOM. */
+.ticket-divider { display: none; }
 
 .ticket-body {
   flex: 1;
-  padding: 14px 16px;
   min-width: 0;
+  padding-top: 2px;
 }
 
 .ticket-title-row {
@@ -240,15 +347,15 @@ a { color: inherit; }
 
 .ticket-amount {
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  color: var(--teal);
+  color: var(--accent, var(--teal));
   flex-shrink: 0;
 }
 
 .ticket-meta {
   font-size: 13px;
-  color: #55597a;
+  color: var(--muted-dark);
   margin: 3px 0 0;
   line-height: 1.5;
 }
@@ -256,7 +363,7 @@ a { color: inherit; }
 .ticket-meta .mono {
   font-family: var(--font-mono);
   font-size: 12px;
-  background: rgba(27,33,64,0.07);
+  background: var(--surface-tint);
   padding: 1px 6px;
   border-radius: 6px;
 }
@@ -265,32 +372,39 @@ a { color: inherit; }
   display: flex;
   gap: 8px;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .ticket-actions button {
   border: none;
-  background: rgba(27,33,64,0.08);
-  color: var(--ink-text);
+  background: var(--surface-tint);
+  color: var(--text);
   font-size: 12px;
   font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
+.ticket-actions button:hover { background: var(--brand-soft); color: var(--brand-deep); }
+.ticket-actions button:active { transform: scale(0.95); }
 
 .ticket-actions button.danger {
-  background: rgba(193,72,62,0.12);
+  background: rgba(250, 82, 82, 0.1);
   color: var(--rose);
 }
+.ticket-actions button.danger:hover { background: rgba(250, 82, 82, 0.18); }
 
-.ticket.done {
-  opacity: 0.55;
+.ticket.done { opacity: 0.55; }
+.ticket.done .ticket-title { text-decoration: line-through; }
+
+.ticket.compact { align-items: center; padding: 10px 14px; }
+.ticket.compact .ticket-stub {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(116, 184, 22, 0.14);
+  box-shadow: none;
 }
-
-.ticket.done .ticket-title {
-  text-decoration: line-through;
-}
-
-.ticket.compact .ticket-stub { width: 56px; }
 
 /* ============================================================
    ARRASTRAR Y SOLTAR (itinerario, checklist)
@@ -298,7 +412,7 @@ a { color: inherit; }
 
 .drag-handle {
   flex-shrink: 0;
-  width: 26px;
+  width: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -306,16 +420,12 @@ a { color: inherit; }
   font-size: 16px;
   cursor: grab;
   touch-action: none;
-  background: var(--paper-dim);
+  align-self: center;
 }
 
-.drag-ghost {
-  opacity: 0.4;
-}
+.drag-ghost { opacity: 0.4; }
 
-.sortable-chosen {
-  box-shadow: 0 12px 28px rgba(0,0,0,0.4);
-}
+.sortable-chosen { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18); }
 
 /* ============================================================
    MAPA
@@ -324,16 +434,16 @@ a { color: inherit; }
 .map-pin {
   font-size: 20px;
   line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
 .leaflet-popup-content-wrapper {
-  background: var(--paper);
-  color: var(--ink-text);
+  background: var(--surface);
+  color: var(--text);
   border-radius: 12px;
 }
 
-.leaflet-popup-tip { background: var(--paper); }
+.leaflet-popup-tip { background: var(--surface); }
 
 /* ============================================================
    BOTONES
@@ -343,57 +453,68 @@ a { color: inherit; }
   border: none;
   border-radius: var(--radius-btn);
   padding: 13px 18px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
+@media (hover: hover) {
+  .btn:hover { filter: brightness(1.05); }
+}
 .btn:active { transform: scale(0.98); }
 
 .btn-primary {
-  background: var(--amber);
-  color: #221a04;
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(108, 92, 231, 0.3);
 }
 
 .btn-secondary {
-  background: var(--ink-soft);
-  color: var(--ink-text);
-  border: 1px solid var(--ink-line);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+@media (hover: hover) {
+  .btn-secondary:hover { border-color: var(--brand); color: var(--brand-deep); }
 }
 
 .btn-danger {
-  background: rgba(193,72,62,0.15);
-  color: #ff8b7f;
+  background: rgba(250, 82, 82, 0.12);
+  color: var(--rose);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .fab {
   position: fixed;
   right: max(20px, calc((100vw - 560px) / 2 + 20px));
   bottom: calc(90px + var(--safe-bottom));
-  width: 58px;
-  height: 58px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: var(--amber);
-  color: #221a04;
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+  color: #fff;
   border: none;
   font-size: 26px;
-  box-shadow: 0 10px 24px rgba(228,164,33,0.4);
+  box-shadow: 0 12px 26px rgba(108, 92, 231, 0.4);
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.15s ease;
 }
-
+@media (hover: hover) {
+  .fab:hover { transform: translateY(-2px) scale(1.03); }
+}
 .fab:active { transform: scale(0.95); }
 
 /* ============================================================
@@ -408,14 +529,34 @@ a { color: inherit; }
 }
 
 .stat-card {
-  background: var(--ink-soft);
-  border: 1px solid var(--ink-line);
-  border-radius: 16px;
-  padding: 14px;
+  --accent: var(--brand);
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 14px 14px 18px;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
+.stat-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  background: var(--accent);
+}
+@media (hover: hover) {
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(32,31,61,0.1); }
+}
 .stat-card:active { transform: scale(0.97); }
+
+.stat-card[data-nav="flights"] { --accent: var(--cat-flights); }
+.stat-card[data-nav="hotels"] { --accent: var(--cat-hotels); }
+.stat-card[data-nav="itinerary"] { --accent: var(--cat-itinerary); }
+.stat-card[data-nav="transport"] { --accent: var(--cat-transport); }
+.stat-card[data-nav="reservations"] { --accent: var(--cat-reservations); }
+.stat-card[data-nav="expenses"] { --accent: var(--cat-expenses); }
 
 .stat-card .stat-label {
   font-size: 12px;
@@ -425,30 +566,48 @@ a { color: inherit; }
 .stat-card .stat-value {
   font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
   margin-top: 4px;
+  color: var(--accent);
 }
 
 .panel {
-  background: var(--ink-soft);
-  border: 1px solid var(--ink-line);
-  border-radius: 16px;
-  padding: 16px;
+  --accent: var(--brand);
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px 16px 16px 20px;
   margin-top: 14px;
+  overflow: hidden;
 }
+.panel[data-nav]::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  background: var(--accent);
+}
+.panel[data-nav="map"] { --accent: var(--cat-map); }
+.panel[data-nav="expenses"] { --accent: var(--cat-expenses); }
+.panel[data-nav="checklist"] { --accent: var(--cat-checklist); }
+.panel[data-nav="calendar"] { --accent: var(--cat-calendar); }
 
-.panel[data-nav] { cursor: pointer; }
+.panel[data-nav] { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+@media (hover: hover) {
+  .panel[data-nav]:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(32,31,61,0.1); }
+}
 .panel[data-nav]:active { transform: scale(0.99); }
 
 .panel h3 {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 15.5px;
   margin: 0 0 10px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .progress-track {
-  background: var(--ink);
+  background: var(--surface-tint);
   border-radius: 10px;
   height: 10px;
   overflow: hidden;
@@ -457,7 +616,7 @@ a { color: inherit; }
 
 .progress-fill {
   height: 100%;
-  background: var(--amber);
+  background: linear-gradient(90deg, var(--brand), var(--cat-itinerary));
   border-radius: 10px;
   transition: width 0.3s ease;
 }
@@ -467,21 +626,22 @@ a { color: inherit; }
 .agenda-line {
   font-size: 13.5px;
   padding: 7px 0;
-  border-bottom: 1px dashed var(--ink-line);
+  border-bottom: 1px dashed var(--border);
   display: flex;
   gap: 8px;
 }
 .agenda-line:last-child { border-bottom: none; }
 
 .today-banner {
-  background: var(--amber);
-  color: #221a04;
-  border-radius: 16px;
-  padding: 12px 16px;
+  background: linear-gradient(120deg, var(--cat-itinerary), var(--brand));
+  color: #fff;
+  border-radius: 18px;
+  padding: 13px 16px;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 14px;
   line-height: 1.5;
+  box-shadow: 0 8px 18px rgba(108, 92, 231, 0.25);
 }
 
 /* ============================================================
@@ -491,7 +651,7 @@ a { color: inherit; }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10,12,24,0.6);
+  background: rgba(23, 20, 54, 0.55);
   z-index: 50;
   display: flex;
   align-items: flex-end;
@@ -499,51 +659,49 @@ a { color: inherit; }
 }
 
 .modal-sheet {
-  background: var(--ink);
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
+  background: var(--surface);
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
   width: 100%;
   max-width: 560px;
   max-height: 92vh;
   overflow-y: auto;
   padding: 10px 20px calc(28px + var(--safe-bottom));
-  border-top: 1px solid var(--ink-line);
+  border-top: 1px solid var(--border);
 }
 
 .modal-handle {
   width: 40px;
   height: 4px;
-  background: var(--ink-line);
+  background: var(--border);
   border-radius: 4px;
   margin: 8px auto 14px;
 }
 
 .modal-title {
   font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
   margin: 0 0 16px;
 }
 
-.field {
-  margin-bottom: 14px;
-}
+.field { margin-bottom: 14px; }
 
 .field label {
   display: block;
   font-size: 12.5px;
   color: var(--muted);
   margin-bottom: 6px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .field input,
 .field select,
 .field textarea {
   width: 100%;
-  background: var(--ink-soft);
-  border: 1px solid var(--ink-line);
-  color: var(--ink-text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
   border-radius: 12px;
   padding: 12px 13px;
   font-size: 15px;
@@ -553,7 +711,7 @@ a { color: inherit; }
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  outline: 2px solid var(--amber);
+  outline: 2px solid var(--brand);
   outline-offset: 1px;
 }
 
@@ -575,6 +733,7 @@ a { color: inherit; }
 .field-check input {
   width: 20px;
   height: 20px;
+  accent-color: var(--brand);
 }
 
 .modal-actions {
@@ -584,54 +743,71 @@ a { color: inherit; }
 }
 
 /* ============================================================
-   LISTA DE VIAJES (home)
+   LISTA DE VIAJES (home) — tarjetas tipo postal, un color por viaje
    ============================================================ */
 
 .trip-card {
-  background: var(--ink-soft);
-  border: 1px solid var(--ink-line);
-  border-radius: 18px;
-  padding: 18px;
-  margin-bottom: 14px;
   position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  margin-bottom: 16px;
   overflow: hidden;
+  box-shadow: 0 10px 24px rgba(32, 31, 61, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+@media (hover: hover) {
+  .trip-card:hover { transform: translateY(-2px); box-shadow: 0 16px 32px rgba(32, 31, 61, 0.14); }
+}
+.trip-card:active { transform: scale(0.99); }
+
+.trip-card-art {
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  color: #fff;
 }
 
-.trip-card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; bottom: 0;
-  width: 5px;
-  background: var(--amber);
-}
+.trip-card.trip-color-1 .trip-card-art { background: linear-gradient(135deg, var(--cat-flights-a), var(--cat-flights)); }
+.trip-card.trip-color-2 .trip-card-art { background: linear-gradient(135deg, var(--cat-hotels-a), var(--cat-hotels)); }
+.trip-card.trip-color-3 .trip-card-art { background: linear-gradient(135deg, var(--cat-itinerary-a), var(--cat-itinerary)); }
+.trip-card.trip-color-4 .trip-card-art { background: linear-gradient(135deg, var(--cat-transport-a), var(--cat-transport)); }
+.trip-card.trip-color-5 .trip-card-art { background: linear-gradient(135deg, var(--cat-reservations-a), var(--cat-reservations)); }
+.trip-card.trip-color-6 .trip-card-art { background: linear-gradient(135deg, var(--cat-checklist-a), var(--cat-checklist)); }
 
 .trip-card .trip-dest {
   font-family: var(--font-display);
   font-size: 21px;
   font-weight: 700;
   margin: 0;
+  padding: 16px 18px 0;
 }
 
 .trip-card .trip-name {
   font-size: 13px;
   color: var(--muted);
   margin: 2px 0 10px;
+  padding: 0 18px;
 }
 
 .trip-card .trip-dates {
   font-family: var(--font-mono);
   font-size: 12.5px;
-  color: var(--ink-text);
-  background: rgba(228,164,33,0.12);
+  color: var(--text);
+  background: var(--surface-tint);
   display: inline-block;
   padding: 4px 10px;
   border-radius: 8px;
+  margin: 0 18px;
 }
 
 .trip-card .trip-countdown {
   font-size: 12px;
   color: var(--muted);
-  margin-top: 8px;
+  margin: 8px 0 0;
+  padding: 0 18px 16px;
 }
 
 .empty-state {
@@ -640,11 +816,7 @@ a { color: inherit; }
   color: var(--muted);
 }
 
-.empty-state .emoji {
-  font-size: 40px;
-  margin-bottom: 12px;
-}
-
+.empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; line-height: 1.6; }
 
 /* ============================================================
@@ -661,7 +833,7 @@ a { color: inherit; }
 .cal-header .cal-month {
   font-family: var(--font-display);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .cal-grid {
@@ -671,33 +843,29 @@ a { color: inherit; }
   text-align: center;
 }
 
-.cal-dow {
-  font-size: 10.5px;
-  color: var(--muted);
-  padding-bottom: 4px;
-}
+.cal-dow { font-size: 10.5px; color: var(--muted); padding-bottom: 4px; }
 
 .cal-day {
   aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 12.5px;
-  background: var(--ink-soft);
+  background: var(--surface-tint);
   border: 1px solid transparent;
   position: relative;
 }
 
 .cal-day.empty { background: transparent; }
-.cal-day.today { border-color: var(--amber); }
+.cal-day.today { border-color: var(--brand); background: var(--brand-soft); }
 .cal-day .dot {
   width: 5px; height: 5px; border-radius: 50%;
-  background: var(--amber);
+  background: var(--brand);
   margin-top: 3px;
 }
-.cal-day.in-range { background: rgba(228,164,33,0.1); }
+.cal-day.in-range { background: var(--brand-soft); }
 
 .cal-agenda-day {
   font-family: var(--font-mono);
@@ -718,20 +886,21 @@ a { color: inherit; }
 }
 
 .pill-row button {
-  border: none;
-  background: var(--ink-soft);
-  border: 1px solid var(--ink-line);
-  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted-dark);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 8px 14px;
   border-radius: 20px;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
+.pill-row button:active { transform: scale(0.96); }
 
 .pill-row button.active {
-  background: var(--amber);
-  color: #221a04;
-  border-color: var(--amber);
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
 }
 
 .toast {
@@ -739,14 +908,14 @@ a { color: inherit; }
   bottom: calc(24px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
-  background: var(--paper);
-  color: var(--ink-text);
+  background: var(--overlay-bg);
+  color: #fff;
   padding: 12px 20px;
   border-radius: 14px;
   font-size: 13.5px;
   font-weight: 600;
   z-index: 100;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
   max-width: 90%;
   text-align: center;
 }
@@ -754,7 +923,7 @@ a { color: inherit; }
 .hidden { display: none !important; }
 
 /* ============================================================
-   PANTALLA DE IMPRESIÓN (sustituye a la exportación PDF)
+   PANTALLA DE IMPRESIÓN
    ============================================================ */
 
 @media print {
@@ -770,12 +939,11 @@ a { color: inherit; }
 
 #print-area { display: none; }
 
-/* Accesibilidad: reducir movimiento */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
 
 :focus-visible {
-  outline: 2px solid var(--amber);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
