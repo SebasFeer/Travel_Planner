@@ -4,7 +4,7 @@
 // ============================================================
 
 const DB_NAME = "travelplanner";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = [
   "trips",
@@ -20,6 +20,9 @@ const STORES = [
 // Caché de geocodificación (texto de lugar -> coordenadas).
 // No lleva trip_id: se comparte entre viajes y se indexa por su propio texto.
 const GEOCACHE_STORE = "geocache";
+
+// Almacén clave/valor para ajustes de la app (p. ej. el hash del PIN).
+const SETTINGS_STORE = "settings";
 
 const DEFAULT_CHECKLIST_ITEMS = [
   "Pasaporte",
@@ -57,6 +60,11 @@ function openDB() {
 
       if (!db.objectStoreNames.contains(GEOCACHE_STORE)) {
         db.createObjectStore(GEOCACHE_STORE, { keyPath: "query" });
+      }
+
+      // Almacén genérico de ajustes clave/valor (p. ej. el PIN de lock.js).
+      if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+        db.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
       }
     };
 
@@ -216,6 +224,36 @@ const Data = {
       req.onerror = () => reject(req.error);
     });
   },
+
+  // ----------------------------------------------------------
+  // Ajustes clave/valor (usado por lock.js para el PIN local)
+  // ----------------------------------------------------------
+  async settingGet(key) {
+    const store = await tx(SETTINGS_STORE, "readonly");
+    return new Promise((resolve, reject) => {
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result ? req.result.value : undefined);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async settingSet(key, value) {
+    const store = await tx(SETTINGS_STORE, "readwrite");
+    return new Promise((resolve, reject) => {
+      const req = store.put({ key, value });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async settingDelete(key) {
+    const store = await tx(SETTINGS_STORE, "readwrite");
+    return new Promise((resolve, reject) => {
+      const req = store.delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
 };
 
-export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, openDB };
+export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, SETTINGS_STORE, openDB };
