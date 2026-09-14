@@ -2,21 +2,21 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v1";
+const CACHE_NAME = "travelplanner-v2";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./css/styles.css",
-  "./js/main.js",
-  "./js/app.js",
-  "./js/sections.js",
-  "./js/db.js",
-  "./js/utils.js",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/apple-touch-icon.png",
+  "./styles.css",
+  "./main.js",
+  "./app.js",
+  "./sections.js",
+  "./db.js",
+  "./utils.js",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {
