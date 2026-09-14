@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>TravelPlanner</title>
+<meta name="description" content="Organizador personal de viajes: vuelos, hoteles, itinerario, gastos y más." />
+
+<!-- Instalable en el iPhone/Android (Añadir a pantalla de inicio) -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#12162a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="TravelPlanner" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" href="icon-192.png" />
+
+<link rel="stylesheet" href="styles.css" />
+
+<!-- Leaflet: mapa interactivo (OpenStreetMap, gratis, sin API key) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- SortableJS: reordenar listas arrastrando -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <div class="view no-tabbar">
+    <div class="empty-state">
+      <div class="emoji">✈️</div>
+      <p>Cargando TravelPlanner…</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>

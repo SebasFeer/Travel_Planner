@@ -4,7 +4,7 @@
 // ============================================================
 
 const DB_NAME = "travelplanner";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = [
   "trips",
@@ -16,6 +16,10 @@ const STORES = [
   "expenses",
   "checklist",
 ];
+
+// Caché de geocodificación (texto de lugar -> coordenadas).
+// No lleva trip_id: se comparte entre viajes y se indexa por su propio texto.
+const GEOCACHE_STORE = "geocache";
 
 const DEFAULT_CHECKLIST_ITEMS = [
   "Pasaporte",
@@ -49,6 +53,10 @@ function openDB() {
           });
           store.createIndex("trip_id", "trip_id", { unique: false });
         }
+      }
+
+      if (!db.objectStoreNames.contains(GEOCACHE_STORE)) {
+        db.createObjectStore(GEOCACHE_STORE, { keyPath: "query" });
       }
     };
 
@@ -157,9 +165,10 @@ const Data = {
       existing.map((i) => (i.task || "").trim().toLowerCase())
     );
 
+    let order = Date.now();
     for (const task of DEFAULT_CHECKLIST_ITEMS) {
       if (existingLower.has(task.trim().toLowerCase())) continue;
-      await this.add("checklist", { trip_id: tripId, task, completed: 0 });
+      await this.add("checklist", { trip_id: tripId, task, completed: 0, order: order++ });
     }
   },
 
@@ -190,6 +199,23 @@ const Data = {
       }
     });
   },
+  async geocacheGet(query) {
+    const store = await tx(GEOCACHE_STORE, "readonly");
+    return new Promise((resolve, reject) => {
+      const req = store.get(query);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async geocacheSet(query, lat, lng) {
+    const store = await tx(GEOCACHE_STORE, "readwrite");
+    return new Promise((resolve, reject) => {
+      const req = store.put({ query, lat, lng, cachedAt: Date.now() });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
 };
 
-export { Data, DEFAULT_CHECKLIST_ITEMS, openDB };
+export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, openDB };

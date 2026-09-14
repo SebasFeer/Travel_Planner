@@ -8,6 +8,7 @@ import {
   openMaps,
   openMapsMultiple,
 } from "./utils.js";
+import { geocodeAll, routeBetween } from "./geocode.js";
 import { state, root, h, toast, showFormModal, confirmAction, renderApp } from "./app.js";
 
 // ============================================================
@@ -24,6 +25,7 @@ const TABS = [
   { id: "expenses", icon: "💶", label: "Gastos" },
   { id: "checklist", icon: "☑️", label: "Checklist" },
   { id: "calendar", icon: "🗓️", label: "Calendario" },
+  { id: "map", icon: "🗺️", label: "Mapa" },
 ];
 
 const TRANSPORT_ICONS = {
@@ -77,6 +79,7 @@ async function renderSection(trip) {
     expenses: renderExpenses,
     checklist: renderChecklist,
     calendar: renderCalendar,
+    map: renderMap,
   };
   const fn = renderers[state.section] || renderDashboard;
   await fn(trip);
@@ -306,36 +309,60 @@ function openHotelForm(trip, hotel) {
 
 async function renderItinerary(trip) {
   const items = await Data.getAllByTrip("itinerary", trip.id);
-  items.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+  // Agrupamos por fecha; dentro de cada día se respeta el orden manual
+  // (arrastrable) si existe, si no, se ordena por hora.
+  items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  const list = items.length
-    ? items
-        .map(
-          (item) => h`
-        <div class="ticket" data-id="${item.id}">
-          ${stub("📍", item.date)}
-          <div class="ticket-body">
-            <div class="ticket-title-row">
-              <p class="ticket-title">${escapeHtml(item.title || "Actividad")}</p>
-              <span class="ticket-amount">${item.time || ""}</span>
-            </div>
-            ${item.location ? `<p class="ticket-meta">${escapeHtml(item.location)}</p>` : ""}
-            ${item.notes ? `<p class="ticket-meta">${escapeHtml(item.notes)}</p>` : ""}
-            <div class="ticket-actions">
-              ${item.location ? `<button data-act="map">🗺️ Mapa</button>` : ""}
-              <button data-act="edit">✏️ Editar</button>
-              <button data-act="delete" class="danger">🗑️ Eliminar</button>
-            </div>
+  const byDate = {};
+  const noDate = [];
+  for (const item of items) {
+    if (!item.date) { noDate.push(item); continue; }
+    if (!byDate[item.date]) byDate[item.date] = [];
+    byDate[item.date].push(item);
+  }
+  const dates = Object.keys(byDate).sort();
+
+  function ticketHtml(item) {
+    return h`
+      <div class="ticket" data-id="${item.id}">
+        <div class="drag-handle">⠿</div>
+        ${stub("📍", item.date)}
+        <div class="ticket-body">
+          <div class="ticket-title-row">
+            <p class="ticket-title">${escapeHtml(item.title || "Actividad")}</p>
+            <span class="ticket-amount">${item.time || ""}</span>
           </div>
-        </div>`
-        )
-        .join("")
-    : emptyState("📍", "Todavía no has planificado ninguna actividad.");
+          ${item.location ? `<p class="ticket-meta">${escapeHtml(item.location)}</p>` : ""}
+          ${item.notes ? `<p class="ticket-meta">${escapeHtml(item.notes)}</p>` : ""}
+          <div class="ticket-actions">
+            ${item.location ? `<button data-act="map">🗺️ Mapa</button>` : ""}
+            <button data-act="edit">✏️ Editar</button>
+            <button data-act="delete" class="danger">🗑️ Eliminar</button>
+          </div>
+        </div>
+      </div>`;
+  }
 
-  section(list);
+  let html = "";
+  for (const date of dates) {
+    html += `<p class="section-title">${formatDatePretty(date)}</p>`;
+    html += `<div class="drag-list" data-date="${date}">${byDate[date].map(ticketHtml).join("")}</div>`;
+  }
+  if (noDate.length) {
+    html += `<p class="section-title">Sin fecha</p>`;
+    html += `<div class="drag-list" data-date="">${noDate.map(ticketHtml).join("")}</div>`;
+  }
+  if (!dates.length && !noDate.length) {
+    html = emptyState("📍", "Todavía no has planificado ninguna actividad.");
+  } else {
+    html += `<p style="text-align:center; color:var(--muted); font-size:12px; margin-top:6px;">Mantén pulsado ⠿ para reordenar</p>`;
+  }
+
+  section(html);
   setFab(fabBtn());
 
   wireTicketActions("itinerary", items, (item) => openItineraryForm(trip, item), (item) => openMaps(item.location));
+  wireDragReorder("itinerary", items);
   document.getElementById("fab-add").addEventListener("click", () => openItineraryForm(trip));
 }
 
@@ -351,7 +378,14 @@ function openItineraryForm(trip, item) {
       { name: "notes", label: "Notas", type: "textarea" },
     ],
     onDelete: item ? () => deleteAndRefresh("itinerary", item.id, "Actividad eliminada") : null,
-    onSave: (values) => saveAndRefresh("itinerary", trip.id, item, values, "Actividad guardada"),
+    onSave: (values) =>
+      saveAndRefresh(
+        "itinerary",
+        trip.id,
+        item,
+        item ? values : { ...values, order: Date.now() },
+        "Actividad guardada"
+      ),
   });
 }
 
@@ -554,12 +588,14 @@ function openExpenseForm(trip, e) {
 
 async function renderChecklist(trip) {
   const items = await Data.getAllByTrip("checklist", trip.id);
+  items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const list = items.length
-    ? items
+    ? `<div class="drag-list" data-date="">${items
         .map(
           (item) => h`
         <div class="ticket compact ${item.completed ? "done" : ""}" data-id="${item.id}">
+          <div class="drag-handle">⠿</div>
           <div class="ticket-stub" style="width:52px;">
             <input type="checkbox" data-act="toggle" ${item.completed ? "checked" : ""}
               style="width:24px;height:24px;accent-color:var(--teal);" />
@@ -575,7 +611,7 @@ async function renderChecklist(trip) {
           </div>
         </div>`
         )
-        .join("")
+        .join("")}</div>`
     : emptyState("☑️", "No hay tareas todavía.");
 
   section(h`
@@ -583,8 +619,10 @@ async function renderChecklist(trip) {
       <button id="btn-load-basics">＋ Cargar lista básica</button>
     </div>
     ${list}
+    ${items.length ? `<p style="text-align:center; color:var(--muted); font-size:12px; margin-top:6px;">Mantén pulsado ⠿ para reordenar</p>` : ""}
   `);
   setFab(fabBtn());
+  wireDragReorder("checklist", items);
 
   root.querySelectorAll('[data-act="toggle"]').forEach((box) => {
     box.addEventListener("change", async (e) => {
@@ -614,7 +652,8 @@ async function renderChecklist(trip) {
     showFormModal({
       title: "Nueva tarea",
       fields: [{ name: "task", label: "Tarea", required: true }],
-      onSave: (values) => saveAndRefresh("checklist", trip.id, null, { ...values, completed: 0 }, "Tarea añadida"),
+      onSave: (values) =>
+        saveAndRefresh("checklist", trip.id, null, { ...values, completed: 0, order: Date.now() }, "Tarea añadida"),
     });
   });
 }
@@ -720,6 +759,129 @@ async function renderCalendar(trip) {
 }
 
 // ============================================================
+// MAPA INTERACTIVO (OpenStreetMap / Leaflet)
+// ============================================================
+
+let mapDayFilter = "all";
+let leafletInstance = null;
+
+const KIND_ICON = { hotel: "🏨", itinerary: "📍", reservation: "🎟️", transport: "🚗" };
+
+async function collectMapPins(trip) {
+  const [hotels, itin, reservations, transport] = await Promise.all([
+    Data.getAllByTrip("hotels", trip.id),
+    Data.getAllByTrip("itinerary", trip.id),
+    Data.getAllByTrip("reservations", trip.id),
+    Data.getAllByTrip("transport", trip.id),
+  ]);
+
+  const pins = [];
+  hotels.forEach((hh) => {
+    if (!hh.address) return;
+    if (hh.check_in) pins.push({ kind: "hotel", text: hh.address, date: hh.check_in, time: "15:00", title: `Entrada: ${hh.name || "Hotel"}` });
+    if (hh.check_out) pins.push({ kind: "hotel", text: hh.address, date: hh.check_out, time: "11:00", title: `Salida: ${hh.name || "Hotel"}` });
+  });
+  itin.forEach((i) => {
+    if (!i.location) return;
+    pins.push({ kind: "itinerary", text: i.location, date: i.date, time: i.time || "12:00", title: i.title || "Actividad" });
+  });
+  reservations.forEach((r) => {
+    if (!r.location) return;
+    pins.push({ kind: "reservation", text: r.location, date: r.date, time: r.time || "12:00", title: r.name || r.type || "Reserva" });
+  });
+  transport.forEach((t) => {
+    if (t.origin) pins.push({ kind: "transport", text: t.origin, date: t.date, time: t.time || "08:00", title: `Salida — ${t.type || "Transporte"}` });
+    if (t.destination) pins.push({ kind: "transport", text: t.destination, date: t.date, time: t.time || "08:01", title: `Llegada — ${t.type || "Transporte"}` });
+  });
+
+  return pins;
+}
+
+async function renderMap(trip) {
+  const pins = await collectMapPins(trip);
+
+  if (!pins.length) {
+    section(emptyState("🗺️", "Añade direcciones a tus hoteles, actividades o reservas para verlas en el mapa."));
+    setFab("");
+    return;
+  }
+
+  const dates = [...new Set(pins.map((p) => p.date).filter(Boolean))].sort();
+
+  const chips = [`<button data-day="all" class="${mapDayFilter === "all" ? "active" : ""}">Todos</button>`]
+    .concat(dates.map((d) => `<button data-day="${d}" class="${mapDayFilter === d ? "active" : ""}">${formatDatePretty(d)}</button>`))
+    .join("");
+
+  section(h`
+    <div class="pill-row">${chips}</div>
+    <p id="map-status" style="color:var(--muted); font-size:13px; margin:0 0 10px;">Localizando lugares…</p>
+    <div id="leaflet-map" style="height:58vh; border-radius:16px; overflow:hidden;"></div>
+  `);
+  setFab("");
+
+  root.querySelectorAll("[data-day]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      mapDayFilter = btn.dataset.day;
+      renderMap(trip);
+    });
+  });
+
+  const visible = mapDayFilter === "all" ? pins : pins.filter((p) => p.date === mapDayFilter);
+  const located = await geocodeAll(visible, (p) => p.text);
+
+  const statusEl = document.getElementById("map-status");
+  if (!statusEl) return; // el usuario cambió de pestaña mientras geocodificaba
+
+  if (!located.length) {
+    statusEl.textContent = "No se pudo localizar ninguna dirección (revisa tu conexión).";
+    return;
+  }
+
+  if (leafletInstance) {
+    leafletInstance.remove();
+    leafletInstance = null;
+  }
+
+  const map = L.map("leaflet-map");
+  leafletInstance = map;
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap",
+    maxZoom: 19,
+  }).addTo(map);
+
+  const markers = located.map((p) => {
+    const icon = L.divIcon({
+      html: `<div class="map-pin">${KIND_ICON[p.kind] || "📍"}</div>`,
+      className: "",
+      iconSize: [30, 30],
+      iconAnchor: [15, 28],
+    });
+    return L.marker([p.lat, p.lng], { icon })
+      .addTo(map)
+      .bindPopup(`<strong>${escapeHtml(p.title)}</strong><br>${p.time || ""}`);
+  });
+
+  const bounds = L.latLngBounds(located.map((p) => [p.lat, p.lng]));
+  map.fitBounds(bounds.pad(0.25));
+
+  if (mapDayFilter !== "all" && located.length >= 2) {
+    statusEl.textContent = "Calculando ruta…";
+    const ordered = [...located].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+    const route = await routeBetween(ordered);
+    if (route) {
+      L.polyline(route.coords, { color: "#e4a421", weight: 4, opacity: 0.85 }).addTo(map);
+      const h = Math.floor(route.durationMin / 60);
+      const m = Math.round(route.durationMin % 60);
+      statusEl.textContent = `Ruta del día: ${route.distanceKm.toFixed(1)} km · ${h > 0 ? h + " h " : ""}${m} min en coche`;
+    } else {
+      statusEl.textContent = `${located.length} lugares localizados. No se pudo calcular la ruta (revisa tu conexión).`;
+    }
+  } else {
+    statusEl.textContent = `${located.length} de ${visible.length} lugares localizados en el mapa.`;
+  }
+}
+
+// ============================================================
 // AYUDANTES COMPARTIDOS
 // ============================================================
 
@@ -754,6 +916,28 @@ function wireTicketActions(storeName, items, onEdit, onMap) {
     card.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
       onEdit(item);
+    });
+  });
+}
+
+// Activa arrastrar-y-soltar (SortableJS) en cada `.drag-list` de la
+// pantalla actual, y persiste el nuevo orden en IndexedDB al soltar.
+function wireDragReorder(storeName, items) {
+  if (typeof Sortable === "undefined") return; // sin conexión la primera vez
+  root.querySelectorAll(".drag-list").forEach((list) => {
+    Sortable.create(list, {
+      handle: ".drag-handle",
+      animation: 150,
+      ghostClass: "drag-ghost",
+      onEnd: async () => {
+        const ids = Array.from(list.children).map((el) => parseInt(el.dataset.id, 10));
+        let order = Date.now();
+        for (const id of ids) {
+          const item = items.find((i) => i.id === id);
+          if (item) await Data.put(storeName, { ...item, order: order++ });
+        }
+        toast("Orden actualizado");
+      },
     });
   });
 }

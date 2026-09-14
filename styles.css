@@ -293,6 +293,49 @@ a { color: inherit; }
 .ticket.compact .ticket-stub { width: 56px; }
 
 /* ============================================================
+   ARRASTRAR Y SOLTAR (itinerario, checklist)
+   ============================================================ */
+
+.drag-handle {
+  flex-shrink: 0;
+  width: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: grab;
+  touch-action: none;
+  background: var(--paper-dim);
+}
+
+.drag-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen {
+  box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+}
+
+/* ============================================================
+   MAPA
+   ============================================================ */
+
+.map-pin {
+  font-size: 20px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--paper);
+  color: var(--ink-text);
+  border-radius: 12px;
+}
+
+.leaflet-popup-tip { background: var(--paper); }
+
+/* ============================================================
    BOTONES
    ============================================================ */
 
