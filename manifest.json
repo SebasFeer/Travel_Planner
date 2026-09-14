@@ -1,16 +1,26 @@
 {
   "name": "TravelPlanner",
   "short_name": "TravelPlanner",
-  "description": "Organizador personal de viajes: vuelos, hoteles, itinerario, gastos y checklist.",
-  "start_url": "./index.html",
+  "description": "Tu organizador personal de viajes, listo para llevar en el bolsillo.",
+  "lang": "es",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#12162a",
-  "theme_color": "#12162a",
+  "background_color": "#f7f8fc",
+  "theme_color": "#11162d",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
