@@ -1,0 +1,780 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --ink: #12162a;
+  --ink-soft: #1b2140;
+  --ink-line: #2b325a;
+  --paper: #f5f0e1;
+  --paper-dim: #eae3cc;
+  --paper-line: #cdc2a0;
+  --amber: #e4a421;
+  --amber-deep: #b9820f;
+  --teal: #2f6f6b;
+  --rose: #c1483e;
+  --ink-text: #1b2140;
+  --muted: #9aa3c4;
+  --muted-dark: #6b7291;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-body: "Inter", -apple-system, system-ui, sans-serif;
+
+  --radius-card: 20px;
+  --radius-btn: 12px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  height: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+#app {
+  max-width: 560px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+::selection {
+  background: var(--amber);
+  color: var(--ink);
+}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+
+.topbar {
+  padding: calc(16px + var(--safe-top)) 20px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(180deg, var(--ink) 70%, rgba(18,22,42,0));
+}
+
+.topbar .icon-btn {
+  flex-shrink: 0;
+}
+
+.topbar-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-line);
+  background: var(--ink-soft);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.icon-btn:active { transform: scale(0.94); }
+
+/* ============================================================
+   CONTENIDO
+   ============================================================ */
+
+.view {
+  flex: 1;
+  padding: 4px 20px 110px;
+}
+
+.view.no-tabbar { padding-bottom: 40px; }
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: none;
+  margin: 22px 0 10px;
+}
+
+.section-title:first-child { margin-top: 6px; }
+
+/* ============================================================
+   TICKET CARDS (billete de embarque)
+   ============================================================ */
+
+.ticket {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink-text);
+  border-radius: var(--radius-card);
+  display: flex;
+  margin-bottom: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+}
+
+.ticket-stub {
+  width: 74px;
+  flex-shrink: 0;
+  background: var(--paper-dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 6px;
+  position: relative;
+  text-align: center;
+}
+
+.ticket-stub .stub-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.ticket-stub .stub-day {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ticket-stub .stub-month {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted-dark);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* perforación entre el talón y el cuerpo del billete */
+.ticket-divider {
+  width: 0;
+  border-left: 2px dashed var(--paper-line);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ticket-divider::before,
+.ticket-divider::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.ticket-divider::before { top: -8px; }
+.ticket-divider::after { bottom: -8px; }
+
+.ticket-body {
+  flex: 1;
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.ticket-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ticket-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-amount {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--teal);
+  flex-shrink: 0;
+}
+
+.ticket-meta {
+  font-size: 13px;
+  color: #55597a;
+  margin: 3px 0 0;
+  line-height: 1.5;
+}
+
+.ticket-meta .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(27,33,64,0.07);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ticket-actions button {
+  border: none;
+  background: rgba(27,33,64,0.08);
+  color: var(--ink-text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.ticket-actions button.danger {
+  background: rgba(193,72,62,0.12);
+  color: var(--rose);
+}
+
+.ticket.done {
+  opacity: 0.55;
+}
+
+.ticket.done .ticket-title {
+  text-decoration: line-through;
+}
+
+.ticket.compact .ticket-stub { width: 56px; }
+
+/* ============================================================
+   BOTONES
+   ============================================================ */
+
+.btn {
+  border: none;
+  border-radius: var(--radius-btn);
+  padding: 13px 18px;
+  font-weight: 600;
+  font-size: 15px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--amber);
+  color: #221a04;
+}
+
+.btn-secondary {
+  background: var(--ink-soft);
+  color: var(--paper);
+  border: 1px solid var(--ink-line);
+}
+
+.btn-danger {
+  background: rgba(193,72,62,0.15);
+  color: #ff8b7f;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.fab {
+  position: fixed;
+  right: max(20px, calc((100vw - 560px) / 2 + 20px));
+  bottom: calc(90px + var(--safe-bottom));
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: #221a04;
+  border: none;
+  font-size: 26px;
+  box-shadow: 0 10px 24px rgba(228,164,33,0.4);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab:active { transform: scale(0.95); }
+
+/* ============================================================
+   TAB BAR INFERIOR
+   ============================================================ */
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 25;
+  background: rgba(27,33,64,0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--ink-line);
+  padding: 8px 4px calc(8px + var(--safe-bottom));
+}
+
+.tabbar-inner {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 2px;
+}
+.tabbar-inner::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  flex: 1 0 auto;
+  min-width: 68px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 6px;
+  font-size: 10.5px;
+  font-weight: 500;
+  border-radius: 12px;
+}
+
+.tab-btn .tab-icon { font-size: 19px; }
+
+.tab-btn.active {
+  color: var(--amber);
+}
+
+/* ============================================================
+   TARJETAS DE RESUMEN / DASHBOARD
+   ============================================================ */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.stat-card {
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stat-card .stat-value {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.panel {
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 14px;
+}
+
+.panel h3 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+
+.progress-track {
+  background: var(--ink);
+  border-radius: 10px;
+  height: 10px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.over { background: var(--rose); }
+
+.agenda-line {
+  font-size: 13.5px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--ink-line);
+  display: flex;
+  gap: 8px;
+}
+.agenda-line:last-child { border-bottom: none; }
+
+.today-banner {
+  background: var(--amber);
+  color: #221a04;
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   FORMULARIOS / MODAL
+   ============================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,12,24,0.6);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-sheet {
+  background: var(--ink);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 10px 20px calc(28px + var(--safe-bottom));
+  border-top: 1px solid var(--ink-line);
+}
+
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--ink-line);
+  border-radius: 4px;
+  margin: 8px auto 14px;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  color: var(--paper);
+  border-radius: 12px;
+  padding: 12px 13px;
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+.field textarea { min-height: 80px; resize: vertical; }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.field-check input {
+  width: 20px;
+  height: 20px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ============================================================
+   LISTA DE VIAJES (home)
+   ============================================================ */
+
+.trip-card {
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.trip-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 5px;
+  background: var(--amber);
+}
+
+.trip-card .trip-dest {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.trip-card .trip-name {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 2px 0 10px;
+}
+
+.trip-card .trip-dates {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--paper);
+  background: rgba(228,164,33,0.12);
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.trip-card .trip-countdown {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-state .emoji {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.empty-state p { font-size: 14px; line-height: 1.6; }
+
+/* ============================================================
+   CALENDARIO
+   ============================================================ */
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cal-header .cal-month {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.cal-dow {
+  font-size: 10.5px;
+  color: var(--muted);
+  padding-bottom: 4px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  background: var(--ink-soft);
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.cal-day.empty { background: transparent; }
+.cal-day.today { border-color: var(--amber); }
+.cal-day .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--amber);
+  margin-top: 3px;
+}
+.cal-day.in-range { background: rgba(228,164,33,0.1); }
+
+.cal-agenda-day {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  margin: 16px 0 6px;
+}
+
+/* ============================================================
+   MISC
+   ============================================================ */
+
+.pill-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pill-row button {
+  border: none;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 20px;
+}
+
+.pill-row button.active {
+  background: var(--amber);
+  color: #221a04;
+  border-color: var(--amber);
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(24px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--paper);
+  color: var(--ink-text);
+  padding: 12px 20px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  z-index: 100;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  max-width: 90%;
+  text-align: center;
+}
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   PANTALLA DE IMPRESIÓN (sustituye a la exportación PDF)
+   ============================================================ */
+
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area {
+    position: absolute;
+    top: 0; left: 0; width: 100%;
+    color: #111;
+    background: #fff;
+  }
+}
+
+#print-area { display: none; }
+
+/* Accesibilidad: reducir movimiento */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
