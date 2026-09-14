@@ -10,6 +10,17 @@ import {
   openMapsMultiple,
   download,
 } from "./utils.js";
+import { isPinSet, setPin, removePin, verifyPin } from "./lock.js";
+import {
+  currentUser,
+  onAuthChange,
+  signUp,
+  signIn,
+  signOutUser,
+  pushToCloud,
+  pullFromCloud,
+  cloudHasBackup,
+} from "./cloud.js";
 import { TABS, renderSection, renderPrintArea } from "./sections.js";
 
 // ============================================================
@@ -344,6 +355,8 @@ async function renderHome() {
         <h1 class="topbar-title">Mis viajes</h1>
       </div>
       <button class="icon-btn" id="btn-backup" title="Copia de seguridad">⇅</button>
+      <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-account" title="Cuenta">👤</button>
+      <button class="icon-btn" id="btn-security" title="Seguridad">🔒</button>
     </div>
     <div class="view no-tabbar">
       ${cardsHtml}
@@ -361,6 +374,8 @@ async function renderHome() {
 
   root.querySelector("#fab-new-trip").addEventListener("click", () => openTripForm());
   root.querySelector("#btn-backup").addEventListener("click", () => openBackupSheet());
+  root.querySelector("#btn-security").addEventListener("click", () => openSecuritySheet());
+  root.querySelector("#btn-account").addEventListener("click", () => openAccountSheet());
 }
 
 function openTripForm(trip) {
@@ -459,3 +474,238 @@ function openBackupSheet() {
 }
 
 export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm };
+
+// ============================================================
+// SEGURIDAD — PIN de bloqueo local
+// ============================================================
+
+async function openSecuritySheet() {
+  const hasPin = await isPinSet();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Seguridad</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
+        Un PIN local pide un código cada vez que abres la app o vuelves a ella
+        tras cambiar de app. Solo vive en este dispositivo — si lo olvidas,
+        no hay forma de recuperarlo salvo borrar los datos de la app.
+      </p>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="btn btn-secondary" id="sec-toggle">
+          ${hasPin ? "🔁 Cambiar PIN" : "🔒 Activar PIN"}
+        </button>
+      </div>
+      ${hasPin ? `<div class="modal-actions"><button class="btn btn-danger" id="sec-remove">Quitar PIN</button></div>` : ""}
+      <div class="modal-actions"><button class="btn btn-ghost" id="sec-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#sec-close").addEventListener("click", () => overlay.remove());
+
+  overlay.querySelector("#sec-toggle").addEventListener("click", async () => {
+    overlay.remove();
+    if (hasPin) {
+      const current = prompt("Introduce tu PIN actual:");
+      if (current === null) return;
+      const ok = await verifyPin(current);
+      if (!ok) {
+        toast("PIN incorrecto");
+        return;
+      }
+    }
+    promptNewPin();
+  });
+
+  if (hasPin) {
+    overlay.querySelector("#sec-remove").addEventListener("click", async () => {
+      overlay.remove();
+      const current = prompt("Introduce tu PIN para confirmar que quieres quitarlo:");
+      if (current === null) return;
+      const ok = await verifyPin(current);
+      if (!ok) {
+        toast("PIN incorrecto");
+        return;
+      }
+      await removePin();
+      toast("PIN desactivado");
+    });
+  }
+}
+
+function promptNewPin() {
+  const pin = prompt("Elige un PIN (4 a 6 dígitos):");
+  if (pin === null) return;
+  if (!/^\d{4,6}$/.test(pin)) {
+    toast("El PIN debe tener entre 4 y 6 números");
+    return;
+  }
+  const confirmPin = prompt("Repite el PIN:");
+  if (confirmPin !== pin) {
+    toast("No coincide, inténtalo de nuevo");
+    return;
+  }
+  setPin(pin).then(() => toast("PIN activado"));
+}
+
+// ============================================================
+// CUENTA — email/contraseña + copia en la nube (Firestore)
+// ============================================================
+
+async function openAccountSheet() {
+  const user = currentUser();
+
+  if (!user) {
+    renderAuthForm();
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Tu cuenta</h2>
+      <p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">${escapeHtml(user.email)}</p>
+      <div class="modal-actions" style="margin-top:10px;">
+        <button class="btn btn-primary" id="acc-push">⬆️ Subir copia a la nube</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="acc-pull">⬇️ Descargar copia de la nube</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="acc-logout">Cerrar sesión</button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="acc-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#acc-close").addEventListener("click", () => overlay.remove());
+
+  overlay.querySelector("#acc-push").addEventListener("click", async () => {
+    toast("Subiendo…");
+    const res = await pushToCloud();
+    toast(res.ok ? "Copia subida a la nube" : res.error);
+  });
+
+  overlay.querySelector("#acc-pull").addEventListener("click", async () => {
+    if (!confirmAction("Esto sustituirá los datos de este dispositivo por los de la nube. ¿Continuar?")) return;
+    toast("Descargando…");
+    const res = await pullFromCloud();
+    if (res.ok) {
+      toast("Datos actualizados desde la nube");
+      overlay.remove();
+      await renderApp();
+    } else if (res.empty) {
+      toast("Todavía no hay ninguna copia en la nube");
+    } else {
+      toast(res.error);
+    }
+  });
+
+  overlay.querySelector("#acc-logout").addEventListener("click", async () => {
+    await signOutUser();
+    toast("Sesión cerrada");
+    overlay.remove();
+    await renderApp();
+  });
+}
+
+function renderAuthForm() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Iniciar sesión</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
+        Crea una cuenta para tener una copia de tus viajes en la nube, además de en
+        este dispositivo. Es opcional — la app sigue funcionando sin cuenta.
+      </p>
+      <div class="field" style="margin-top:14px;">
+        <label>Email</label>
+        <input type="email" id="auth-email" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="auth-password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" />
+      </div>
+      <p id="auth-error" style="color:#ff8b7f; font-size:12.5px; min-height:16px;"></p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="auth-login">Iniciar sesión</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="auth-signup">Crear cuenta nueva</button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="auth-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#auth-close").addEventListener("click", () => overlay.remove());
+
+  const errorEl = overlay.querySelector("#auth-error");
+  const emailEl = overlay.querySelector("#auth-email");
+  const passEl = overlay.querySelector("#auth-password");
+
+  overlay.querySelector("#auth-login").addEventListener("click", async () => {
+    errorEl.textContent = "";
+    const { user, error } = await signIn(emailEl.value.trim(), passEl.value);
+    if (error) { errorEl.textContent = error; return; }
+    overlay.remove();
+    await afterLogin(user);
+  });
+
+  overlay.querySelector("#auth-signup").addEventListener("click", async () => {
+    errorEl.textContent = "";
+    const { user, error } = await signUp(emailEl.value.trim(), passEl.value);
+    if (error) { errorEl.textContent = error; return; }
+    overlay.remove();
+    // Cuenta recién creada: subimos lo que ya haya en este dispositivo.
+    toast("Cuenta creada, subiendo tus datos…");
+    await pushToCloud();
+    await renderApp();
+  });
+}
+
+async function afterLogin(user) {
+  const hasBackup = await cloudHasBackup();
+  if (!hasBackup) {
+    toast("Sesión iniciada. Subiendo tus datos de este dispositivo…");
+    await pushToCloud();
+    await renderApp();
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Ya tienes una copia en la nube</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+        Hay datos guardados de antes en tu cuenta. ¿Qué quieres hacer?
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="merge-pull">⬇️ Usar los datos de la nube (sustituye los de este móvil)</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="merge-push">⬆️ Usar los datos de este móvil (sustituye los de la nube)</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#merge-pull").addEventListener("click", async () => {
+    overlay.remove();
+    await pullFromCloud();
+    toast("Datos de la nube cargados");
+    await renderApp();
+  });
+  overlay.querySelector("#merge-push").addEventListener("click", async () => {
+    overlay.remove();
+    await pushToCloud();
+    toast("Tus datos de este móvil se han subido");
+    await renderApp();
+  });
+}
