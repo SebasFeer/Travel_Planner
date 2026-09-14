@@ -966,3 +966,261 @@ a { color: inherit; }
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
+
+/* ============================================================
+   REDISEÑO TRAVELPLANNER — identidad azul marino + dorado
+   Se mantienen los nombres de clase existentes para no tocar la lógica.
+   ============================================================ */
+
+:root {
+  --brand: #11162d;
+  --brand-deep: #080b1c;
+  --brand-soft: rgba(17, 22, 45, 0.10);
+  --brand-gold: #eda918;
+  --brand-gold-soft: rgba(237, 169, 24, 0.16);
+  --bg: #f7f8fc;
+  --surface: #ffffff;
+  --surface-tint: #f1f3f8;
+  --border: #e2e6ef;
+  --text: #11162d;
+  --muted: #687087;
+  --muted-dark: #3e485f;
+  --overlay-bg: #11162d;
+  --radius-card: 20px;
+  --radius-btn: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1020;
+    --surface: #171b31;
+    --surface-tint: #202640;
+    --border: #303750;
+    --text: #f6f7fb;
+    --muted: #aab2c5;
+    --muted-dark: #d1d6e2;
+    --brand-soft: rgba(255, 255, 255, 0.08);
+    --brand-gold-soft: rgba(237, 169, 24, 0.2);
+  }
+}
+
+body {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(237, 169, 24, 0.10), transparent 26rem),
+    var(--bg);
+}
+
+#app {
+  max-width: 680px;
+}
+
+.topbar {
+  padding-left: 22px;
+  padding-right: 22px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 94%, transparent) 72%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.topbar-title {
+  letter-spacing: -0.02em;
+}
+
+.topbar .icon-btn {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+  box-shadow: 0 6px 14px rgba(17, 22, 45, 0.18);
+}
+
+.topbar .icon-btn:hover {
+  background: var(--brand-gold);
+  color: var(--brand);
+  border-color: var(--brand-gold);
+}
+
+.view {
+  padding-left: 22px;
+  padding-right: 22px;
+}
+
+.section-title {
+  color: var(--text);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.ticket,
+.trip-card,
+.panel,
+.stat-card {
+  box-shadow: 0 8px 24px rgba(17, 22, 45, 0.055);
+}
+
+.ticket {
+  border-left: 4px solid var(--accent, var(--brand-gold));
+  padding: 15px 16px 15px 13px;
+}
+
+.ticket:hover,
+.trip-card:hover,
+.panel[data-nav]:hover,
+.stat-card:hover {
+  box-shadow: 0 16px 32px rgba(17, 22, 45, 0.11);
+}
+
+.ticket-stub {
+  border-radius: 17px;
+}
+
+.ticket-title,
+.trip-card .trip-dest,
+.panel h3,
+.modal-title {
+  letter-spacing: -0.015em;
+}
+
+.ticket-actions button {
+  border: 1px solid transparent;
+}
+
+.ticket-actions button:hover {
+  border-color: var(--brand-gold);
+}
+
+.stat-grid {
+  gap: 12px;
+}
+
+.stat-card {
+  border-radius: 16px;
+  padding: 15px 14px 15px 18px;
+}
+
+.stat-card::before,
+.panel[data-nav]::before {
+  width: 4px;
+}
+
+.stat-card .stat-label {
+  font-weight: 600;
+}
+
+.stat-card .stat-value {
+  font-size: 27px;
+}
+
+.panel {
+  border-radius: 18px;
+  padding: 17px 17px 17px 21px;
+}
+
+.today-banner {
+  background: linear-gradient(120deg, var(--brand), #252d52);
+  border: 1px solid rgba(237, 169, 24, 0.45);
+  box-shadow: 0 10px 22px rgba(17, 22, 45, 0.2);
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--brand-gold), #ffc94d);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-gold), #d99408);
+  color: var(--brand);
+  box-shadow: 0 8px 18px rgba(237, 169, 24, 0.28);
+}
+
+.btn-secondary:hover {
+  border-color: var(--brand-gold);
+  color: var(--brand);
+}
+
+.fab {
+  background: var(--brand-gold);
+  color: var(--brand);
+  box-shadow: 0 12px 26px rgba(237, 169, 24, 0.38);
+}
+
+.fab:hover {
+  background: #ffc94d;
+}
+
+.modal-overlay {
+  background: rgba(8, 11, 28, 0.68);
+  backdrop-filter: blur(4px);
+}
+
+.modal-sheet {
+  border-top: 3px solid var(--brand-gold);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline-color: var(--brand-gold);
+  border-color: var(--brand-gold);
+}
+
+.pill-row button.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  box-shadow: 0 5px 12px rgba(17, 22, 45, 0.18);
+}
+
+.cal-day.today {
+  border-color: var(--brand-gold);
+  background: var(--brand-gold-soft);
+}
+
+.cal-day .dot {
+  background: var(--brand-gold);
+}
+
+.empty-state .emoji {
+  filter: saturate(0.9);
+}
+
+@media (min-width: 700px) {
+  #app {
+    max-width: 760px;
+  }
+
+  .view {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .topbar {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+}
+
+@media (max-width: 420px) {
+  .view {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .topbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ticket {
+    gap: 11px;
+  }
+
+  .ticket-stub {
+    width: 64px;
+    height: 64px;
+  }
+
+  .ticket-title {
+    font-size: 16px;
+  }
+}
