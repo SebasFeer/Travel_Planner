@@ -643,7 +643,7 @@ async function renderChecklist(trip) {
   root.querySelectorAll('[data-act="delete"]').forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const id = parseInt(e.target.closest(".ticket").dataset.id, 10);
-      if (confirmAction("¿Eliminar esta tarea?")) {
+      if (await confirmAction("¿Eliminar esta tarea?")) {
         await deleteAndRefresh("checklist", id, "Tarea eliminada");
       }
     });
@@ -912,7 +912,7 @@ function wireTicketActions(storeName, items, onEdit, onMap) {
     const deleteBtn = card.querySelector('[data-act="delete"]');
     if (deleteBtn)
       deleteBtn.addEventListener("click", async () => {
-        if (confirmAction("¿Eliminar este elemento?")) {
+        if (await confirmAction("¿Eliminar este elemento?")) {
           await deleteAndRefresh(storeName, id, "Eliminado");
         }
       });

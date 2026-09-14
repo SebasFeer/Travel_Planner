@@ -206,8 +206,69 @@ function showFormModal({ title, fields, initial, onSave, onDelete, deleteLabel }
   }, 50);
 }
 
+// Pide un texto corto al usuario con una ventana propia de la app
+// (en vez de window.prompt, que puede fallar al abrir la app desde
+// la pantalla de inicio en iOS). Devuelve el texto o null si cancela.
+function promptModal({ title, message, inputType = "text", inputMode }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = h`
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <h2 class="modal-title">${escapeHtml(title)}</h2>
+        ${message ? `<p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">${escapeHtml(message)}</p>` : ""}
+        <div class="field" style="margin-top:14px;">
+          <input type="${inputType}" id="prompt-input" ${inputMode ? `inputmode="${inputMode}"` : ""} autocomplete="off" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="prompt-cancel">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="prompt-ok">Aceptar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector("#prompt-input");
+    setTimeout(() => input.focus(), 50);
+
+    const finish = (value) => {
+      overlay.remove();
+      resolve(value);
+    };
+
+    overlay.addEventListener("click", (e) => e.target === overlay && finish(null));
+    overlay.querySelector("#prompt-cancel").addEventListener("click", () => finish(null));
+    overlay.querySelector("#prompt-ok").addEventListener("click", () => finish(input.value));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") finish(input.value);
+    });
+  });
+}
+
 function confirmAction(message) {
-  return window.confirm(message);
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = h`
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <p style="font-size:15px; line-height:1.6; margin:8px 0 20px;">${escapeHtml(message)}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="confirm-cancel">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="confirm-ok">Confirmar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const finish = (result) => {
+      overlay.remove();
+      resolve(result);
+    };
+
+    overlay.addEventListener("click", (e) => e.target === overlay && finish(false));
+    overlay.querySelector("#confirm-cancel").addEventListener("click", () => finish(false));
+    overlay.querySelector("#confirm-ok").addEventListener("click", () => finish(true));
+  });
 }
 
 // ============================================================
@@ -303,7 +364,7 @@ function openTripMenu(trip) {
   });
   overlay.querySelector("#mn-delete").addEventListener("click", async () => {
     overlay.remove();
-    if (confirmAction(`Se eliminará "${trip.destination}" y todo su contenido (vuelos, hoteles, itinerario...). ¿Continuar?`)) {
+    if (await confirmAction(`Se eliminará "${trip.destination}" y todo su contenido (vuelos, hoteles, itinerario...). ¿Continuar?`)) {
       await Data.deleteTripCascade(trip.id);
       toast("Viaje eliminado");
       state.tripId = null;
@@ -463,7 +524,7 @@ function openBackupSheet() {
   overlay.querySelector("#btn-import").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirmAction("Esto sustituirá todos los datos actuales por los del archivo. ¿Continuar?")) return;
+    if (!(await confirmAction("Esto sustituirá todos los datos actuales por los del archivo. ¿Continuar?"))) return;
     const text = await file.text();
     try {
       const dump = JSON.parse(text);
@@ -512,7 +573,7 @@ async function openSecuritySheet() {
   overlay.querySelector("#sec-toggle").addEventListener("click", async () => {
     overlay.remove();
     if (hasPin) {
-      const current = prompt("Introduce tu PIN actual:");
+      const current = await promptModal({ title: "Introduce tu PIN actual", inputType: "password", inputMode: "numeric" });
       if (current === null) return;
       const ok = await verifyPin(current);
       if (!ok) {
@@ -526,7 +587,7 @@ async function openSecuritySheet() {
   if (hasPin) {
     overlay.querySelector("#sec-remove").addEventListener("click", async () => {
       overlay.remove();
-      const current = prompt("Introduce tu PIN para confirmar que quieres quitarlo:");
+      const current = await promptModal({ title: "Confirma tu PIN", message: "Para quitarlo, introduce tu PIN actual.", inputType: "password", inputMode: "numeric" });
       if (current === null) return;
       const ok = await verifyPin(current);
       if (!ok) {
@@ -539,19 +600,20 @@ async function openSecuritySheet() {
   }
 }
 
-function promptNewPin() {
-  const pin = prompt("Elige un PIN (4 a 6 dígitos):");
+async function promptNewPin() {
+  const pin = await promptModal({ title: "Elige un PIN", message: "Entre 4 y 6 números.", inputType: "password", inputMode: "numeric" });
   if (pin === null) return;
   if (!/^\d{4,6}$/.test(pin)) {
     toast("El PIN debe tener entre 4 y 6 números");
     return;
   }
-  const confirmPin = prompt("Repite el PIN:");
+  const confirmPin = await promptModal({ title: "Repite el PIN", inputType: "password", inputMode: "numeric" });
   if (confirmPin !== pin) {
     toast("No coincide, inténtalo de nuevo");
     return;
   }
-  setPin(pin).then(() => toast("PIN activado"));
+  await setPin(pin);
+  toast("PIN activado");
 }
 
 // ============================================================
@@ -595,7 +657,7 @@ async function openAccountSheet() {
   });
 
   overlay.querySelector("#acc-pull").addEventListener("click", async () => {
-    if (!confirmAction("Esto sustituirá los datos de este dispositivo por los de la nube. ¿Continuar?")) return;
+    if (!(await confirmAction("Esto sustituirá los datos de este dispositivo por los de la nube. ¿Continuar?"))) return;
     toast("Descargando…");
     const res = await pullFromCloud();
     if (res.ok) {
