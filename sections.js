@@ -161,7 +161,13 @@ async function renderDashboard(trip) {
       <div class="stat-card" data-nav="flights"><div class="stat-label">✈️ Vuelos</div><div class="stat-value">${flights.length}</div></div>
       <div class="stat-card" data-nav="hotels"><div class="stat-label">🏨 Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
       <div class="stat-card" data-nav="itinerary"><div class="stat-label">📅 Actividades</div><div class="stat-value">${itin.length}</div></div>
+      <div class="stat-card" data-nav="transport"><div class="stat-label">🚗 Transporte</div><div class="stat-value">${transport.length}</div></div>
+      <div class="stat-card" data-nav="reservations"><div class="stat-label">🎟️ Reservas</div><div class="stat-value">${reservations.length}</div></div>
       <div class="stat-card" data-nav="expenses"><div class="stat-label">💶 Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
+    </div>
+    <div class="panel" data-nav="map">
+      <h3>🗺️ Mapa del viaje</h3>
+      <p style="font-size:13.5px; color:var(--muted);">Ver hoteles, actividades y transporte sobre el mapa →</p>
     </div>
     <div class="panel" data-nav="expenses">
       <h3>💰 Presupuesto</h3>

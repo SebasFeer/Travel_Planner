@@ -21,7 +21,7 @@ import {
   pullFromCloud,
   cloudHasBackup,
 } from "./cloud.js";
-import { TABS, renderSection, renderPrintArea } from "./sections.js";
+import { renderSection, renderPrintArea } from "./sections.js";
 
 // ============================================================
 // ESTADO
@@ -284,7 +284,9 @@ async function renderApp() {
 }
 
 // ============================================================
-// ESTRUCTURA DE UN VIAJE (topbar + tabbar + contenido)
+// ESTRUCTURA DE UN VIAJE (topbar + contenido)
+// La navegación entre secciones (vuelos, hoteles, transporte...)
+// se hace desde las tarjetas del Resumen, no desde una barra fija.
 // ============================================================
 
 async function renderTripShell() {
@@ -295,14 +297,6 @@ async function renderTripShell() {
     return;
   }
 
-  const tabsHtml = TABS.map(
-    (t) => h`
-      <button class="tab-btn ${state.section === t.id ? "active" : ""}" data-tab="${t.id}">
-        <span class="tab-icon">${t.icon}</span>
-        <span>${t.label}</span>
-      </button>`
-  ).join("");
-
   root.innerHTML = h`
     <div class="topbar">
       <button class="icon-btn" id="btn-back">←</button>
@@ -312,11 +306,8 @@ async function renderTripShell() {
       </div>
       <button class="icon-btn" id="btn-trip-menu">⋮</button>
     </div>
-    <div class="view" id="section-content"></div>
+    <div class="view no-tabbar" id="section-content"></div>
     <div id="fab-slot"></div>
-    <div class="tabbar">
-      <div class="tabbar-inner">${tabsHtml}</div>
-    </div>
     <div id="print-area"></div>
   `;
 
@@ -331,13 +322,6 @@ async function renderTripShell() {
 
   root.querySelector("#btn-trip-menu").addEventListener("click", () => {
     openTripMenu(trip);
-  });
-
-  root.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.section = btn.dataset.tab;
-      renderApp();
-    });
   });
 
   await renderSection(trip);
