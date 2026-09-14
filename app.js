@@ -260,7 +260,11 @@ async function renderTripShell() {
   `;
 
   root.querySelector("#btn-back").addEventListener("click", () => {
-    state.tripId = null;
+    if (state.section !== "dashboard") {
+      state.section = "dashboard";
+    } else {
+      state.tripId = null;
+    }
     renderApp();
   });
 
