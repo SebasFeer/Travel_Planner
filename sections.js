@@ -158,22 +158,22 @@ async function renderDashboard(trip) {
   section(h`
     ${bannerHtml}
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">✈️ Vuelos</div><div class="stat-value">${flights.length}</div></div>
-      <div class="stat-card"><div class="stat-label">🏨 Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
-      <div class="stat-card"><div class="stat-label">📅 Actividades</div><div class="stat-value">${itin.length}</div></div>
-      <div class="stat-card"><div class="stat-label">💶 Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
+      <div class="stat-card" data-nav="flights"><div class="stat-label">✈️ Vuelos</div><div class="stat-value">${flights.length}</div></div>
+      <div class="stat-card" data-nav="hotels"><div class="stat-label">🏨 Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
+      <div class="stat-card" data-nav="itinerary"><div class="stat-label">📅 Actividades</div><div class="stat-value">${itin.length}</div></div>
+      <div class="stat-card" data-nav="expenses"><div class="stat-label">💶 Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
     </div>
-    <div class="panel">
+    <div class="panel" data-nav="expenses">
       <h3>💰 Presupuesto</h3>
       ${budgetHtml}
     </div>
-    <div class="panel">
+    <div class="panel" data-nav="checklist">
       <h3>☑️ Checklist</h3>
       <p style="font-size:13.5px; color:var(--muted);">
         ${checklist.length ? `${completedCount}/${checklist.length} tareas completadas (${checklistPct}%)` : "No hay tareas."}
       </p>
     </div>
-    <div class="panel">
+    <div class="panel" data-nav="calendar">
       <h3>⏰ Próximos eventos</h3>
       ${nextEventsHtml}
     </div>
@@ -184,6 +184,13 @@ async function renderDashboard(trip) {
     }
   `);
   setFab("");
+
+  root.querySelectorAll("[data-nav]").forEach((el) => {
+    el.addEventListener("click", () => {
+      state.section = el.dataset.nav;
+      renderApp();
+    });
+  });
 }
 
 // ============================================================
