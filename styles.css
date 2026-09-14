@@ -762,12 +762,31 @@ a { color: inherit; }
 .trip-card:active { transform: scale(0.99); }
 
 .trip-card-art {
-  height: 88px;
+  position: relative;
+  height: 110px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 42px;
   color: #fff;
+  overflow: hidden;
+}
+
+.trip-card-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trip-card-art-icon { position: relative; z-index: 1; }
+
+.trip-card-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 19, 43, 0) 45%, rgba(20, 19, 43, 0.28) 100%);
 }
 
 .trip-card.trip-color-1 .trip-card-art { background: linear-gradient(135deg, var(--cat-flights-a), var(--cat-flights)); }

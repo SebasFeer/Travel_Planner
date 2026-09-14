@@ -22,6 +22,7 @@ import {
   cloudHasBackup,
 } from "./cloud.js";
 import { renderSection, renderPrintArea } from "./sections.js";
+import { findDestinationPhoto } from "./photo.js";
 
 // ============================================================
 // ESTADO
@@ -384,7 +385,13 @@ async function renderHome() {
 
           return h`
             <div class="trip-card trip-color-${(i % 6) + 1}" data-id="${trip.id}">
-              <div class="trip-card-art">🧭</div>
+              <div class="trip-card-art">
+                ${
+                  trip.photo_url
+                    ? `<img src="${escapeHtml(trip.photo_url)}" alt="" loading="lazy" />`
+                    : `<span class="trip-card-art-icon">🧭</span>`
+                }
+              </div>
               <p class="trip-dest">${escapeHtml(trip.destination)}</p>
               <p class="trip-name">${escapeHtml(trip.name)}</p>
               <span class="trip-dates">${formatDatePretty(trip.start_date)} → ${formatDatePretty(trip.end_date)}</span>
@@ -426,6 +433,21 @@ async function renderHome() {
   root.querySelector("#btn-backup").addEventListener("click", () => openBackupSheet());
   root.querySelector("#btn-security").addEventListener("click", () => openSecuritySheet());
   root.querySelector("#btn-account").addEventListener("click", () => openAccountSheet());
+
+  // Fotos reales del destino: se buscan en segundo plano (no bloquean
+  // el primer pintado) y se guardan en el viaje para no tener que
+  // volver a buscarlas — así funciona también sin conexión después.
+  trips.forEach((trip) => {
+    if (trip.photo_url || !trip.destination) return;
+    findDestinationPhoto(trip.destination).then(async (url) => {
+      if (!url) return;
+      const artEl = root.querySelector(`.trip-card[data-id="${trip.id}"] .trip-card-art`);
+      if (artEl) {
+        artEl.innerHTML = `<img src="${url}" alt="" loading="lazy" />`;
+      }
+      await Data.put("trips", { ...trip, photo_url: url });
+    });
+  });
 }
 
 function openTripForm(trip) {
@@ -451,7 +473,9 @@ function openTripForm(trip) {
     deleteLabel: "Eliminar viaje",
     onSave: async (values) => {
       if (trip) {
-        await Data.put("trips", { ...trip, ...values });
+        const merged = { ...trip, ...values };
+        if (trip.destination !== values.destination) delete merged.photo_url;
+        await Data.put("trips", merged);
         toast("Viaje actualizado");
       } else {
         const id = await Data.add("trips", values);
