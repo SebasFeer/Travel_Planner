@@ -213,6 +213,45 @@ const Data = {
     }
   },
 
+  // Sustituye solo los datos "hijos" de un viaje (vuelos, hoteles...)
+  // por una versión nueva, manteniendo el mismo id de viaje local.
+  // Se usa para actualizar un viaje compartido con la copia más
+  // reciente que ha subido otro miembro.
+  async replaceTripChildren(tripId, childData) {
+    const db = await openDB();
+    const childStores = STORES.filter((s) => s !== "trips");
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORES, "readwrite");
+      transaction.oncomplete = () => {
+        notifyChange("trips");
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+
+      for (const storeName of childStores) {
+        const store = transaction.objectStore(storeName);
+        const idx = store.index("trip_id");
+        const cursorReq = idx.openCursor(IDBKeyRange.only(tripId));
+        cursorReq.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            cursor.delete();
+            cursor.continue();
+          } else {
+            // ya no quedan registros viejos de este almacén: insertamos
+            // los nuevos, quitando el id antiguo (lo asigna IndexedDB).
+            const rows = childData[storeName] || [];
+            for (const row of rows) {
+              const { id, ...rest } = row;
+              store.add({ ...rest, trip_id: tripId });
+            }
+          }
+        };
+      }
+    });
+  },
+
   // Exporta toda la base de datos a un objeto plano (para backup JSON).
   async exportAll() {
     const dump = {};
@@ -289,4 +328,4 @@ const Data = {
   },
 };
 
-export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, SETTINGS_STORE, openDB, onDataChange };
+export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, SETTINGS_STORE, STORES, openDB, onDataChange };

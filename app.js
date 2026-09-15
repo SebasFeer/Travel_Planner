@@ -20,7 +20,12 @@ import {
   pushToCloud,
   pullFromCloud,
   cloudHasBackup,
+  shareTrip,
+  joinSharedTrip,
+  refreshSharedTrip,
 } from "./cloud.js";
+import { isPro, setPro } from "./pro.js";
+import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
@@ -404,7 +409,18 @@ function openTripMenu(trip) {
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <h2 class="modal-title">${escapeHtml(trip.destination)}</h2>
+      ${
+        trip.share_code
+          ? `<p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">🔗 Viaje compartido · código ${escapeHtml(trip.share_code)}</p>`
+          : ""
+      }
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-edit">✏️ Editar viaje</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-share">🔗 ${trip.share_code ? "Compartir de nuevo" : "Compartir viaje (Pro)"}</button></div>
+      ${
+        trip.share_code
+          ? `<div class="modal-actions"><button class="btn btn-secondary" id="mn-refresh-share">🔄 Actualizar desde la nube</button></div>`
+          : ""
+      }
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-print">🖨️ Exportar / Imprimir</button></div>
       <div class="modal-actions"><button class="btn btn-danger" id="mn-delete">🗑️ Eliminar viaje</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="mn-close">Cerrar</button></div>
@@ -416,6 +432,24 @@ function openTripMenu(trip) {
     overlay.remove();
     openTripForm(trip);
   });
+  overlay.querySelector("#mn-share").addEventListener("click", async () => {
+    overlay.remove();
+    await openShareTripSheet(trip);
+  });
+  const refreshBtn = overlay.querySelector("#mn-refresh-share");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      overlay.remove();
+      toast("Buscando cambios…");
+      const res = await refreshSharedTrip(trip.id);
+      if (res.ok) {
+        toast("Actualizado con la copia compartida");
+        await renderApp();
+      } else {
+        toast(res.error || "No se pudo actualizar");
+      }
+    });
+  }
   overlay.querySelector("#mn-delete").addEventListener("click", async () => {
     overlay.remove();
     if (await confirmAction(`Se eliminará "${trip.destination}" y todo su contenido (vuelos, hoteles, itinerario...). ¿Continuar?`)) {
@@ -430,6 +464,91 @@ function openTripMenu(trip) {
     await renderPrintArea(trip);
     setTimeout(() => window.print(), 150);
   });
+}
+
+// ------------------------------------------------------------
+// COMPARTIR VIAJE (Pro) — genera/renueva un código y lo enseña
+// listo para copiar/enviar a quien quieras invitar.
+// ------------------------------------------------------------
+
+async function openShareTripSheet(trip) {
+  if (!(await isPro())) {
+    toast("Compartir viajes es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+    return;
+  }
+  if (!currentUser()) {
+    toast("Inicia sesión primero en Ajustes → Mi cuenta");
+    return;
+  }
+
+  toast("Generando enlace…");
+  const res = await shareTrip(trip.id);
+  if (!res.ok) {
+    toast(res.error || "No se pudo compartir el viaje");
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Viaje compartido</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+        Dale este código a quien quieras invitar. Desde
+        Ajustes → Unirme a un viaje compartido, con su propia cuenta
+        iniciada, podrá añadirlo a sus viajes.
+      </p>
+      <div class="field" style="margin-top:6px;">
+        <input type="text" id="share-code-value" value="${escapeHtml(res.code)}" readonly
+          style="text-align:center; font-size:22px; letter-spacing:3px; font-weight:700;" />
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="share-copy">📋 Copiar código</button></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="share-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#share-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#share-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(res.code);
+      toast("Código copiado");
+    } catch (err) {
+      overlay.querySelector("#share-code-value").select();
+      toast("Selecciona y copia el código");
+    }
+  });
+}
+
+// ------------------------------------------------------------
+// UNIRSE A UN VIAJE COMPARTIDO (Pro) — desde Ajustes.
+// ------------------------------------------------------------
+
+async function openJoinTripSheet() {
+  if (!(await isPro())) {
+    toast("Unirse a viajes compartidos es una función Pro");
+    return;
+  }
+  if (!currentUser()) {
+    toast("Inicia sesión primero en Ajustes → Mi cuenta");
+    return;
+  }
+
+  const code = await promptModal({
+    title: "Unirme a un viaje compartido",
+    message: "Introduce el código de 6 caracteres que te han pasado.",
+    inputType: "text",
+  });
+  if (!code) return;
+
+  toast("Uniéndote al viaje…");
+  const res = await joinSharedTrip(code);
+  if (res.ok) {
+    toast("¡Listo! El viaje ya aparece en tu lista");
+    await renderApp();
+  } else {
+    toast(res.error || "No se pudo unir al viaje");
+  }
 }
 
 // ============================================================
@@ -466,7 +585,7 @@ async function renderHome() {
                     : ""
                 }
               </div>
-              <p class="trip-dest">${escapeHtml(trip.destination)}</p>
+              <p class="trip-dest">${escapeHtml(trip.destination)} ${trip.share_code ? "🔗" : ""}</p>
               <p class="trip-name">${escapeHtml(trip.name)}</p>
               <span class="trip-dates">${formatDatePretty(trip.start_date)} → ${formatDatePretty(trip.end_date)}</span>
             </div>`;
@@ -879,10 +998,12 @@ function openSettingsSheet() {
       <h2 class="modal-title">Ajustes</h2>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-account">👤 ${currentUser() ? "Mi cuenta" : "Iniciar sesión"}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">☁️ Copiar / restaurar datos</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">🔗 Unirme a un viaje compartido</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">🧳 Mi perfil</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">🌗 Tema</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">🔔 Notificaciones</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-security">🔒 Seguridad (PIN)</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">🧪 Modo desarrollador</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">📄 Política de privacidad</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="st-close">Cerrar</button></div>
     </div>`;
@@ -896,11 +1017,49 @@ function openSettingsSheet() {
     });
   go("#st-account", openAccountSheet);
   go("#st-backup", openBackupSheet);
+  go("#st-join-shared", openJoinTripSheet);
   go("#st-profile", openProfileSheet);
   go("#st-theme", openThemeSheet);
   go("#st-notifications", openNotificationsSheet);
   go("#st-security", openSecuritySheet);
+  go("#st-dev", openDevModeSheet);
   go("#st-privacy", openPrivacyPolicySheet);
+}
+
+// ------------------------------------------------------------
+// MODO DESARROLLADOR — interruptor de "Pro" mientras se construyen
+// esas funciones sin tener montado ningún cobro real todavía.
+// ------------------------------------------------------------
+
+async function openDevModeSheet() {
+  const pro = await isPro();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Modo desarrollador</h2>
+      <p style="color:var(--muted); font-size:12.5px; line-height:1.6;">
+        Interruptor temporal para probar las funciones Pro (compartir
+        viaje, avisos de vuelo) sin tener todavía cobros de verdad
+        integrados. Cuando se active el pago real, esto se sustituirá
+        por la confirmación de la compra.
+      </p>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="btn ${pro ? "btn-danger" : "btn-primary"}" id="dev-pro-toggle">
+          ${pro ? "🧪 Desactivar modo Pro" : "🧪 Activar modo Pro (pruebas)"}
+        </button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="dev-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#dev-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#dev-pro-toggle").addEventListener("click", async () => {
+    await setPro(!pro);
+    toast(!pro ? "Modo Pro activado" : "Modo Pro desactivado");
+    overlay.remove();
+  });
 }
 
 /**
@@ -986,11 +1145,16 @@ async function openThemeSheet() {
 
 const NOTIF_KEY = "notifications_enabled";
 const NOTIF_LAST_KEY = "notifications_last_date";
+const FLIGHT_ALERTS_KEY = "flight_alerts_enabled";
 
 async function openNotificationsSheet() {
   const enabledRaw = await Data.settingGet(NOTIF_KEY);
   const enabled = enabledRaw === true || enabledRaw === 1;
   const permission = "Notification" in window ? Notification.permission : "unsupported";
+
+  const pro = await isPro();
+  const flightAlertsRaw = await Data.settingGet(FLIGHT_ALERTS_KEY);
+  const flightAlertsOn = flightAlertsRaw === true || flightAlertsRaw === 1;
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
@@ -1009,11 +1173,30 @@ async function openNotificationsSheet() {
           ${enabled ? "🔕 Desactivar notificaciones" : "🔔 Activar notificaciones"}
         </button>
       </div>
+      <div class="field-check" style="margin-top:14px; ${pro ? "" : "opacity:0.5;"}">
+        <input type="checkbox" id="flight-alerts-check" ${flightAlertsOn ? "checked" : ""} ${pro ? "" : "disabled"} />
+        <label for="flight-alerts-check" style="margin:0;">✈️ Avisos de estado de vuelo (Pro)</label>
+      </div>
+      <p style="color:var(--muted); font-size:12px; line-height:1.5;">
+        ${
+          pro
+            ? "Añade el retraso y la puerta de embarque a los avisos de hoy, cuando estén disponibles."
+            : "Función Pro — actívala en Ajustes → Modo desarrollador mientras la probamos."
+        }
+      </p>
       <div class="modal-actions"><button class="btn btn-ghost" id="notif-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
   overlay.querySelector("#notif-close").addEventListener("click", () => overlay.remove());
+
+  const flightCheck = overlay.querySelector("#flight-alerts-check");
+  if (pro) {
+    flightCheck.addEventListener("change", async () => {
+      await Data.settingSet(FLIGHT_ALERTS_KEY, flightCheck.checked);
+      toast(flightCheck.checked ? "Avisos de vuelo activados" : "Avisos de vuelo desactivados");
+    });
+  }
 
   overlay.querySelector("#notif-toggle").addEventListener("click", async () => {
     if (enabled) {
@@ -1048,6 +1231,9 @@ async function checkAndNotifyToday() {
     const lastNotified = await Data.settingGet(NOTIF_LAST_KEY);
     if (lastNotified === today) return;
 
+    const flightAlertsOn = await Data.settingGet(FLIGHT_ALERTS_KEY);
+    const useFlightStatus = flightAlertsOn && (await isPro()) && isFlightStatusConfigured();
+
     const trips = await Data.getAll("trips");
     const parts = [];
     for (const trip of trips) {
@@ -1057,7 +1243,23 @@ async function checkAndNotifyToday() {
       ]);
       const todayFlights = flights.filter((f) => f.date === today);
       const todayEvents = itin.filter((i) => i.date === today);
-      if (todayFlights.length) parts.push(`✈️ ${todayFlights.length} vuelo(s) en ${trip.destination}`);
+
+      if (todayFlights.length) {
+        parts.push(`✈️ ${todayFlights.length} vuelo(s) en ${trip.destination}`);
+        if (useFlightStatus) {
+          for (const f of todayFlights) {
+            if (!f.flight_number) continue;
+            const info = await getFlightStatus(f.flight_number, f.date);
+            if (!info) continue;
+            if (info.delayMin > 0) {
+              parts.push(`⏱️ ${f.flight_number} con ${info.delayMin} min de retraso`);
+            }
+            if (info.gate) {
+              parts.push(`🚪 ${f.flight_number} · puerta ${info.gate}`);
+            }
+          }
+        }
+      }
       if (todayEvents.length) parts.push(`📍 ${todayEvents.length} actividad(es) en ${trip.destination}`);
     }
     if (!parts.length) return;
@@ -1094,24 +1296,33 @@ tus vuelos, hoteles, actividades y transportes, la app envía consultas
 puntuales (por ejemplo, un nombre de lugar o de aerolínea) a servicios
 públicos de terceros: OpenStreetMap/Nominatim y OSRM (mapas y rutas), y
 Wikipedia/Openverse (fotos). Estas consultas no incluyen tu identidad ni el
-resto de tus datos, solo el texto necesario para la búsqueda.
+resto de tus datos, solo el texto necesario para la búsqueda. Si activas
+los avisos de estado de vuelo (función Pro), el número de vuelo y la fecha
+se consultan a AeroDataBox/RapidAPI para conocer retrasos y puerta de
+embarque.
 
-4. Notificaciones
+4. Viajes compartidos (función Pro)
+Si compartes un viaje, sus datos (vuelos, hoteles, itinerario...) se guardan
+en un documento de Firestore accesible por quienes tengan el código, además
+de en tu copia personal de la nube. Cualquiera con el código puede ver y
+unirse a ese viaje mientras esté activo.
+
+5. Notificaciones
 Si activas los avisos, se generan en tu propio dispositivo a partir de tus
 datos guardados localmente. No implican el envío de información a
 servidores externos.
 
-5. PIN de bloqueo
+6. PIN de bloqueo
 El PIN, si lo activas, se guarda cifrado (hash) únicamente en tu
 dispositivo. Nadie más que tú puede verlo ni recuperarlo.
 
-6. Tus derechos
+7. Tus derechos
 Puedes exportar, importar o borrar tus datos en cualquier momento desde
 Ajustes → Copiar / restaurar datos, o eliminar tu cuenta desde
 Ajustes → Mi cuenta. No compartimos tus datos con terceros con fines
 comerciales ni mostramos publicidad dentro de la app.
 
-7. Contacto
+8. Contacto
 Si tienes dudas sobre tus datos o esta política, puedes escribirnos a
 [tu email de contacto aquí].
 `.trim();
