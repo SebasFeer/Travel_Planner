@@ -17,6 +17,6 @@
 // público si te preocupa que otros la usen a tu costa.
 // ============================================================
 
-const FLIGHT_STATUS_API_KEY = "";
+const FLIGHT_STATUS_API_KEY = "8f0bbd1a91mshfb373814de447a7p10f2bcjsn952249dd05a7";
 
 export { FLIGHT_STATUS_API_KEY };
