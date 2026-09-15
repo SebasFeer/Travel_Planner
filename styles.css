@@ -98,6 +98,7 @@ body::before {
   width: 340px;
   height: 340px;
   background: radial-gradient(circle, var(--cat-flights) 0%, transparent 70%);
+  view-transition-name: tp-blob-a;
 }
 body::after {
   bottom: -150px;
@@ -105,6 +106,7 @@ body::after {
   width: 380px;
   height: 380px;
   background: radial-gradient(circle, var(--cat-itinerary) 0%, transparent 70%);
+  view-transition-name: tp-blob-b;
 }
 @media (prefers-color-scheme: dark) {
   body::before, body::after { opacity: 0.26; }
@@ -130,6 +132,27 @@ a { color: inherit; }
 ::selection {
   background: var(--brand);
   color: #fff;
+}
+
+.icon-svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: -3px;
+}
+
+.stat-icon {
+  color: var(--accent, var(--brand));
+  margin-right: 5px;
+  width: 15px;
+  height: 15px;
+}
+
+.panel-icon {
+  color: var(--accent, var(--brand));
+  margin-right: 7px;
+  width: 17px;
+  height: 17px;
 }
 
 /* ============================================================
@@ -282,11 +305,31 @@ a { color: inherit; }
   justify-content: center;
   background: linear-gradient(135deg, var(--accent-a, var(--brand)), var(--accent-b, var(--brand-deep)));
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  color: #fff;
+  overflow: hidden;
 }
 
 .ticket-stub .stub-icon {
-  font-size: 30px;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+  display: flex;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.ticket-stub .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+
+.ticket-stub.has-photo {
+  background: var(--surface-tint);
+}
+
+.ticket-stub img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: photo-fade-in 0.4s ease;
 }
 
 .stub-date {
@@ -772,21 +815,54 @@ a { color: inherit; }
   overflow: hidden;
 }
 
+.trip-card-art-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+}
+.trip-card-art-icon .icon-svg {
+  width: 38px;
+  height: 38px;
+}
+
 .trip-card-art img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  animation: photo-fade-in 0.4s ease;
 }
-
-.trip-card-art-icon { position: relative; z-index: 1; }
 
 .trip-card-art::after {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(20, 19, 43, 0) 45%, rgba(20, 19, 43, 0.28) 100%);
+}
+
+.trip-countdown-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.trip-countdown-badge.is-today {
+  background: linear-gradient(135deg, #ffd43b, #fab005);
+  color: #402c00;
+}
+
+@keyframes photo-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .trip-card.trip-color-1 .trip-card-art { background: linear-gradient(135deg, var(--cat-flights-a), var(--cat-flights)); }
@@ -819,14 +895,7 @@ a { color: inherit; }
   display: inline-block;
   padding: 4px 10px;
   border-radius: 8px;
-  margin: 0 18px;
-}
-
-.trip-card .trip-countdown {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 8px 0 0;
-  padding: 0 18px 16px;
+  margin: 0 18px 16px;
 }
 
 .empty-state {
@@ -942,6 +1011,112 @@ a { color: inherit; }
 .hidden { display: none !important; }
 
 /* ============================================================
+   PANTALLA DE ARRANQUE
+   ============================================================ */
+
+.boot-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  gap: 16px;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 30px;
+}
+
+.boot-badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  box-shadow: 0 10px 24px rgba(108, 92, 231, 0.35);
+  animation: boot-float 2.2s ease-in-out infinite;
+}
+
+.boot-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  animation: boot-spin 0.8s linear infinite;
+}
+
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+@keyframes boot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ============================================================
+   ANIMACIÓN DE ENTRADA ESCALONADA
+   El contenido de cada pantalla aparece con un ligero fundido en
+   vez de aparecer de golpe. Se limita a los primeros elementos
+   visibles para no complicar la hoja de estilos.
+   ============================================================ */
+
+.view > * {
+  animation: fade-up-in 0.36s ease both;
+}
+.view > *:nth-child(1) { animation-delay: 0.02s; }
+.view > *:nth-child(2) { animation-delay: 0.06s; }
+.view > *:nth-child(3) { animation-delay: 0.1s; }
+.view > *:nth-child(4) { animation-delay: 0.14s; }
+.view > *:nth-child(5) { animation-delay: 0.18s; }
+.view > *:nth-child(6) { animation-delay: 0.22s; }
+.view > *:nth-child(7) { animation-delay: 0.26s; }
+.view > *:nth-child(8) { animation-delay: 0.3s; }
+.view > *:nth-child(n+9) { animation-delay: 0.32s; }
+
+@keyframes fade-up-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   TRANSICIONES DESLIZANTES ENTRE PANTALLAS
+   Usa la View Transitions API nativa: al navegar "hacia adelante"
+   (abrir un viaje, entrar en una sección) el contenido nuevo entra
+   desde la derecha; al ir "atrás" entra desde la izquierda, como en
+   iOS/Android. En navegadores sin soporte no pasa nada raro: el
+   cambio es instantáneo, igual que antes.
+   ============================================================ */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root[data-nav-dir="forward"]::view-transition-old(root) { animation-name: tp-slide-out-left; }
+:root[data-nav-dir="forward"]::view-transition-new(root) { animation-name: tp-slide-in-right; }
+:root[data-nav-dir="back"]::view-transition-old(root) { animation-name: tp-slide-out-right; }
+:root[data-nav-dir="back"]::view-transition-new(root) { animation-name: tp-slide-in-left; }
+
+@keyframes tp-slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes tp-slide-out-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-25%); opacity: 0; }
+}
+@keyframes tp-slide-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes tp-slide-out-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(25%); opacity: 0; }
+}
+
+/* ============================================================
    PANTALLA DE IMPRESIÓN
    ============================================================ */
 
@@ -960,6 +1135,11 @@ a { color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
 :focus-visible {

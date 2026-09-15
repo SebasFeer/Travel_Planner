@@ -9,7 +9,9 @@ import {
   openMapsMultiple,
 } from "./utils.js";
 import { geocodeAll, routeBetween } from "./geocode.js";
-import { state, root, h, toast, showFormModal, confirmAction, renderApp } from "./app.js";
+import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition } from "./app.js";
+import { icon } from "./icons.js";
+import { findDestinationPhoto } from "./photo.js";
 
 // ============================================================
 // CONFIGURACIÓN DE PESTAÑAS
@@ -43,19 +45,64 @@ const RESERVATION_ICONS = {
   Otro: "📌",
 };
 
-function stub(icon, isoDate) {
+function stub(iconHtml, isoDate, photoUrl) {
   const [y, m, d] = (isoDate || "").split("-");
   const months = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
   const monthLabel = m ? months[parseInt(m, 10) - 1] : "";
   return h`
-    <div class="ticket-stub">
-      <div class="stub-icon">${icon}</div>
+    <div class="ticket-stub ${photoUrl ? "has-photo" : ""}">
+      ${photoUrl ? `<img src="${photoUrl}" alt="" loading="lazy" />` : `<div class="stub-icon">${iconHtml}</div>`}
       ${
         d
           ? `<div class="stub-date"><span class="stub-day">${parseInt(d, 10)}</span><span class="stub-month">${monthLabel}</span></div>`
           : ""
       }
     </div>`;
+}
+
+/**
+ * Busca en segundo plano una foto real para las tarjetas de una
+ * lista (hoteles, reservas...) usando el campo indicado como
+ * consulta, y la guarda en el registro para no repetir la búsqueda.
+ * Si no hay conexión o no se encuentra nada, no cambia nada.
+ */
+function fetchStubPhotos(storeName, items, queryField) {
+  items.forEach((item) => {
+    if (item.photo_url || !item[queryField]) return;
+    findDestinationPhoto(item[queryField]).then(async (url) => {
+      if (!url) return;
+      const stubEl = root.querySelector(`.ticket[data-id="${item.id}"] .ticket-stub`);
+      if (stubEl) {
+        const iconEl = stubEl.querySelector(".stub-icon");
+        if (iconEl) iconEl.remove();
+        stubEl.classList.add("has-photo");
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "";
+        img.loading = "lazy";
+        stubEl.prepend(img);
+      }
+      await Data.put(storeName, { ...item, photo_url: url });
+    });
+  });
+}
+
+/**
+ * Anillo SVG de progreso de presupuesto (reemplaza la barra plana).
+ */
+function budgetRing(pct, over) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const offset = c - (Math.min(pct, 100) / 100) * c;
+  const color = over ? "var(--rose)" : "var(--brand)";
+  return `
+    <svg width="64" height="64" viewBox="0 0 64 64" class="budget-ring">
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--surface-tint)" stroke-width="8"/>
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="${color}" stroke-width="8"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+        transform="rotate(-90 32 32)"/>
+      <text x="32" y="37" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)" font-family="var(--font-body)">${Math.min(pct,999)}%</text>
+    </svg>`;
 }
 
 function section(container) {
@@ -149,10 +196,13 @@ async function renderDashboard(trip) {
     const pct = Math.min(100, Math.round((totalSpent / budget) * 100));
     const over = totalSpent > budget;
     budgetHtml = h`
-      <p style="font-size:13.5px; color:var(--muted);">
-        Presupuesto ${money(budget)} · Gastado ${money(totalSpent)} · Disponible ${money(budget - totalSpent)}
-      </p>
-      <div class="progress-track"><div class="progress-fill ${over ? "over" : ""}" style="width:${pct}%"></div></div>`;
+      <div style="display:flex; align-items:center; gap:14px;">
+        ${budgetRing(pct, over)}
+        <div>
+          <p style="font-size:13.5px; color:var(--muted); margin:0;">Presupuesto ${money(budget)}</p>
+          <p style="font-size:13.5px; color:var(--muted); margin:4px 0 0;">Gastado ${money(totalSpent)} · Disponible ${money(budget - totalSpent)}</p>
+        </div>
+      </div>`;
   } else {
     budgetHtml = `<p style="font-size:13.5px; color:var(--muted);">Gastado ${money(totalSpent)} · Sin presupuesto establecido</p>`;
   }
@@ -160,34 +210,34 @@ async function renderDashboard(trip) {
   section(h`
     ${bannerHtml}
     <div class="stat-grid">
-      <div class="stat-card" data-nav="flights"><div class="stat-label">✈️ Vuelos</div><div class="stat-value">${flights.length}</div></div>
-      <div class="stat-card" data-nav="hotels"><div class="stat-label">🏨 Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
-      <div class="stat-card" data-nav="itinerary"><div class="stat-label">📅 Actividades</div><div class="stat-value">${itin.length}</div></div>
-      <div class="stat-card" data-nav="transport"><div class="stat-label">🚗 Transporte</div><div class="stat-value">${transport.length}</div></div>
-      <div class="stat-card" data-nav="reservations"><div class="stat-label">🎟️ Reservas</div><div class="stat-value">${reservations.length}</div></div>
-      <div class="stat-card" data-nav="expenses"><div class="stat-label">💶 Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
+      <div class="stat-card" data-nav="flights"><div class="stat-label">${icon("flights","stat-icon")} Vuelos</div><div class="stat-value">${flights.length}</div></div>
+      <div class="stat-card" data-nav="hotels"><div class="stat-label">${icon("hotels","stat-icon")} Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
+      <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} Actividades</div><div class="stat-value">${itin.length}</div></div>
+      <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
+      <div class="stat-card" data-nav="reservations"><div class="stat-label">${icon("reservations","stat-icon")} Reservas</div><div class="stat-value">${reservations.length}</div></div>
+      <div class="stat-card" data-nav="expenses"><div class="stat-label">${icon("expenses","stat-icon")} Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
     </div>
     <div class="panel" data-nav="map">
-      <h3>🗺️ Mapa del viaje</h3>
+      <h3>${icon("map","panel-icon")} Mapa del viaje</h3>
       <p style="font-size:13.5px; color:var(--muted);">Ver hoteles, actividades y transporte sobre el mapa →</p>
     </div>
     <div class="panel" data-nav="expenses">
-      <h3>💰 Presupuesto</h3>
+      <h3>${icon("wallet","panel-icon")} Presupuesto</h3>
       ${budgetHtml}
     </div>
     <div class="panel" data-nav="checklist">
-      <h3>☑️ Checklist</h3>
+      <h3>${icon("checklist","panel-icon")} Checklist</h3>
       <p style="font-size:13.5px; color:var(--muted);">
         ${checklist.length ? `${completedCount}/${checklist.length} tareas completadas (${checklistPct}%)` : "No hay tareas."}
       </p>
     </div>
     <div class="panel" data-nav="calendar">
-      <h3>⏰ Próximos eventos</h3>
+      <h3>${icon("clock","panel-icon")} Próximos eventos</h3>
       ${nextEventsHtml}
     </div>
     ${
       trip.notes
-        ? `<div class="panel"><h3>📝 Notas del viaje</h3><p style="font-size:13.5px; line-height:1.6; white-space:pre-wrap;">${escapeHtml(trip.notes)}</p></div>`
+        ? `<div class="panel"><h3>${icon("notes","panel-icon")} Notas del viaje</h3><p style="font-size:13.5px; line-height:1.6; white-space:pre-wrap;">${escapeHtml(trip.notes)}</p></div>`
         : ""
     }
   `);
@@ -196,7 +246,7 @@ async function renderDashboard(trip) {
   root.querySelectorAll("[data-nav]").forEach((el) => {
     el.addEventListener("click", () => {
       state.section = el.dataset.nav;
-      renderApp();
+      withTransition(renderApp, "forward");
     });
   });
 }
@@ -214,7 +264,7 @@ async function renderFlights(trip) {
         .map(
           (f) => h`
         <div class="ticket cat-flights" data-id="${f.id}">
-          ${stub("✈️", f.date)}
+          ${stub(icon("flights"), f.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(f.airline || "Vuelo")} ${escapeHtml(f.flight_number || "")}</p>
@@ -272,7 +322,7 @@ async function renderHotels(trip) {
         .map(
           (hotel) => h`
         <div class="ticket cat-hotels" data-id="${hotel.id}">
-          ${stub("🏨", hotel.check_in)}
+          ${stub(icon("hotels"), hotel.check_in, hotel.photo_url)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(hotel.name || "Hotel")}</p>
@@ -298,6 +348,7 @@ async function renderHotels(trip) {
 
   wireTicketActions("hotels", hotels, (hotel) => openHotelForm(trip, hotel), (hotel) => openMaps(hotel.address));
   document.getElementById("fab-add").addEventListener("click", () => openHotelForm(trip));
+  fetchStubPhotos("hotels", hotels, "address");
 }
 
 function openHotelForm(trip, hotel) {
@@ -341,7 +392,7 @@ async function renderItinerary(trip) {
     return h`
       <div class="ticket cat-itinerary" data-id="${item.id}">
         <div class="drag-handle">⠿</div>
-        ${stub("📍", item.date)}
+        ${stub(icon("itinerary"), item.date)}
         <div class="ticket-body">
           <div class="ticket-title-row">
             <p class="ticket-title">${escapeHtml(item.title || "Actividad")}</p>
@@ -417,7 +468,7 @@ async function renderTransport(trip) {
         .map(
           (t) => h`
         <div class="ticket cat-transport" data-id="${t.id}">
-          ${stub(TRANSPORT_ICONS[t.type] || "🚗", t.date)}
+          ${stub(icon("transport"), t.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(t.type || "Transporte")}${t.company ? ` · ${escapeHtml(t.company)}` : ""}</p>
@@ -482,7 +533,7 @@ async function renderReservations(trip) {
         .map(
           (r) => h`
         <div class="ticket cat-reservations" data-id="${r.id}">
-          ${stub(RESERVATION_ICONS[r.type] || "🎟️", r.date)}
+          ${stub(icon("reservations"), r.date, r.photo_url)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(r.name || r.type || "Reserva")}</p>
@@ -507,6 +558,7 @@ async function renderReservations(trip) {
 
   wireTicketActions("reservations", items, (r) => openReservationForm(trip, r), (r) => openMaps(r.location));
   document.getElementById("fab-add").addEventListener("click", () => openReservationForm(trip));
+  fetchStubPhotos("reservations", items, "location");
 }
 
 function openReservationForm(trip, r) {
@@ -546,7 +598,7 @@ async function renderExpenses(trip) {
         .map(
           (e) => h`
         <div class="ticket cat-expenses" data-id="${e.id}">
-          ${stub("💶", e.date)}
+          ${stub(icon("expenses"), e.date)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(e.description || e.category || "Gasto")}</p>
@@ -566,12 +618,16 @@ async function renderExpenses(trip) {
   section(h`
     <div class="panel" style="margin-top:0;">
       <h3>Total gastado</h3>
-      <p style="font-family:var(--font-display); font-size:26px; font-weight:600;">${money(total)}</p>
       ${
         budget > 0
-          ? `<div class="progress-track"><div class="progress-fill ${total > budget ? "over" : ""}" style="width:${Math.min(100, Math.round((total / budget) * 100))}%"></div></div>
-             <p style="font-size:12.5px; color:var(--muted); margin-top:6px;">de ${money(budget)} presupuestados</p>`
-          : ""
+          ? `<div style="display:flex; align-items:center; gap:14px;">
+               ${budgetRing(Math.round((total / budget) * 100), total > budget)}
+               <div>
+                 <p style="font-family:var(--font-display); font-size:24px; font-weight:700; margin:0;">${money(total)}</p>
+                 <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">de ${money(budget)} presupuestados</p>
+               </div>
+             </div>`
+          : `<p style="font-family:var(--font-display); font-size:26px; font-weight:600; margin:0;">${money(total)}</p>`
       }
     </div>
     <div style="margin-top:16px;">${list}</div>
@@ -958,7 +1014,14 @@ function wireDragReorder(storeName, items) {
 
 async function saveAndRefresh(storeName, tripId, existing, values, message) {
   if (existing) {
-    await Data.put(storeName, { ...existing, ...values });
+    const merged = { ...existing, ...values };
+    if (
+      merged.photo_url &&
+      (existing.address !== values.address || existing.location !== values.location)
+    ) {
+      delete merged.photo_url;
+    }
+    await Data.put(storeName, merged);
   } else {
     await Data.add(storeName, { ...values, trip_id: tripId });
   }

@@ -23,6 +23,7 @@ import {
 } from "./cloud.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
+import { icon } from "./icons.js";
 
 // ============================================================
 // ESTADO
@@ -284,6 +285,78 @@ async function renderApp() {
   }
 }
 
+/**
+ * Envuelve un cambio de pantalla con la View Transitions API del
+ * navegador para que se sienta como un desplazamiento fluido en vez
+ * de un cambio instantáneo. `direction` controla si el CSS anima
+ * como "avanzar" (desliza a la izquierda) o "retroceder" (desliza a
+ * la derecha). En navegadores sin soporte, simplemente se renderiza
+ * al instante como antes — nunca rompe nada.
+ */
+function withTransition(renderFn, direction = "forward") {
+  document.documentElement.dataset.navDir = direction;
+  if (document.startViewTransition) {
+    document.startViewTransition(() => renderFn());
+  } else {
+    renderFn();
+  }
+}
+
+/**
+ * Navegación "atrás": del detalle de una sección al resumen del
+ * viaje, o del resumen a la lista de viajes. La usan tanto el botón
+ * ← del topbar como el gesto de deslizar desde el borde izquierdo.
+ */
+function goBack() {
+  if (document.querySelector(".modal-overlay") || document.getElementById("lock-overlay")) return;
+  if (state.tripId === null) return;
+  if (state.section !== "dashboard") {
+    state.section = "dashboard";
+  } else {
+    state.tripId = null;
+  }
+  withTransition(renderApp, "back");
+}
+
+/**
+ * Gesto de "deslizar para volver" (como en iOS/Android): si el
+ * arrastre empieza muy cerca del borde izquierdo de la pantalla y se
+ * mueve claramente hacia la derecha, se interpreta como "atrás".
+ */
+function installSwipeBack() {
+  const EDGE = 24;
+  const THRESHOLD = 90;
+  let startX = null;
+  let startY = null;
+  let tracking = false;
+
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      const t = e.touches[0];
+      tracking = t.clientX <= EDGE;
+      startX = t.clientX;
+      startY = t.clientY;
+    },
+    { passive: true }
+  );
+
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      if (dx > THRESHOLD && dy < 60) {
+        goBack();
+      }
+    },
+    { passive: true }
+  );
+}
+
 // ============================================================
 // ESTRUCTURA DE UN VIAJE (topbar + contenido)
 // La navegación entre secciones (vuelos, hoteles, transporte...)
@@ -312,14 +385,7 @@ async function renderTripShell() {
     <div id="print-area"></div>
   `;
 
-  root.querySelector("#btn-back").addEventListener("click", () => {
-    if (state.section !== "dashboard") {
-      state.section = "dashboard";
-    } else {
-      state.tripId = null;
-    }
-    renderApp();
-  });
+  root.querySelector("#btn-back").addEventListener("click", () => goBack());
 
   root.querySelector("#btn-trip-menu").addEventListener("click", () => {
     openTripMenu(trip);
@@ -353,7 +419,7 @@ function openTripMenu(trip) {
       await Data.deleteTripCascade(trip.id);
       toast("Viaje eliminado");
       state.tripId = null;
-      await renderApp();
+      withTransition(renderApp, "back");
     }
   });
   overlay.querySelector("#mn-print").addEventListener("click", async () => {
@@ -389,13 +455,17 @@ async function renderHome() {
                 ${
                   trip.photo_url
                     ? `<img src="${escapeHtml(trip.photo_url)}" alt="" loading="lazy" />`
-                    : `<span class="trip-card-art-icon">🧭</span>`
+                    : `<span class="trip-card-art-icon">${icon("compass")}</span>`
+                }
+                ${
+                  countdown
+                    ? `<span class="trip-countdown-badge ${days === 0 ? "is-today" : ""}">${countdown}</span>`
+                    : ""
                 }
               </div>
               <p class="trip-dest">${escapeHtml(trip.destination)}</p>
               <p class="trip-name">${escapeHtml(trip.name)}</p>
               <span class="trip-dates">${formatDatePretty(trip.start_date)} → ${formatDatePretty(trip.end_date)}</span>
-              <p class="trip-countdown">${countdown}</p>
             </div>`;
         })
         .join("")
@@ -425,7 +495,7 @@ async function renderHome() {
     card.addEventListener("click", () => {
       state.tripId = parseInt(card.dataset.id, 10);
       state.section = "dashboard";
-      renderApp();
+      withTransition(renderApp, "forward");
     });
   });
 
@@ -443,7 +513,13 @@ async function renderHome() {
       if (!url) return;
       const artEl = root.querySelector(`.trip-card[data-id="${trip.id}"] .trip-card-art`);
       if (artEl) {
-        artEl.innerHTML = `<img src="${url}" alt="" loading="lazy" />`;
+        const iconEl = artEl.querySelector(".trip-card-art-icon");
+        if (iconEl) iconEl.remove();
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "";
+        img.loading = "lazy";
+        artEl.prepend(img);
       }
       await Data.put("trips", { ...trip, photo_url: url });
     });
@@ -547,7 +623,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
