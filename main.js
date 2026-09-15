@@ -1,4 +1,4 @@
-import { renderApp, installSwipeBack, loadTheme, checkAndNotifyToday } from "./app.js";
+import { renderApp, installSwipeBack, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange } from "./cloud.js";
 
@@ -10,6 +10,9 @@ const DEV_DISABLE_PIN = true;
 // Aplica el tema guardado (claro/oscuro/automático) antes del primer
 // render, para evitar el parpadeo del tema por defecto.
 loadTheme();
+
+// Deslizar hacia abajo desde arriba del todo recarga la app.
+installPullToRefresh();
 
 if (DEV_DISABLE_PIN) {
   renderApp();

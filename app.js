@@ -887,8 +887,7 @@ function openSettingsSheet() {
 
   const go = (id, fn) =>
     overlay.querySelector(id).addEventListener("click", () => {
-      overlay.remove();
-      fn();
+      openSubSheet(overlay, fn);
     });
   go("#st-account", openAccountSheet);
   go("#st-backup", openBackupSheet);
@@ -897,6 +896,32 @@ function openSettingsSheet() {
   go("#st-notifications", openNotificationsSheet);
   go("#st-security", openSecuritySheet);
   go("#st-privacy", openPrivacyPolicySheet);
+}
+
+/**
+ * Abre un sub-panel de Ajustes ocultando temporalmente `parentOverlay`
+ * (el menú principal) en vez de cerrarlo. En cuanto ya no quede
+ * ningún otro overlay abierto (el sub-panel se cerró, se guardó algo,
+ * o se canceló), el menú de Ajustes vuelve a aparecer solo — así
+ * "Cerrar" dentro de un submenú regresa al menú, no a la pantalla de
+ * fondo.
+ */
+function openSubSheet(parentOverlay, openFn) {
+  parentOverlay.style.display = "none";
+  openFn();
+
+  const observer = new MutationObserver(() => {
+    const others = Array.from(document.querySelectorAll(".modal-overlay")).filter(
+      (el) => el !== parentOverlay
+    );
+    if (others.length === 0) {
+      observer.disconnect();
+      if (document.body.contains(parentOverlay)) {
+        parentOverlay.style.display = "";
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true });
 }
 
 // ------------------------------------------------------------
@@ -1156,4 +1181,85 @@ async function openProfileSheet() {
   overlay.querySelector("#profile-close").addEventListener("click", () => overlay.remove());
 }
 
-export { openSettingsSheet, loadTheme, checkAndNotifyToday };
+export { openSettingsSheet, loadTheme, checkAndNotifyToday, installPullToRefresh };
+
+// ============================================================
+// DESLIZAR PARA RECARGAR (pull-to-refresh)
+// Solo se activa si el gesto empieza con la página ya arriba del
+// todo y no hay ningún modal abierto. Muestra un círculo girando en
+// la parte superior y, al soltar tras pasar el umbral, recarga la
+// página (como pedía el usuario).
+// ============================================================
+
+function installPullToRefresh() {
+  const THRESHOLD = 70;
+  const MAX_PULL = 100;
+
+  const indicator = document.createElement("div");
+  indicator.className = "ptr-indicator";
+  indicator.innerHTML = `<div class="ptr-ring"></div>`;
+  document.body.appendChild(indicator);
+  const ring = indicator.querySelector(".ptr-ring");
+
+  let startY = null;
+  let pulling = false;
+  let refreshing = false;
+
+  function reset() {
+    pulling = false;
+    indicator.classList.remove("ptr-visible");
+    indicator.style.transform = "";
+    ring.style.transform = "";
+  }
+
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      if (refreshing) return;
+      if (window.scrollY > 0) return;
+      if (document.querySelector(".modal-overlay") || document.getElementById("lock-overlay")) return;
+      startY = e.touches[0].clientY;
+      pulling = true;
+    },
+    { passive: true }
+  );
+
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!pulling || refreshing) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy <= 0) {
+        indicator.classList.remove("ptr-visible");
+        return;
+      }
+      const pull = Math.min(dy, MAX_PULL);
+      indicator.classList.add("ptr-visible");
+      indicator.style.transform = `translate(-50%, ${-60 + pull}px)`;
+      ring.style.transform = `rotate(${pull * 3}deg)`;
+    },
+    { passive: true }
+  );
+
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      if (!pulling || refreshing) {
+        pulling = false;
+        return;
+      }
+      const dy = e.changedTouches[0].clientY - startY;
+      pulling = false;
+      if (dy > THRESHOLD) {
+        refreshing = true;
+        indicator.classList.add("ptr-visible", "ptr-spinning");
+        indicator.style.transform = "translate(-50%, 14px)";
+        ring.style.transform = "";
+        setTimeout(() => location.reload(), 350);
+      } else {
+        reset();
+      }
+    },
+    { passive: true }
+  );
+}
