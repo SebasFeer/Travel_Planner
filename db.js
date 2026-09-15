@@ -34,6 +34,27 @@ const DEFAULT_CHECKLIST_ITEMS = [
 
 let dbInstance = null;
 
+// ------------------------------------------------------------
+// Aviso de cambios locales. cloud.js se suscribe a esto para saber
+// cuándo hay algo nuevo que subir a la nube (autosync). No se usa
+// para nada más: si no hay ningún oyente registrado, no hace nada.
+// ------------------------------------------------------------
+const changeListeners = [];
+
+function onDataChange(callback) {
+  changeListeners.push(callback);
+}
+
+function notifyChange(storeName) {
+  for (const cb of changeListeners) {
+    try {
+      cb(storeName);
+    } catch (err) {
+      // un fallo aquí nunca debe romper la escritura que lo disparó
+    }
+  }
+}
+
 function openDB() {
   if (dbInstance) return Promise.resolve(dbInstance);
 
@@ -88,7 +109,10 @@ const Data = {
     const store = await tx(storeName, "readwrite");
     return new Promise((resolve, reject) => {
       const req = store.add(record);
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        notifyChange(storeName);
+        resolve(req.result);
+      };
       req.onerror = () => reject(req.error);
     });
   },
@@ -97,7 +121,10 @@ const Data = {
     const store = await tx(storeName, "readwrite");
     return new Promise((resolve, reject) => {
       const req = store.put(record);
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        notifyChange(storeName);
+        resolve(req.result);
+      };
       req.onerror = () => reject(req.error);
     });
   },
@@ -115,7 +142,10 @@ const Data = {
     const store = await tx(storeName, "readwrite");
     return new Promise((resolve, reject) => {
       const req = store.delete(id);
-      req.onsuccess = () => resolve();
+      req.onsuccess = () => {
+        notifyChange(storeName);
+        resolve();
+      };
       req.onerror = () => reject(req.error);
     });
   },
@@ -148,7 +178,10 @@ const Data = {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORES, "readwrite");
 
-      transaction.oncomplete = () => resolve();
+      transaction.oncomplete = () => {
+        notifyChange("trips");
+        resolve();
+      };
       transaction.onerror = () => reject(transaction.error);
 
       transaction.objectStore("trips").delete(tripId);
@@ -256,4 +289,4 @@ const Data = {
   },
 };
 
-export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, SETTINGS_STORE, openDB };
+export { Data, DEFAULT_CHECKLIST_ITEMS, GEOCACHE_STORE, SETTINGS_STORE, openDB, onDataChange };

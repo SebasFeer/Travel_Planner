@@ -719,11 +719,16 @@ async function openAccountSheet() {
       <div class="modal-handle"></div>
       <h2 class="modal-title">Tu cuenta</h2>
       <p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">${escapeHtml(user.email)}</p>
+      <p style="color:var(--muted); font-size:12.5px; line-height:1.5;">
+        🔄 Sincronización automática activada: tus cambios se guardan solos
+        en la nube unos segundos después de hacerlos, y se descargan solos
+        al abrir la app en otro dispositivo con esta misma cuenta.
+      </p>
       <div class="modal-actions" style="margin-top:10px;">
-        <button class="btn btn-primary" id="acc-push">⬆️ Subir copia a la nube</button>
+        <button class="btn btn-primary" id="acc-push">⬆️ Forzar subida ahora</button>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="acc-pull">⬇️ Descargar copia de la nube</button>
+        <button class="btn btn-secondary" id="acc-pull">⬇️ Forzar descarga ahora</button>
       </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="acc-logout">Cerrar sesión</button>

@@ -6,7 +6,7 @@
 // ============================================================
 
 import { firebaseConfig } from "./firebase-config.js";
-import { Data } from "./db.js";
+import { Data, onDataChange } from "./db.js";
 
 const SDK_BASE = "https://www.gstatic.com/firebasejs/12.19.0";
 
@@ -46,6 +46,101 @@ function ensureFirebase() {
 
 const NO_CONNECTION_MSG =
   "No se pudo conectar con el servicio de cuenta (revisa tu conexión a internet).";
+
+// ------------------------------------------------------------
+// AUTOSYNC — guarda cambios en la nube automáticamente y descarga
+// la copia más reciente al abrir la app, sin que el usuario tenga
+// que darle a ningún botón. Todo esto es "a lo mejor esfuerzo": si
+// no hay sesión o no hay red, no pasa nada, la app sigue en local.
+//
+// Guardamos dos marcas de tiempo en los ajustes locales (no viajan
+// a la nube) para no perder nunca datos sin subir:
+//   - sync_last_change_at: la última vez que se modificó algo local
+//   - sync_last_pushed_at: la última vez que esa copia llegó a subir
+// ------------------------------------------------------------
+const SYNC_CHANGE_KEY = "sync_last_change_at";
+const SYNC_PUSHED_KEY = "sync_last_pushed_at";
+const AUTO_PUSH_DELAY_MS = 2000; // agrupa cambios seguidos en una sola subida
+
+let autoSyncStarted = false;
+let autoPushTimer = null;
+
+function scheduleAutoPush() {
+  if (autoPushTimer) clearTimeout(autoPushTimer);
+  autoPushTimer = setTimeout(async () => {
+    autoPushTimer = null;
+    if (!currentUser()) return; // sin sesión: nada que subir
+    await pushToCloud();
+  }, AUTO_PUSH_DELAY_MS);
+}
+
+/**
+ * Activa el autoguardado en la nube. A partir de aquí, cada cambio
+ * en los datos (crear/editar/borrar un viaje, vuelo, gasto...) marca
+ * la app como "con cambios pendientes" y programa una subida a los
+ * pocos segundos (agrupando ediciones rápidas en una sola subida).
+ * Si no has iniciado sesión, esto no hace nada (ni carga Firebase).
+ */
+function enableAutoSync() {
+  if (autoSyncStarted) return;
+  autoSyncStarted = true;
+  onDataChange(() => {
+    Data.settingSet(SYNC_CHANGE_KEY, Date.now()).catch(() => {});
+    scheduleAutoPush();
+  });
+}
+
+/**
+ * Se llama una sola vez al arrancar la app, después de pintar la
+ * pantalla con los datos locales (nunca esperamos a la red para
+ * mostrar algo). Si hay una sesión ya recordada de antes:
+ *
+ *  - Si este dispositivo no tiene cambios sin subir, descarga la
+ *    copia de la nube (por si se editó desde otro dispositivo).
+ *  - Si este dispositivo SÍ tiene cambios sin subir (p. ej. se
+ *    editó estando sin conexión), los sube primero en vez de
+ *    descargar nada, para no perderlos nunca.
+ *
+ * Devuelve `true` si se han traído datos nuevos de la nube (para
+ * que quien la llame vuelva a pintar la pantalla).
+ */
+function syncOnLaunch() {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    // Si Firebase tarda demasiado en cargar (o no hay red), no nos
+    // quedamos esperando para siempre.
+    setTimeout(() => finish(false), 8000);
+
+    onAuthChange(async (user) => {
+      if (settled) return; // solo nos interesa el primer estado de sesión
+      if (!user) {
+        finish(false);
+        return;
+      }
+
+      const [lastChange, lastPushed] = await Promise.all([
+        Data.settingGet(SYNC_CHANGE_KEY).catch(() => undefined),
+        Data.settingGet(SYNC_PUSHED_KEY).catch(() => undefined),
+      ]);
+
+      if ((lastChange || 0) > (lastPushed || 0)) {
+        // Cambios locales sin subir todavía: los subimos primero.
+        await pushToCloud();
+        finish(false);
+        return;
+      }
+
+      const res = await pullFromCloud();
+      finish(res.ok === true);
+    });
+  });
+}
 
 function currentUser() {
   return sdk ? sdk.auth.currentUser : null;
@@ -122,6 +217,7 @@ async function pushToCloud() {
       data: JSON.stringify(dump),
       updatedAt: s.storeMod.serverTimestamp(),
     });
+    await Data.settingSet(SYNC_PUSHED_KEY, Date.now()).catch(() => {});
     return { ok: true };
   } catch (err) {
     return { ok: false, error: friendlyAuthError(err) };
@@ -141,6 +237,8 @@ async function pullFromCloud() {
     if (!snap.exists()) return { ok: false, empty: true };
     const dump = JSON.parse(snap.data().data);
     await Data.importAll(dump);
+    // Local y nube ya coinciden: lo marcamos como sincronizado.
+    await Data.settingSet(SYNC_PUSHED_KEY, Date.now()).catch(() => {});
     return { ok: true };
   } catch (err) {
     return { ok: false, error: friendlyAuthError(err) };
@@ -168,4 +266,6 @@ export {
   pushToCloud,
   pullFromCloud,
   cloudHasBackup,
+  enableAutoSync,
+  syncOnLaunch,
 };

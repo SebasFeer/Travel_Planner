@@ -1,6 +1,6 @@
 import { renderApp, installSwipeBack, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
-import { onAuthChange } from "./cloud.js";
+import { onAuthChange, enableAutoSync, syncOnLaunch } from "./cloud.js";
 
 // ⚠️ SOLO MIENTRAS SE DESARROLLA: con esto en `true` la app arranca
 // sin pedir el PIN, para no tener que desbloquearla en cada prueba.
@@ -30,6 +30,19 @@ if (DEV_DISABLE_PIN) {
 // cuenta y los datos reflejen el estado real.
 onAuthChange(() => {
   renderApp();
+});
+
+// A partir de ahora, cada cambio local (crear/editar/borrar algo) se
+// sube solo a la nube unos segundos después, sin tener que ir a
+// Ajustes → Mi cuenta. Si no has iniciado sesión, esto no hace nada.
+enableAutoSync();
+
+// Si al abrir la app ya había una sesión recordada de antes, se
+// sincroniza con la nube en segundo plano (sin bloquear el arranque,
+// que siempre se hace con lo que ya hay en local). Si trae datos
+// nuevos de otro dispositivo, se vuelve a pintar la pantalla.
+syncOnLaunch().then((updated) => {
+  if (updated) renderApp();
 });
 
 // Aviso local de vuelos/actividades de hoy (solo si el usuario lo activó
