@@ -67,9 +67,11 @@ function stub(iconHtml, isoDate, photoUrl) {
  * Si no hay conexión o no se encuentra nada, no cambia nada.
  */
 function fetchStubPhotos(storeName, items, queryField) {
+  const getQuery = typeof queryField === "function" ? queryField : (item) => item[queryField];
   items.forEach((item) => {
-    if (item.photo_url || !item[queryField]) return;
-    findDestinationPhoto(item[queryField]).then(async (url) => {
+    const query = getQuery(item);
+    if (item.photo_url || !query) return;
+    findDestinationPhoto(query).then(async (url) => {
       if (!url) return;
       const stubEl = root.querySelector(`.ticket[data-id="${item.id}"] .ticket-stub`);
       if (stubEl) {
@@ -264,7 +266,7 @@ async function renderFlights(trip) {
         .map(
           (f) => h`
         <div class="ticket cat-flights" data-id="${f.id}">
-          ${stub(icon("flights"), f.date)}
+          ${stub(icon("flights"), f.date, f.photo_url)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(f.airline || "Vuelo")} ${escapeHtml(f.flight_number || "")}</p>
@@ -288,6 +290,7 @@ async function renderFlights(trip) {
 
   wireTicketActions("flights", flights, (f) => openFlightForm(trip, f));
   document.getElementById("fab-add").addEventListener("click", () => openFlightForm(trip));
+  fetchStubPhotos("flights", flights, "airline");
 }
 
 function openFlightForm(trip, flight) {
@@ -392,7 +395,7 @@ async function renderItinerary(trip) {
     return h`
       <div class="ticket cat-itinerary" data-id="${item.id}">
         <div class="drag-handle">⠿</div>
-        ${stub(icon("itinerary"), item.date)}
+        ${stub(icon("itinerary"), item.date, item.photo_url)}
         <div class="ticket-body">
           <div class="ticket-title-row">
             <p class="ticket-title">${escapeHtml(item.title || "Actividad")}</p>
@@ -430,6 +433,7 @@ async function renderItinerary(trip) {
   wireTicketActions("itinerary", items, (item) => openItineraryForm(trip, item), (item) => openMaps(item.location));
   wireDragReorder("itinerary", items);
   document.getElementById("fab-add").addEventListener("click", () => openItineraryForm(trip));
+  fetchStubPhotos("itinerary", items, (item) => item.location || item.title);
 }
 
 function openItineraryForm(trip, item) {
@@ -468,7 +472,7 @@ async function renderTransport(trip) {
         .map(
           (t) => h`
         <div class="ticket cat-transport" data-id="${t.id}">
-          ${stub(icon("transport"), t.date)}
+          ${stub(icon("transport"), t.date, t.photo_url)}
           <div class="ticket-body">
             <div class="ticket-title-row">
               <p class="ticket-title">${escapeHtml(t.type || "Transporte")}${t.company ? ` · ${escapeHtml(t.company)}` : ""}</p>
@@ -498,6 +502,7 @@ async function renderTransport(trip) {
     (t) => openMapsMultiple([t.origin, t.destination])
   );
   document.getElementById("fab-add").addEventListener("click", () => openTransportForm(trip));
+  fetchStubPhotos("transport", items, (t) => t.company || t.type);
 }
 
 function openTransportForm(trip, t) {
@@ -1012,13 +1017,16 @@ function wireDragReorder(storeName, items) {
   });
 }
 
+// Campos cuyo cambio invalida la foto real guardada (se buscará de nuevo).
+const PHOTO_QUERY_FIELDS = ["address", "location", "airline", "title", "company", "type"];
+
 async function saveAndRefresh(storeName, tripId, existing, values, message) {
   if (existing) {
     const merged = { ...existing, ...values };
-    if (
-      merged.photo_url &&
-      (existing.address !== values.address || existing.location !== values.location)
-    ) {
+    const queryChanged = PHOTO_QUERY_FIELDS.some(
+      (field) => field in values && existing[field] !== values[field]
+    );
+    if (merged.photo_url && queryChanged) {
       delete merged.photo_url;
     }
     await Data.put(storeName, merged);

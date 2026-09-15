@@ -60,6 +60,31 @@
   }
 }
 
+/* Tema elegido a mano desde Ajustes → Tema (anula el automático del
+   sistema). Sin el atributo data-theme, la app sigue el tema del
+   sistema como hasta ahora. */
+:root[data-theme="dark"] {
+  --bg: #14132b;
+  --surface: #1e1c3d;
+  --surface-tint: #272451;
+  --border: #322f5c;
+  --text: #f3f1ff;
+  --muted: #a5a3c9;
+  --muted-dark: #8785b3;
+  --overlay-bg: #0d0c22;
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f7fc;
+  --surface: #ffffff;
+  --surface-tint: #f1f1fb;
+  --border: #e7e6f5;
+  --text: #201f3d;
+  --muted: #656a92;
+  --muted-dark: #454a70;
+  --overlay-bg: #171436;
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;

@@ -1,4 +1,4 @@
-import { renderApp, installSwipeBack } from "./app.js";
+import { renderApp, installSwipeBack, loadTheme, checkAndNotifyToday } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange } from "./cloud.js";
 
@@ -6,6 +6,10 @@ import { onAuthChange } from "./cloud.js";
 // sin pedir el PIN, para no tener que desbloquearla en cada prueba.
 // Pon esto en `false` para volver a activar el bloqueo por PIN.
 const DEV_DISABLE_PIN = true;
+
+// Aplica el tema guardado (claro/oscuro/automático) antes del primer
+// render, para evitar el parpadeo del tema por defecto.
+loadTheme();
 
 if (DEV_DISABLE_PIN) {
   renderApp();
@@ -24,6 +28,10 @@ if (DEV_DISABLE_PIN) {
 onAuthChange(() => {
   renderApp();
 });
+
+// Aviso local de vuelos/actividades de hoy (solo si el usuario lo activó
+// en Ajustes → Notificaciones). Nunca bloquea ni rompe el arranque.
+checkAndNotifyToday();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

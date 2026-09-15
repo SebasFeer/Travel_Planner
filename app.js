@@ -378,6 +378,7 @@ async function renderTripShell() {
         <p class="topbar-eyebrow">${escapeHtml(trip.name)}</p>
         <h1 class="topbar-title">${escapeHtml(trip.destination)}</h1>
       </div>
+      <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
       <button class="icon-btn" id="btn-trip-menu">⋮</button>
     </div>
     <div class="view no-tabbar" id="section-content"></div>
@@ -386,6 +387,8 @@ async function renderTripShell() {
   `;
 
   root.querySelector("#btn-back").addEventListener("click", () => goBack());
+
+  root.querySelector("#btn-settings").addEventListener("click", () => openSettingsSheet());
 
   root.querySelector("#btn-trip-menu").addEventListener("click", () => {
     openTripMenu(trip);
@@ -481,9 +484,7 @@ async function renderHome() {
         <p class="topbar-eyebrow">TRAVEL PLANNER</p>
         <h1 class="topbar-title">Mis viajes</h1>
       </div>
-      <button class="icon-btn" id="btn-backup" title="Copia de seguridad">⇅</button>
-      <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-account" title="Cuenta">👤</button>
-      <button class="icon-btn" id="btn-security" title="Seguridad">🔒</button>
+      <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
     </div>
     <div class="view no-tabbar">
       ${cardsHtml}
@@ -500,9 +501,7 @@ async function renderHome() {
   });
 
   root.querySelector("#fab-new-trip").addEventListener("click", () => openTripForm());
-  root.querySelector("#btn-backup").addEventListener("click", () => openBackupSheet());
-  root.querySelector("#btn-security").addEventListener("click", () => openSecuritySheet());
-  root.querySelector("#btn-account").addEventListener("click", () => openAccountSheet());
+  root.querySelector("#btn-settings").addEventListener("click", () => openSettingsSheet());
 
   // Fotos reales del destino: se buscan en segundo plano (no bloquean
   // el primer pintado) y se guardan en el viaje para no tener que
@@ -860,3 +859,301 @@ async function afterLogin(user) {
     await renderApp();
   });
 }
+
+// ============================================================
+// AJUSTES (⚙️) — menú principal con acceso a cuenta, copia de
+// seguridad, perfil, tema, notificaciones, PIN y privacidad.
+// ============================================================
+
+function openSettingsSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Ajustes</h2>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-account">👤 ${currentUser() ? "Mi cuenta" : "Iniciar sesión"}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">☁️ Copiar / restaurar datos</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">🧳 Mi perfil</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">🌗 Tema</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">🔔 Notificaciones</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-security">🔒 Seguridad (PIN)</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">📄 Política de privacidad</button></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="st-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#st-close").addEventListener("click", () => overlay.remove());
+
+  const go = (id, fn) =>
+    overlay.querySelector(id).addEventListener("click", () => {
+      overlay.remove();
+      fn();
+    });
+  go("#st-account", openAccountSheet);
+  go("#st-backup", openBackupSheet);
+  go("#st-profile", openProfileSheet);
+  go("#st-theme", openThemeSheet);
+  go("#st-notifications", openNotificationsSheet);
+  go("#st-security", openSecuritySheet);
+  go("#st-privacy", openPrivacyPolicySheet);
+}
+
+// ------------------------------------------------------------
+// TEMA — claro / oscuro / automático (según el sistema)
+// ------------------------------------------------------------
+
+const THEME_KEY = "theme_pref";
+
+function applyTheme(pref) {
+  if (pref === "light" || pref === "dark") {
+    document.documentElement.dataset.theme = pref;
+  } else {
+    delete document.documentElement.dataset.theme;
+  }
+}
+
+/** Se llama al arrancar la app, antes del primer render, para aplicar
+ * el tema guardado y evitar el parpadeo del tema por defecto. */
+async function loadTheme() {
+  const pref = (await Data.settingGet(THEME_KEY)) || "system";
+  applyTheme(pref);
+}
+
+async function openThemeSheet() {
+  const current = (await Data.settingGet(THEME_KEY)) || "system";
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const opt = (value, label) =>
+    `<button class="btn ${current === value ? "btn-primary" : "btn-secondary"}" data-theme-opt="${value}">${label}</button>`;
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Tema</h2>
+      <div class="modal-actions">${opt("light", "☀️ Claro")}</div>
+      <div class="modal-actions">${opt("dark", "🌙 Oscuro")}</div>
+      <div class="modal-actions">${opt("system", "📱 Automático (del sistema)")}</div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="theme-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#theme-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelectorAll("[data-theme-opt]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const value = btn.dataset.themeOpt;
+      await Data.settingSet(THEME_KEY, value);
+      applyTheme(value);
+      overlay.remove();
+      toast("Tema actualizado");
+    });
+  });
+}
+
+// ------------------------------------------------------------
+// NOTIFICACIONES — recordatorios locales de vuelos/actividades del
+// día (API Notification del navegador, sin servidor propio).
+// ------------------------------------------------------------
+
+const NOTIF_KEY = "notifications_enabled";
+const NOTIF_LAST_KEY = "notifications_last_date";
+
+async function openNotificationsSheet() {
+  const enabledRaw = await Data.settingGet(NOTIF_KEY);
+  const enabled = enabledRaw === true || enabledRaw === 1;
+  const permission = "Notification" in window ? Notification.permission : "unsupported";
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Notificaciones</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
+        Si las activas, la app te avisará cuando tengas un vuelo o una actividad
+        programada para hoy. Se generan en este dispositivo, sin servidor externo.
+      </p>
+      ${permission === "unsupported" ? `<p style="color:var(--muted); font-size:13px;">Tu navegador no admite notificaciones.</p>` : ""}
+      ${permission === "denied" ? `<p style="color:var(--rose); font-size:13px;">Están bloqueadas en el navegador. Actívalas desde los ajustes del sitio.</p>` : ""}
+      <div class="modal-actions" style="margin-top:10px;">
+        <button class="btn ${enabled ? "btn-danger" : "btn-primary"}" id="notif-toggle" ${permission === "unsupported" ? "disabled" : ""}>
+          ${enabled ? "🔕 Desactivar notificaciones" : "🔔 Activar notificaciones"}
+        </button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="notif-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#notif-close").addEventListener("click", () => overlay.remove());
+
+  overlay.querySelector("#notif-toggle").addEventListener("click", async () => {
+    if (enabled) {
+      await Data.settingSet(NOTIF_KEY, false);
+      toast("Notificaciones desactivadas");
+      overlay.remove();
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      toast("No se concedió permiso para notificar");
+      return;
+    }
+    await Data.settingSet(NOTIF_KEY, true);
+    toast("Notificaciones activadas");
+    overlay.remove();
+    checkAndNotifyToday();
+  });
+}
+
+/** Revisa, como máximo una vez al día, si hay vuelos o actividades de
+ * hoy en cualquier viaje y lanza una notificación local si es así.
+ * Se llama al arrancar la app; nunca rompe nada si falla (sin
+ * permiso, navegador sin soporte, etc.). */
+async function checkAndNotifyToday() {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const enabled = await Data.settingGet(NOTIF_KEY);
+    if (!enabled) return;
+
+    const today = todayString();
+    const lastNotified = await Data.settingGet(NOTIF_LAST_KEY);
+    if (lastNotified === today) return;
+
+    const trips = await Data.getAll("trips");
+    const parts = [];
+    for (const trip of trips) {
+      const [flights, itin] = await Promise.all([
+        Data.getAllByTrip("flights", trip.id),
+        Data.getAllByTrip("itinerary", trip.id),
+      ]);
+      const todayFlights = flights.filter((f) => f.date === today);
+      const todayEvents = itin.filter((i) => i.date === today);
+      if (todayFlights.length) parts.push(`✈️ ${todayFlights.length} vuelo(s) en ${trip.destination}`);
+      if (todayEvents.length) parts.push(`📍 ${todayEvents.length} actividad(es) en ${trip.destination}`);
+    }
+    if (!parts.length) return;
+
+    new Notification("TravelPlanner", { body: parts.join(" · ") });
+    await Data.settingSet(NOTIF_LAST_KEY, today);
+  } catch (err) {
+    // sin permiso, sin soporte, o cualquier fallo: no pasa nada
+  }
+}
+
+// ------------------------------------------------------------
+// POLÍTICA DE PRIVACIDAD
+// ------------------------------------------------------------
+
+const PRIVACY_POLICY_TEXT = `
+Última actualización: ${new Date().getFullYear()}
+
+1. Qué datos guarda TravelPlanner
+Los datos de tus viajes (vuelos, hoteles, itinerario, transporte, reservas,
+gastos y checklist) se guardan en tu propio dispositivo, en el
+almacenamiento local del navegador (IndexedDB). No se envían a ningún
+servidor salvo que actives voluntariamente la copia en la nube.
+
+2. Cuenta y copia en la nube (opcional)
+Si creas una cuenta (email y contraseña), tus datos se guardan también en
+Firebase (Google) bajo tu usuario, para poder recuperarlos en otro
+dispositivo. Puedes cerrar sesión y eliminar tu cuenta cuando quieras. Sin
+cuenta, la app funciona igualmente de forma 100% local.
+
+3. Servicios externos que puede consultar la app
+Para mostrar mapas, calcular rutas, o encontrar fotos e imágenes reales de
+tus vuelos, hoteles, actividades y transportes, la app envía consultas
+puntuales (por ejemplo, un nombre de lugar o de aerolínea) a servicios
+públicos de terceros: OpenStreetMap/Nominatim y OSRM (mapas y rutas), y
+Wikipedia/Openverse (fotos). Estas consultas no incluyen tu identidad ni el
+resto de tus datos, solo el texto necesario para la búsqueda.
+
+4. Notificaciones
+Si activas los avisos, se generan en tu propio dispositivo a partir de tus
+datos guardados localmente. No implican el envío de información a
+servidores externos.
+
+5. PIN de bloqueo
+El PIN, si lo activas, se guarda cifrado (hash) únicamente en tu
+dispositivo. Nadie más que tú puede verlo ni recuperarlo.
+
+6. Tus derechos
+Puedes exportar, importar o borrar tus datos en cualquier momento desde
+Ajustes → Copiar / restaurar datos, o eliminar tu cuenta desde
+Ajustes → Mi cuenta. No compartimos tus datos con terceros con fines
+comerciales ni mostramos publicidad dentro de la app.
+
+7. Contacto
+Si tienes dudas sobre tus datos o esta política, puedes escribirnos a
+[tu email de contacto aquí].
+`.trim();
+
+function openPrivacyPolicySheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Política de privacidad</h2>
+      <div style="max-height:50vh; overflow-y:auto; font-size:13px; line-height:1.7; color:var(--muted-dark); white-space:pre-wrap; margin:4px 0 16px;">${escapeHtml(PRIVACY_POLICY_TEXT)}</div>
+      <div class="modal-actions"><button class="btn btn-primary" id="privacy-close">Entendido</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#privacy-close").addEventListener("click", () => overlay.remove());
+}
+
+// ------------------------------------------------------------
+// PERFIL — resumen del usuario según sus viajes. Base para ir
+// añadiendo más secciones (insignias, países, preferencias...).
+// ------------------------------------------------------------
+
+async function openProfileSheet() {
+  const trips = await Data.getAll("trips");
+  const today = todayString();
+
+  let upcoming = 0,
+    past = 0,
+    ongoing = 0;
+  const destinations = new Set();
+  let totalSpent = 0;
+
+  for (const trip of trips) {
+    if (trip.destination) destinations.add(trip.destination.trim().toLowerCase());
+    if (trip.start_date > today) upcoming++;
+    else if (trip.end_date && trip.end_date < today) past++;
+    else ongoing++;
+
+    const expenses = await Data.getAllByTrip("expenses", trip.id);
+    totalSpent += expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+  }
+
+  const user = currentUser();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Mi perfil</h2>
+      ${
+        user
+          ? `<p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">${escapeHtml(user.email)}</p>`
+          : `<p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">Sin cuenta (datos solo en este dispositivo)</p>`
+      }
+      <div class="stat-grid" style="margin-top:14px;">
+        <div class="stat-card"><div class="stat-label">🧳 Viajes</div><div class="stat-value">${trips.length}</div></div>
+        <div class="stat-card"><div class="stat-label">🌍 Destinos</div><div class="stat-value">${destinations.size}</div></div>
+        <div class="stat-card"><div class="stat-label">🔜 Próximos</div><div class="stat-value">${upcoming}</div></div>
+        <div class="stat-card"><div class="stat-label">✅ Realizados</div><div class="stat-value">${past}</div></div>
+        <div class="stat-card"><div class="stat-label">💶 Gastado total</div><div class="stat-value" style="font-size:17px;">${money(totalSpent)}</div></div>
+      </div>
+      <p style="color:var(--muted); font-size:12.5px; text-align:center; margin-top:16px;">
+        Aquí irán apareciendo más cosas a medida que uses la app (insignias, países visitados, preferencias de viaje...).
+      </p>
+      <div class="modal-actions" style="margin-top:6px;"><button class="btn btn-ghost" id="profile-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#profile-close").addEventListener("click", () => overlay.remove());
+}
+
+export { openSettingsSheet, loadTheme, checkAndNotifyToday };
