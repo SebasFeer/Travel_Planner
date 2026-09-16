@@ -25,6 +25,11 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body>
+<div id="splash-screen">
+  <img src="logo-splash.png" alt="TravelPlanner" class="splash-logo" />
+  <p class="splash-tag">Tu próximo viaje, organizado</p>
+</div>
+
 <div id="app">
   <div class="view no-tabbar">
     <div class="boot-screen">
@@ -36,5 +41,16 @@
 </div>
 
 <script type="module" src="main.js"></script>
+<script>
+  // Bienvenida: se ve ~1s y se desvanece sola. No depende de si la
+  // app ya ha terminado de cargar (eso sigue su curso por su lado,
+  // debajo del splash) — es puramente decorativo.
+  setTimeout(function () {
+    var splash = document.getElementById("splash-screen");
+    if (!splash) return;
+    splash.classList.add("splash-hide");
+    setTimeout(function () { splash.remove(); }, 500);
+  }, 1000);
+</script>
 </body>
 </html>
