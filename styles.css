@@ -11,6 +11,14 @@
   --muted-dark: #454a70;
   --overlay-bg: #171436; /* fondo oscuro dedicado para overlays (PIN, modales) */
 
+  /* Glassmorphism suave — superficies translúcidas con desenfoque.
+     Cada tarjeta deja entrever los blobs de color del fondo. */
+  --glass: rgba(255, 255, 255, 0.6);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: rgba(32, 31, 61, 0.08);
+  --glass-blur: 18px;
+
   /* Marca — a juego con el logo (naranja sobre azul marino) */
   --brand: #e8722a;
   --brand-deep: #c85f1f;
@@ -58,6 +66,11 @@
     --muted: #a5a3c9;
     --muted-dark: #8785b3;
     --overlay-bg: #0d0c22;
+
+    --glass: rgba(40, 37, 78, 0.5);
+    --glass-strong: rgba(40, 37, 78, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-shadow: rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -73,6 +86,11 @@
   --muted: #a5a3c9;
   --muted-dark: #8785b3;
   --overlay-bg: #0d0c22;
+
+  --glass: rgba(40, 37, 78, 0.5);
+  --glass-strong: rgba(40, 37, 78, 0.68);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-shadow: rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme="light"] {
@@ -84,6 +102,11 @@
   --muted: #656a92;
   --muted-dark: #454a70;
   --overlay-bg: #171436;
+
+  --glass: rgba(255, 255, 255, 0.6);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: rgba(32, 31, 61, 0.08);
 }
 
 * {
@@ -113,8 +136,8 @@ body::after {
   content: "";
   position: fixed;
   border-radius: 50%;
-  filter: blur(6px);
-  opacity: 0.16;
+  filter: blur(10px);
+  opacity: 0.28;
   z-index: 0;
   pointer-events: none;
 }
@@ -193,7 +216,9 @@ a { color: inherit; }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: linear-gradient(180deg, var(--bg) 75%, rgba(246, 247, 252, 0));
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
 }
 
 .topbar .icon-btn {
@@ -230,15 +255,17 @@ a { color: inherit; }
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  box-shadow: 0 2px 6px rgba(32, 31, 61, 0.05);
+  box-shadow: 0 2px 8px var(--glass-shadow);
 }
 
 .icon-btn:hover {
@@ -292,16 +319,18 @@ a { color: inherit; }
 
 .ticket {
   position: relative;
-  background: var(--surface);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--text);
   border-radius: var(--radius-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   display: flex;
   align-items: flex-start;
   gap: 14px;
   padding: 14px;
   margin-bottom: 14px;
-  box-shadow: 0 8px 20px rgba(32, 31, 61, 0.06);
+  box-shadow: 0 8px 24px var(--glass-shadow);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -544,9 +573,11 @@ a { color: inherit; }
 }
 
 .btn-secondary {
-  background: var(--surface);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
 }
 @media (hover: hover) {
   .btn-secondary:hover { border-color: var(--brand); color: var(--brand-deep); }
@@ -601,11 +632,14 @@ a { color: inherit; }
   --accent: var(--brand);
   position: relative;
   overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
   border-radius: 18px;
   padding: 14px 14px 14px 18px;
   cursor: pointer;
+  box-shadow: 0 6px 18px var(--glass-shadow);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .stat-card::before {
@@ -643,12 +677,15 @@ a { color: inherit; }
 .panel {
   --accent: var(--brand);
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
   border-radius: 20px;
   padding: 16px 16px 16px 20px;
   margin-top: 14px;
   overflow: hidden;
+  box-shadow: 0 6px 18px var(--glass-shadow);
 }
 .panel[data-nav]::before {
   content: "";
@@ -720,7 +757,9 @@ a { color: inherit; }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(23, 20, 54, 0.55);
+  background: rgba(23, 20, 54, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 50;
   display: flex;
   align-items: flex-end;
@@ -729,7 +768,9 @@ a { color: inherit; }
 }
 
 .modal-sheet {
-  background: var(--surface);
+  background: var(--glass-strong);
+  backdrop-filter: saturate(160%) blur(24px);
+  -webkit-backdrop-filter: saturate(160%) blur(24px);
   border-top-left-radius: 26px;
   border-top-right-radius: 26px;
   width: 100%;
@@ -737,13 +778,14 @@ a { color: inherit; }
   max-height: 92vh;
   overflow-y: auto;
   padding: 10px 20px calc(28px + var(--safe-bottom));
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -12px 40px rgba(23, 20, 54, 0.18);
   animation: modal-slide-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes modal-fade-in {
   from { background: rgba(23, 20, 54, 0); }
-  to { background: rgba(23, 20, 54, 0.55); }
+  to { background: rgba(23, 20, 54, 0.4); }
 }
 
 @keyframes modal-slide-up {
@@ -780,8 +822,8 @@ a { color: inherit; }
 .field select,
 .field textarea {
   width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid var(--glass-border);
   color: var(--text);
   border-radius: 12px;
   padding: 12px 13px;
@@ -829,12 +871,14 @@ a { color: inherit; }
 
 .trip-card {
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
   border-radius: 26px;
   margin-bottom: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 24px rgba(32, 31, 61, 0.08);
+  box-shadow: 0 12px 30px var(--glass-shadow);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 @media (hover: hover) {
@@ -1012,8 +1056,10 @@ a { color: inherit; }
 }
 
 .pill-row button {
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--muted-dark);
   font-size: 12.5px;
   font-weight: 700;
