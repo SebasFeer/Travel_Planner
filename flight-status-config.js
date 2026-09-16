@@ -1,22 +1,21 @@
 // ============================================================
-// flight-status-config.js — Clave de la API de estado de vuelos.
-// Función Pro: "Avisos de vuelos" (retrasos, puerta de embarque).
+// flight-status-config.js — Dirección de tu Cloud Function de
+// estado de vuelos. Función Pro: "Avisos de vuelos".
 //
-// TravelPlanner usa AeroDataBox (a través de RapidAPI) para consultar
-// el estado de un vuelo por su número. Tiene un plan gratuito (con
-// límite mensual de peticiones) de sobra para probarlo:
+// La clave de RapidAPI/AeroDataBox YA NO vive aquí ni en ningún
+// archivo del navegador: vive solo en el servidor (como "secreto"
+// de Firebase), dentro de la Cloud Function "flightStatus" que hay
+// en la carpeta functions/. Aquí solo se pega la URL pública que
+// Firebase te da al desplegarla, por ejemplo:
 //
-//   1. Crea una cuenta gratis en https://rapidapi.com
-//   2. Suscríbete al plan gratuito de "AeroDataBox":
-//      https://rapidapi.com/aedbx-aedbx/api/aerodatabox
-//   3. Copia tu "X-RapidAPI-Key" de esa página y pégala aquí abajo.
+//   https://us-central1-travel-planner-e16e1.cloudfunctions.net/flightStatus
+//
+// Instrucciones de despliegue: ver DEPLOY_FLIGHT_STATUS.md
 //
 // Mientras esto esté vacío, los avisos de vuelo simplemente no hacen
-// nada — no rompen el resto de la app. Esta clave es privada (a
-// diferencia de la de Firebase): no la subas a un repositorio
-// público si te preocupa que otros la usen a tu costa.
+// nada — no rompen el resto de la app.
 // ============================================================
 
-const FLIGHT_STATUS_API_KEY = "8f0bbd1a91mshfb373814de447a7p10f2bcjsn952249dd05a7";
+const FLIGHT_STATUS_ENDPOINT = "";
 
-export { FLIGHT_STATUS_API_KEY };
+export { FLIGHT_STATUS_ENDPOINT };

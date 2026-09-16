@@ -151,6 +151,21 @@ function currentUser() {
 }
 
 /**
+ * Devuelve el token de sesión actual (para llamar a la Cloud
+ * Function de estado de vuelos), o null si no hay sesión.
+ */
+async function getIdToken() {
+  try {
+    const s = await ensureFirebase();
+    const user = s.auth.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
  * Se suscribe a cambios de sesión. Si Firebase no llega a cargar
  * (p. ej. sin red), simplemente no se llama nunca al callback —
  * el resto de la app sigue funcionando en modo 100% local.
@@ -436,6 +451,7 @@ async function refreshAllSharedTrips() {
 
 export {
   currentUser,
+  getIdToken,
   onAuthChange,
   signUp,
   signIn,

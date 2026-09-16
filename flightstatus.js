@@ -1,43 +1,43 @@
 // ============================================================
-// flightstatus.js — Estado en vivo de un vuelo (retraso, puerta)
-// vía AeroDataBox. Función Pro: solo tiene efecto si hay una clave
-// de API configurada en flight-status-config.js. Si algo falla (sin
-// clave, sin conexión, límite de la API, vuelo no encontrado...)
-// devuelve null y no rompe nada — el resto de la notificación local
-// sigue funcionando igual.
+// flightstatus.js — Estado en vivo de un vuelo (retraso, puerta).
+// Función Pro: llama a tu Cloud Function "flightStatus" (que es
+// quien de verdad habla con AeroDataBox, con la clave guardada en
+// el servidor). Aquí nunca hay ninguna clave. Si algo falla (sin
+// sesión, sin conexión, función no desplegada, vuelo no
+// encontrado...) devuelve null y no rompe nada — el resto de la
+// notificación local sigue funcionando igual.
 // ============================================================
 
-import { FLIGHT_STATUS_API_KEY } from "./flight-status-config.js";
-
-const BASE_URL = "https://aerodatabox.p.rapidapi.com/flights/number";
+import { FLIGHT_STATUS_ENDPOINT } from "./flight-status-config.js";
 
 function isFlightStatusConfigured() {
-  return !!FLIGHT_STATUS_API_KEY;
+  return !!FLIGHT_STATUS_ENDPOINT;
 }
 
 /**
  * Consulta el estado de un vuelo por su número (p. ej. "IB3172") en
- * una fecha concreta ("2026-09-20", formato ISO). Devuelve algo como
- * { status, delayMin, gate, terminal } o null si no se encuentra, si
- * no hay clave configurada, o si falla la consulta.
+ * una fecha concreta ("2026-09-20", formato ISO). Necesita el token
+ * de sesión de Firebase (`idToken`, se obtiene con getIdToken() de
+ * cloud.js) para que la Cloud Function sepa que quien pregunta ha
+ * iniciado sesión en la app.
+ *
+ * Devuelve algo como { status, delayMin, gate, terminal } o null.
  *
  * Nota: el formato exacto de la respuesta de AeroDataBox puede variar
  * algo según el plan/versión; si al probarlo ves que no encaja del
- * todo, es cuestión de ajustar los nombres de campo de más abajo con
- * la respuesta real que te devuelva la API (puedes verla en la
- * pestaña "Test Endpoint" de RapidAPI).
+ * todo, es cuestión de ajustar los nombres de campo aquí abajo (y en
+ * functions/index.js si hace falta) con la respuesta real.
  */
-async function getFlightStatus(flightNumber, isoDate) {
-  if (!isFlightStatusConfigured() || !flightNumber || !isoDate) return null;
+async function getFlightStatus(flightNumber, isoDate, idToken) {
+  if (!isFlightStatusConfigured() || !flightNumber || !isoDate || !idToken) return null;
 
   try {
     const cleanNumber = flightNumber.replace(/\s+/g, "");
-    const url = `${BASE_URL}/${encodeURIComponent(cleanNumber)}/${isoDate}`;
+    const url =
+      `${FLIGHT_STATUS_ENDPOINT}?flightNumber=${encodeURIComponent(cleanNumber)}` +
+      `&date=${encodeURIComponent(isoDate)}`;
     const res = await fetch(url, {
-      headers: {
-        "X-RapidAPI-Key": FLIGHT_STATUS_API_KEY,
-        "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
-      },
+      headers: { Authorization: `Bearer ${idToken}` },
     });
     if (!res.ok) return null;
 
@@ -62,7 +62,7 @@ async function getFlightStatus(flightNumber, isoDate) {
       terminal: dep.terminal || null,
     };
   } catch (err) {
-    return null; // sin conexión, límite de peticiones, etc.
+    return null; // sin conexión, función no desplegada, etc.
   }
 }
 

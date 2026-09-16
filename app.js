@@ -23,6 +23,7 @@ import {
   shareTrip,
   joinSharedTrip,
   refreshSharedTrip,
+  getIdToken,
 } from "./cloud.js";
 import { isPro, setPro } from "./pro.js";
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
@@ -1247,15 +1248,18 @@ async function checkAndNotifyToday() {
       if (todayFlights.length) {
         parts.push(`✈️ ${todayFlights.length} vuelo(s) en ${trip.destination}`);
         if (useFlightStatus) {
-          for (const f of todayFlights) {
-            if (!f.flight_number) continue;
-            const info = await getFlightStatus(f.flight_number, f.date);
-            if (!info) continue;
-            if (info.delayMin > 0) {
-              parts.push(`⏱️ ${f.flight_number} con ${info.delayMin} min de retraso`);
-            }
-            if (info.gate) {
-              parts.push(`🚪 ${f.flight_number} · puerta ${info.gate}`);
+          const idToken = await getIdToken();
+          if (idToken) {
+            for (const f of todayFlights) {
+              if (!f.flight_number) continue;
+              const info = await getFlightStatus(f.flight_number, f.date, idToken);
+              if (!info) continue;
+              if (info.delayMin > 0) {
+                parts.push(`⏱️ ${f.flight_number} con ${info.delayMin} min de retraso`);
+              }
+              if (info.gate) {
+                parts.push(`🚪 ${f.flight_number} · puerta ${info.gate}`);
+              }
             }
           }
         }
