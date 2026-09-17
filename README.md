@@ -24,7 +24,7 @@ sin Mac y sin cuenta de Apple Developer.
    (si es privado necesitarás GitHub Pro para activar Pages; si no, hazlo público).
 2. **Sube todos los archivos de esta carpeta** a la raíz del repositorio, tal cual
    (mantén la estructura de carpetas `css/`, `js/`, `icons/`).
-   - Más fácil desde el navegador: en la página del repo, "Add file → Upload files",
+   - Más fácil desde el navegador: en la página del repo, "Add file → Upload files",.
      arrastra todo el contenido de esta carpeta y confirma el commit.
 3. Ve a **Settings → Pages**.
 4. En "Build and deployment", elige **Deploy from a branch**, rama `main`, carpeta `/ (root)`,
