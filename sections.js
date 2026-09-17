@@ -70,7 +70,7 @@ function fetchStubPhotos(storeName, items, queryField, context) {
   items.forEach((item) => {
     const query = getQuery(item);
     if (item.photo_url || !query) return;
-    findDestinationPhoto(query, context).then(async (url) => {
+    findDestinationPhoto(query, context, item.address).then(async (url) => {
       if (!url) return;
       const stubEl = root.querySelector(`.ticket[data-id="${item.id}"] .ticket-stub`);
       if (stubEl) {
