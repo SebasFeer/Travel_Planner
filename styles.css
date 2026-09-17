@@ -631,10 +631,10 @@ a { color: inherit; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   text-align: center;
-  aspect-ratio: 1 / 1;
-  padding: 14px;
+  aspect-ratio: 5 / 4;
+  padding: 10px;
 }
 .stat-card-discover::before {
   width: 100%;
@@ -642,11 +642,13 @@ a { color: inherit; }
   top: 0; left: 0; right: 0; bottom: auto;
 }
 .stat-card-discover-icon {
-  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 .stat-card-discover .stat-label {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
 }
@@ -662,7 +664,10 @@ a { color: inherit; }
   inset: 0;
   background: linear-gradient(180deg, rgba(15, 16, 33, 0.1), rgba(15, 16, 33, 0.6));
 }
-.stat-card-discover-photo .stat-card-discover-icon,
+.stat-card-discover-photo .stat-card-discover-icon {
+  /* ya hay una foto real de fondo: se oculta la ilustración de relleno */
+  display: none;
+}
 .stat-card-discover-photo .stat-label {
   position: relative;
   z-index: 1;

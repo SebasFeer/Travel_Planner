@@ -12,7 +12,6 @@ import { geocodeAll, routeBetween } from "./geocode.js";
 import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
-import { findDestinationPhoto } from "./photo.js";
 
 // ============================================================
 // CONFIGURACIÓN DE PESTAÑAS
@@ -212,12 +211,20 @@ async function renderDashboard(trip) {
     ${bannerHtml}
     <div class="stat-grid">
       <div class="stat-card" data-nav="flights"><div class="stat-label">${icon("flights","stat-icon")} Vuelos</div><div class="stat-value">${flights.length}</div></div>
+      <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
       <div class="stat-card" data-nav="hotels"><div class="stat-label">${icon("hotels","stat-icon")} Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
       <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} Actividades</div><div class="stat-value">${itin.length}</div></div>
-      <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
       <div class="stat-card" data-nav="expenses"><div class="stat-label">${icon("expenses","stat-icon")} Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
       <div class="stat-card stat-card-discover${trip.photo_url ? " stat-card-discover-photo" : ""}" data-action="discover" ${trip.photo_url ? `style="background-image:url('${trip.photo_url}')"` : ""}>
-        <div class="stat-card-discover-icon">🧭</div>
+        <div class="stat-card-discover-icon">
+          <svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">
+            <circle cx="45" cy="17" r="8" fill="#ffb703"/>
+            <path d="M4 45c6-11 15-17 25-17s19 6 25 17" stroke="#48cae4" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <path d="M21 45c1-11 5-18 9-20-2 7-2 13 0 20" fill="#2a9d8f"/>
+            <path d="M30 26c5 0 11 3 13 9-6-2-11-2-15 2 0-4 0-8 2-11z" fill="#2a9d8f"/>
+            <rect x="8" y="45" width="48" height="4" rx="2" fill="#e9c46a"/>
+          </svg>
+        </div>
         <div class="stat-label">Descubre</div>
       </div>
     </div>

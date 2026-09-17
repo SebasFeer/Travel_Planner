@@ -31,7 +31,7 @@ import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { geocode } from "./geocode.js";
-import { nearbyAttractions, nearbyLodging } from "./discover.js";
+import { nearbyAttractions } from "./discover.js";
 
 // ============================================================
 // ESTADO
@@ -482,8 +482,8 @@ async function openDiscoverSheet(trip) {
       <div class="modal-handle"></div>
       <h2 class="modal-title">Descubre ${escapeHtml(trip.destination)}</h2>
       <p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">
-        Lugares de interés y alojamiento cercanos, con datos abiertos
-        de Wikipedia y OpenStreetMap.
+        Lugares de interés cercanos, con datos abiertos de Wikipedia y
+        OpenStreetMap.
       </p>
       <div id="discover-body" style="min-height:140px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13.5px; text-align:center; padding:20px 0;">
         Buscando cerca de ${escapeHtml(trip.destination)}…
@@ -503,21 +503,10 @@ async function openDiscoverSheet(trip) {
     return;
   }
 
-  const [attractions, lodging] = await Promise.all([
-    nearbyAttractions(coords.lat, coords.lng),
-    nearbyLodging(coords.lat, coords.lng),
-  ]);
-  if (!overlay.isConnected) return;
-
-  if (!attractions.length && !lodging.length) {
-    body.innerHTML = `<p>No encontramos sugerencias para esta zona ahora mismo (puede que no haya conexión, o que el área tenga poca cobertura en estas fuentes).</p>`;
-    return;
-  }
-
-  function cardHtml({ name, subtitle, photoUrl, fallbackIcon, kind }) {
+  function cardHtml({ name, subtitle, photoUrl }) {
     return h`
-      <div class="discover-card" data-kind="${kind}" data-name="${escapeHtml(name)}">
-        ${photoUrl ? `<img src="${photoUrl}" alt="" class="discover-thumb" />` : `<div class="discover-thumb discover-thumb-empty">${fallbackIcon}</div>`}
+      <div class="discover-card" data-name="${escapeHtml(name)}">
+        ${photoUrl ? `<img src="${photoUrl}" alt="" class="discover-thumb" />` : `<div class="discover-thumb discover-thumb-empty">🧭</div>`}
         <div class="discover-info">
           <p class="discover-name">${escapeHtml(name)}</p>
           <p class="discover-summary">${escapeHtml(subtitle)}</p>
@@ -526,31 +515,14 @@ async function openDiscoverSheet(trip) {
       </div>`;
   }
 
-  let html = "";
-  if (attractions.length) {
-    html += `<p class="section-title">📍 Lugares de interés</p>`;
-    html += attractions
-      .map((a) => cardHtml({ name: a.name, subtitle: a.summary || a.category, photoUrl: a.photoUrl, fallbackIcon: "🧭", kind: "itinerary" }))
-      .join("");
-  }
-  if (lodging.length) {
-    html += `<div class="discover-lodging-block">`;
-    html += `<p class="section-title">🛏️ Alojamiento cerca</p>`;
-    html += lodging
-      .map((l) => cardHtml({ name: l.name, subtitle: l.typeLabel, photoUrl: null, fallbackIcon: "🏨", kind: "hotel" }))
-      .join("");
-    html += `</div>`;
-  }
-
-  body.outerHTML = `<div id="discover-body" style="max-height:56vh; overflow-y:auto;">${html}</div>`;
-
-  overlay.querySelectorAll(".discover-add").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const card = btn.closest(".discover-card");
-      const name = card.dataset.name;
-      const kind = card.dataset.kind;
-      btn.disabled = true;
-      if (kind === "itinerary") {
+  function wireAddButtons(container) {
+    container.querySelectorAll(".discover-add").forEach((btn) => {
+      if (btn.dataset.wired) return;
+      btn.dataset.wired = "1";
+      btn.addEventListener("click", async () => {
+        const card = btn.closest(".discover-card");
+        const name = card.dataset.name;
+        btn.disabled = true;
         await Data.add("itinerary", {
           trip_id: trip.id,
           title: name,
@@ -559,19 +531,64 @@ async function openDiscoverSheet(trip) {
           order: Date.now(),
         });
         toast(`"${name}" añadido al itinerario`);
-      } else {
-        await Data.add("hotels", {
-          trip_id: trip.id,
-          name,
-          address: name,
-          check_in: trip.start_date || "",
-          check_out: trip.end_date || "",
-        });
-        toast(`"${name}" añadido a hoteles`);
-      }
-      btn.textContent = "✅";
+        btn.textContent = "✅";
+      });
     });
-  });
+  }
+
+  // Cada "cargar más" amplía el radio y el límite de búsqueda, y
+  // descarta lugares ya mostrados (por nombre) para no duplicar.
+  const shownNames = new Set();
+  let radiusM = 3000;
+  let limit = 10;
+
+  async function loadMore() {
+    const loadMoreBtn = overlay.querySelector("#discover-load-more");
+    if (loadMoreBtn) {
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = "Buscando más…";
+    }
+
+    const attractions = await nearbyAttractions(coords.lat, coords.lng, { radiusM, limit });
+    if (!overlay.isConnected) return;
+
+    const fresh = attractions.filter((a) => !shownNames.has(a.name));
+    fresh.forEach((a) => shownNames.add(a.name));
+
+    const list = overlay.querySelector("#discover-list");
+    if (fresh.length) {
+      list.insertAdjacentHTML(
+        "beforeend",
+        fresh.map((a) => cardHtml({ name: a.name, subtitle: a.summary || a.category, photoUrl: a.photoUrl })).join("")
+      );
+      wireAddButtons(list);
+    }
+
+    radiusM += 2000;
+    limit += 10;
+
+    const footer = overlay.querySelector("#discover-footer");
+    if (footer) {
+      footer.innerHTML = fresh.length
+        ? `<button class="btn btn-ghost" id="discover-load-more">Cargar más destinos</button>`
+        : `<p style="color:var(--muted); font-size:12.5px; text-align:center; margin:6px 0 0;">No encontramos más destinos cercanos.</p>`;
+      const nextBtn = footer.querySelector("#discover-load-more");
+      if (nextBtn) nextBtn.addEventListener("click", loadMore);
+    }
+  }
+
+  body.outerHTML = `
+    <div id="discover-body" style="max-height:56vh; overflow-y:auto;">
+      <p class="section-title">📍 Lugares de interés</p>
+      <div id="discover-list"></div>
+      <div id="discover-footer" style="padding:10px 0 0;"></div>
+    </div>`;
+
+  await loadMore();
+
+  if (!overlay.querySelector("#discover-list").children.length) {
+    overlay.querySelector("#discover-body").innerHTML = `<p>No encontramos sugerencias para esta zona ahora mismo (puede que no haya conexión, o que el área tenga poca cobertura en estas fuentes).</p>`;
+  }
 }
 
 // ------------------------------------------------------------
