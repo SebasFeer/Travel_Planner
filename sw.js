@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v5";
+const CACHE_NAME = "travelplanner-v6";
 
 const APP_SHELL = [
   "./",
@@ -15,6 +15,7 @@ const APP_SHELL = [
   "./db.js",
   "./utils.js",
   "./geocode.js",
+  "./discover.js",
   "./cloud.js",
   "./firebase-config.js",
   "./pro.js",

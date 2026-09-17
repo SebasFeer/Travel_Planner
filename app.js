@@ -30,6 +30,8 @@ import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
+import { geocode } from "./geocode.js";
+import { nearbyAttractions, nearbyLodging } from "./discover.js";
 
 // ============================================================
 // ESTADO
@@ -416,6 +418,7 @@ function openTripMenu(trip) {
           : ""
       }
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-edit">✏️ Editar viaje</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-discover">🧭 Descubre lugares cercanos</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-share">🔗 ${trip.share_code ? "Compartir de nuevo" : "Compartir viaje (Pro)"}</button></div>
       ${
         trip.share_code
@@ -432,6 +435,10 @@ function openTripMenu(trip) {
   overlay.querySelector("#mn-edit").addEventListener("click", () => {
     overlay.remove();
     openTripForm(trip);
+  });
+  overlay.querySelector("#mn-discover").addEventListener("click", () => {
+    overlay.remove();
+    openDiscoverSheet(trip);
   });
   overlay.querySelector("#mn-share").addEventListener("click", async () => {
     overlay.remove();
@@ -464,6 +471,109 @@ function openTripMenu(trip) {
     overlay.remove();
     await renderPrintArea(trip);
     setTimeout(() => window.print(), 150);
+  });
+}
+
+// ------------------------------------------------------------
+// DESCUBRE (gratis) — lugares de interés y alojamiento cercanos al
+// destino del viaje, usando fuentes públicas (Wikipedia + OSM).
+// ------------------------------------------------------------
+
+async function openDiscoverSheet(trip) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Descubre ${escapeHtml(trip.destination)}</h2>
+      <p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">
+        Lugares de interés y alojamiento cercanos, con datos abiertos
+        de Wikipedia y OpenStreetMap.
+      </p>
+      <div id="discover-body" style="min-height:140px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13.5px; text-align:center; padding:20px 0;">
+        Buscando cerca de ${escapeHtml(trip.destination)}…
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="discover-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#discover-close").addEventListener("click", () => overlay.remove());
+
+  const coords = await geocode(trip.destination);
+  if (!overlay.isConnected) return; // el usuario ya cerró el modal
+  const body = overlay.querySelector("#discover-body");
+
+  if (!coords) {
+    body.innerHTML = `<p>No se pudo localizar "${escapeHtml(trip.destination)}". Prueba a poner un destino más concreto (p. ej. "Roma, Italia").</p>`;
+    return;
+  }
+
+  const [attractions, lodging] = await Promise.all([
+    nearbyAttractions(coords.lat, coords.lng),
+    nearbyLodging(coords.lat, coords.lng),
+  ]);
+  if (!overlay.isConnected) return;
+
+  if (!attractions.length && !lodging.length) {
+    body.innerHTML = `<p>No encontramos sugerencias para esta zona ahora mismo (puede que no haya conexión, o que el área tenga poca cobertura en estas fuentes).</p>`;
+    return;
+  }
+
+  function cardHtml({ name, subtitle, photoUrl, fallbackIcon, kind }) {
+    return h`
+      <div class="discover-card" data-kind="${kind}" data-name="${escapeHtml(name)}">
+        ${photoUrl ? `<img src="${photoUrl}" alt="" class="discover-thumb" />` : `<div class="discover-thumb discover-thumb-empty">${fallbackIcon}</div>`}
+        <div class="discover-info">
+          <p class="discover-name">${escapeHtml(name)}</p>
+          <p class="discover-summary">${escapeHtml(subtitle)}</p>
+        </div>
+        <button class="discover-add" title="Añadir">➕</button>
+      </div>`;
+  }
+
+  let html = "";
+  if (attractions.length) {
+    html += `<p class="section-title">📍 Lugares de interés</p>`;
+    html += attractions
+      .map((a) => cardHtml({ name: a.name, subtitle: a.summary || "Lugar de interés cercano", photoUrl: a.photoUrl, fallbackIcon: "🧭", kind: "itinerary" }))
+      .join("");
+  }
+  if (lodging.length) {
+    html += `<p class="section-title">🛏️ Alojamiento cerca</p>`;
+    html += lodging
+      .map((l) => cardHtml({ name: l.name, subtitle: l.typeLabel, photoUrl: null, fallbackIcon: "🏨", kind: "hotel" }))
+      .join("");
+  }
+
+  body.outerHTML = `<div id="discover-body" style="max-height:56vh; overflow-y:auto;">${html}</div>`;
+
+  overlay.querySelectorAll(".discover-add").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest(".discover-card");
+      const name = card.dataset.name;
+      const kind = card.dataset.kind;
+      btn.disabled = true;
+      if (kind === "itinerary") {
+        await Data.add("itinerary", {
+          trip_id: trip.id,
+          title: name,
+          date: trip.start_date || "",
+          location: name,
+          order: Date.now(),
+        });
+        toast(`"${name}" añadido al itinerario`);
+      } else {
+        await Data.add("hotels", {
+          trip_id: trip.id,
+          name,
+          address: name,
+          check_in: trip.start_date || "",
+          check_out: trip.end_date || "",
+        });
+        toast(`"${name}" añadido a hoteles`);
+      }
+      btn.textContent = "✅";
+    });
   });
 }
 
