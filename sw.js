@@ -40,13 +40,17 @@ const EXTERNAL_SHELL = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      await cache.addAll(APP_SHELL);
-      // Los externos se cachean "a lo mejor esfuerzo": si no hay red
-      // ahora mismo, no impide instalar el resto de la app.
+      // Cacheamos cada archivo por separado (con su propio catch) en
+      // vez de con cache.addAll(): addAll falla TODO el service
+      // worker si un solo archivo no se encuentra o cambia de nombre,
+      // dejando a los visitantes atascados con la versión vieja para
+      // siempre. Así, si uno falla, el resto se cachea igualmente.
       await Promise.all(
-        EXTERNAL_SHELL.map((url) =>
-          cache.add(url).catch(() => {})
-        )
+        APP_SHELL.map((url) => cache.add(url).catch(() => {}))
+      );
+      // Los externos igual: "a lo mejor esfuerzo".
+      await Promise.all(
+        EXTERNAL_SHELL.map((url) => cache.add(url).catch(() => {}))
       );
     })
   );
