@@ -57,6 +57,11 @@ const AIRLINE_TITLE_SUFFIXES = [
   " Airways",
 ];
 
+// Lo mismo, pero para hoteles: muchos hoteles con nombre genérico o
+// homónimo (una ciudad, un apellido...) tienen su artículo en
+// Wikipedia desambiguado así.
+const HOTEL_TITLE_SUFFIXES = [" (hotel)", " Hotel"];
+
 async function fetchAirlinePhoto(name) {
   for (const suffix of AIRLINE_TITLE_SUFFIXES) {
     let url = null;
@@ -81,6 +86,29 @@ async function fetchAirlinePhoto(name) {
   return null;
 }
 
+async function fetchHotelPhoto(name) {
+  for (const suffix of HOTEL_TITLE_SUFFIXES) {
+    let url = null;
+    try {
+      url = await fetchWikipediaPhotoByTitle(`${name}${suffix}`);
+    } catch (err) {
+      /* sin conexión: probamos la siguiente forma */
+    }
+    if (url) return url;
+  }
+  // La mayoría de hoteles concretos no tienen artículo propio en
+  // Wikipedia (solo cadenas/edificios históricos la tienen), así que
+  // esta búsqueda normal es más bien la excepción, no la regla —
+  // el respaldo real para hoteles suele ser Openverse, más abajo.
+  let url = null;
+  try {
+    url = await fetchWikipediaPhoto(`${name} hotel`);
+  } catch (err) {
+    /* sin conexión: seguimos sin foto de Wikipedia */
+  }
+  return url;
+}
+
 async function fetchOpenversePhoto(query) {
   const url =
     `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}` +
@@ -93,14 +121,17 @@ async function fetchOpenversePhoto(query) {
 }
 
 /**
- * Busca una foto real para un destino (ciudad/país), o el logo de una
- * aerolínea cuando context es "airline". Para aerolíneas, en vez de
- * confiar en el ranking del buscador (que puede preferir una palabra
- * homónima con coincidencia exacta de título, como "Iberia" la
- * región), se prueban primero los títulos exactos típicos con los
- * que Wikipedia en español desambigua compañías aéreas — p. ej.
- * "Iberia (aerolínea)" — sin que el usuario tenga que escribir nada
- * de eso él mismo.
+ * Busca una foto real para un destino (ciudad/país), el logo de una
+ * aerolínea (context "airline") o la foto de un hotel (context
+ * "hotel"). Para ambos casos de negocio, en vez de confiar en el
+ * ranking del buscador (que puede preferir una palabra homónima con
+ * coincidencia exacta de título, como "Iberia" la región o el nombre
+ * de una ciudad), se prueban primero los títulos exactos típicos con
+ * los que Wikipedia en español desambigua ese tipo de artículo — p.
+ * ej. "Iberia (aerolínea)" o "Ritz (hotel)" — sin que el usuario
+ * tenga que escribir nada de eso él mismo. Si ningún hotel tiene
+ * artículo propio (lo habitual, salvo cadenas o edificios históricos),
+ * se cae directamente en el respaldo de Openverse.
  * Devuelve la URL de la imagen, o null si no se encuentra nada o
  * falla la conexión (en cuyo caso la tarjeta se queda con el icono
  * de color de siempre). Los resultados se cachean en memoria durante
@@ -113,13 +144,16 @@ async function findDestinationPhoto(query, context) {
 
   let url = null;
   try {
-    url = context === "airline" ? await fetchAirlinePhoto(query) : await fetchWikipediaPhoto(query);
+    if (context === "airline") url = await fetchAirlinePhoto(query);
+    else if (context === "hotel") url = await fetchHotelPhoto(query);
+    else url = await fetchWikipediaPhoto(query);
   } catch (err) {
     /* sin conexión u otro fallo: probamos el siguiente origen */
   }
 
   if (!url) {
-    const openverseQuery = context === "airline" ? `${query} airline logo` : query;
+    const openverseQuery =
+      context === "airline" ? `${query} airline logo` : context === "hotel" ? `${query} hotel` : query;
     try {
       url = await fetchOpenversePhoto(openverseQuery);
     } catch (err) {

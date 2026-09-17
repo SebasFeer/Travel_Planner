@@ -379,7 +379,7 @@ async function renderHotels(trip) {
 
   wireTicketActions("hotels", hotels, (hotel) => openHotelForm(trip, hotel), (hotel) => openMaps(hotel.address));
   document.getElementById("fab-add").addEventListener("click", () => openHotelForm(trip));
-  fetchStubPhotos("hotels", hotels, "address");
+  fetchStubPhotos("hotels", hotels, "name", "hotel");
 }
 
 function openHotelForm(trip, hotel) {
@@ -1046,7 +1046,7 @@ function wireDragReorder(storeName, items) {
 }
 
 // Campos cuyo cambio invalida la foto real guardada (se buscará de nuevo).
-const PHOTO_QUERY_FIELDS = ["address", "location", "airline", "title", "company", "type"];
+const PHOTO_QUERY_FIELDS = ["address", "location", "airline", "title", "company", "type", "name"];
 
 async function saveAndRefresh(storeName, tripId, existing, values, message) {
   if (existing) {
