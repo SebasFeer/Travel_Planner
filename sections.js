@@ -10,6 +10,7 @@ import {
 } from "./utils.js";
 import { geocodeAll, routeBetween } from "./geocode.js";
 import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet } from "./app.js";
+import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { findDestinationPhoto } from "./photo.js";
 
@@ -215,7 +216,7 @@ async function renderDashboard(trip) {
       <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} Actividades</div><div class="stat-value">${itin.length}</div></div>
       <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
       <div class="stat-card" data-nav="expenses"><div class="stat-label">${icon("expenses","stat-icon")} Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
-      <div class="stat-card stat-card-discover" data-action="discover">
+      <div class="stat-card stat-card-discover${trip.photo_url ? " stat-card-discover-photo" : ""}" data-action="discover" ${trip.photo_url ? `style="background-image:url('${trip.photo_url}')"` : ""}>
         <div class="stat-card-discover-icon">🧭</div>
         <div class="stat-label">Descubre</div>
       </div>
@@ -255,6 +256,21 @@ async function renderDashboard(trip) {
   const discoverEl = root.querySelector('[data-action="discover"]');
   if (discoverEl) {
     discoverEl.addEventListener("click", () => openDiscoverSheet(trip));
+  }
+
+  // Foto real del destino de fondo en la tarjeta "Descubre" (se busca
+  // en segundo plano y se guarda en el viaje, igual que en "Mis
+  // viajes" — así solo se busca una vez por viaje).
+  if (!trip.photo_url && trip.destination) {
+    findDestinationPhoto(trip.destination).then(async (url) => {
+      if (!url) return;
+      const tile = root.querySelector('[data-action="discover"]');
+      if (tile) {
+        tile.classList.add("stat-card-discover-photo");
+        tile.style.backgroundImage = `url('${url}')`;
+      }
+      await Data.put("trips", { ...trip, photo_url: url });
+    });
   }
 }
 

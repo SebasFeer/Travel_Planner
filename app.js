@@ -530,14 +530,16 @@ async function openDiscoverSheet(trip) {
   if (attractions.length) {
     html += `<p class="section-title">📍 Lugares de interés</p>`;
     html += attractions
-      .map((a) => cardHtml({ name: a.name, subtitle: a.summary || "Lugar de interés cercano", photoUrl: a.photoUrl, fallbackIcon: "🧭", kind: "itinerary" }))
+      .map((a) => cardHtml({ name: a.name, subtitle: a.summary || a.category, photoUrl: a.photoUrl, fallbackIcon: "🧭", kind: "itinerary" }))
       .join("");
   }
   if (lodging.length) {
+    html += `<div class="discover-lodging-block">`;
     html += `<p class="section-title">🛏️ Alojamiento cerca</p>`;
     html += lodging
       .map((l) => cardHtml({ name: l.name, subtitle: l.typeLabel, photoUrl: null, fallbackIcon: "🏨", kind: "hotel" }))
       .join("");
+    html += `</div>`;
   }
 
   body.outerHTML = `<div id="discover-body" style="max-height:56vh; overflow-y:auto;">${html}</div>`;

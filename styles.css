@@ -651,6 +651,24 @@ a { color: inherit; }
   color: var(--text);
 }
 
+.stat-card-discover-photo {
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+}
+.stat-card-discover-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 16, 33, 0.1), rgba(15, 16, 33, 0.6));
+}
+.stat-card-discover-photo .stat-card-discover-icon,
+.stat-card-discover-photo .stat-label {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+}
+
 .stat-card .stat-label {
   font-size: 12px;
   color: var(--muted);
@@ -1133,6 +1151,14 @@ a { color: inherit; }
 
 .discover-add:disabled {
   opacity: 0.6;
+}
+
+.discover-lodging-block {
+  margin-top: 18px;
+  padding: 14px 12px 4px;
+  border-top: 2px solid var(--border);
+  background: var(--bg);
+  border-radius: 14px;
 }
 
 /* ============================================================
