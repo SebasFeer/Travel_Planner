@@ -35,32 +35,45 @@ async function fetchOpenversePhoto(query) {
 }
 
 /**
- * Busca una foto real para un destino (ciudad/país). Devuelve la URL
- * de la imagen, o null si no se encuentra nada o falla la conexión
- * (en cuyo caso la tarjeta se queda con el icono de color de siempre).
- * Los resultados se cachean en memoria durante la sesión para no
- * repetir peticiones al re-renderizar la lista de viajes.
+ * Busca una foto real para un destino (ciudad/país), o el logo de una
+ * aerolínea cuando context es "airline". En ese caso se añade
+ * automáticamente el término "aerolínea"/"airline" a la búsqueda,
+ * para no confundir el nombre de la compañía con una palabra
+ * homónima (p. ej. "Iberia" la región vs. Iberia la aerolínea) sin
+ * que el usuario tenga que escribirlo él mismo.
+ * Devuelve la URL de la imagen, o null si no se encuentra nada o
+ * falla la conexión (en cuyo caso la tarjeta se queda con el icono
+ * de color de siempre). Los resultados se cachean en memoria durante
+ * la sesión para no repetir peticiones al re-renderizar la lista.
  */
-async function findDestinationPhoto(destination) {
-  if (!destination) return null;
-  if (memoryCache.has(destination)) return memoryCache.get(destination);
+async function findDestinationPhoto(query, context) {
+  if (!query) return null;
+  const cacheKey = context ? `${context}:${query}` : query;
+  if (memoryCache.has(cacheKey)) return memoryCache.get(cacheKey);
+
+  const searchTerms =
+    context === "airline" ? [`${query} aerolínea`, `${query} airline`, query] : [query];
 
   let url = null;
-  try {
-    url = await fetchWikipediaPhoto(destination);
-  } catch (err) {
-    /* sin conexión u otro fallo: probamos el siguiente origen */
+  for (const term of searchTerms) {
+    try {
+      url = await fetchWikipediaPhoto(term);
+    } catch (err) {
+      /* sin conexión u otro fallo: probamos el siguiente término/origen */
+    }
+    if (url) break;
   }
 
   if (!url) {
+    const openverseQuery = context === "airline" ? `${query} airline logo` : query;
     try {
-      url = await fetchOpenversePhoto(destination);
+      url = await fetchOpenversePhoto(openverseQuery);
     } catch (err) {
       /* sin conexión: nos quedamos sin foto, no pasa nada */
     }
   }
 
-  memoryCache.set(destination, url);
+  memoryCache.set(cacheKey, url);
   return url;
 }
 

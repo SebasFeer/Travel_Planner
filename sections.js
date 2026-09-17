@@ -65,12 +65,12 @@ function stub(iconHtml, isoDate, photoUrl) {
  * consulta, y la guarda en el registro para no repetir la búsqueda.
  * Si no hay conexión o no se encuentra nada, no cambia nada.
  */
-function fetchStubPhotos(storeName, items, queryField) {
+function fetchStubPhotos(storeName, items, queryField, context) {
   const getQuery = typeof queryField === "function" ? queryField : (item) => item[queryField];
   items.forEach((item) => {
     const query = getQuery(item);
     if (item.photo_url || !query) return;
-    findDestinationPhoto(query).then(async (url) => {
+    findDestinationPhoto(query, context).then(async (url) => {
       if (!url) return;
       const stubEl = root.querySelector(`.ticket[data-id="${item.id}"] .ticket-stub`);
       if (stubEl) {
@@ -318,7 +318,7 @@ async function renderFlights(trip) {
 
   wireTicketActions("flights", flights, (f) => openFlightForm(trip, f));
   document.getElementById("fab-add").addEventListener("click", () => openFlightForm(trip));
-  fetchStubPhotos("flights", flights, "airline");
+  fetchStubPhotos("flights", flights, "airline", "airline");
 }
 
 function openFlightForm(trip, flight) {
