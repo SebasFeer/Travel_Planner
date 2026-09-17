@@ -9,7 +9,7 @@ import {
   openMapsMultiple,
 } from "./utils.js";
 import { geocodeAll, routeBetween } from "./geocode.js";
-import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition } from "./app.js";
+import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet } from "./app.js";
 import { icon } from "./icons.js";
 import { findDestinationPhoto } from "./photo.js";
 
@@ -23,7 +23,6 @@ const TABS = [
   { id: "hotels", icon: "🏨", label: "Hoteles" },
   { id: "itinerary", icon: "📍", label: "Plan" },
   { id: "transport", icon: "🚗", label: "Transporte" },
-  { id: "reservations", icon: "🎟️", label: "Reservas" },
   { id: "expenses", icon: "💶", label: "Gastos" },
   { id: "checklist", icon: "☑️", label: "Checklist" },
   { id: "calendar", icon: "🗓️", label: "Calendario" },
@@ -141,14 +140,13 @@ async function renderSection(trip) {
 // ============================================================
 
 async function renderDashboard(trip) {
-  const [flights, hotels, itin, expenses, checklist, transport, reservations] = await Promise.all([
+  const [flights, hotels, itin, expenses, checklist, transport] = await Promise.all([
     Data.getAllByTrip("flights", trip.id),
     Data.getAllByTrip("hotels", trip.id),
     Data.getAllByTrip("itinerary", trip.id),
     Data.getAllByTrip("expenses", trip.id),
     Data.getAllByTrip("checklist", trip.id),
     Data.getAllByTrip("transport", trip.id),
-    Data.getAllByTrip("reservations", trip.id),
   ]);
 
   const totalSpent = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
@@ -216,8 +214,11 @@ async function renderDashboard(trip) {
       <div class="stat-card" data-nav="hotels"><div class="stat-label">${icon("hotels","stat-icon")} Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
       <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} Actividades</div><div class="stat-value">${itin.length}</div></div>
       <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
-      <div class="stat-card" data-nav="reservations"><div class="stat-label">${icon("reservations","stat-icon")} Reservas</div><div class="stat-value">${reservations.length}</div></div>
       <div class="stat-card" data-nav="expenses"><div class="stat-label">${icon("expenses","stat-icon")} Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
+      <div class="stat-card stat-card-discover" data-action="discover">
+        <div class="stat-card-discover-icon">🧭</div>
+        <div class="stat-label">Descubre</div>
+      </div>
     </div>
     <div class="panel" data-nav="map">
       <h3>${icon("map","panel-icon")} Mapa del viaje</h3>
@@ -251,6 +252,10 @@ async function renderDashboard(trip) {
       withTransition(renderApp, "forward");
     });
   });
+  const discoverEl = root.querySelector('[data-action="discover"]');
+  if (discoverEl) {
+    discoverEl.addEventListener("click", () => openDiscoverSheet(trip));
+  }
 }
 
 // ============================================================

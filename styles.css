@@ -624,8 +624,32 @@ a { color: inherit; }
 .stat-card[data-nav="hotels"] { --accent: var(--cat-hotels); }
 .stat-card[data-nav="itinerary"] { --accent: var(--cat-itinerary); }
 .stat-card[data-nav="transport"] { --accent: var(--cat-transport); }
-.stat-card[data-nav="reservations"] { --accent: var(--cat-reservations); }
 .stat-card[data-nav="expenses"] { --accent: var(--cat-expenses); }
+
+.stat-card-discover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  aspect-ratio: 1 / 1;
+  padding: 14px;
+}
+.stat-card-discover::before {
+  width: 100%;
+  height: 5px;
+  top: 0; left: 0; right: 0; bottom: auto;
+}
+.stat-card-discover-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+.stat-card-discover .stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
 
 .stat-card .stat-label {
   font-size: 12px;

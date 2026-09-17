@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v6";
+const CACHE_NAME = "travelplanner-v7";
 
 const APP_SHELL = [
   "./",

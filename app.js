@@ -418,7 +418,6 @@ function openTripMenu(trip) {
           : ""
       }
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-edit">✏️ Editar viaje</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="mn-discover">🧭 Descubre lugares cercanos</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-share">🔗 ${trip.share_code ? "Compartir de nuevo" : "Compartir viaje (Pro)"}</button></div>
       ${
         trip.share_code
@@ -435,10 +434,6 @@ function openTripMenu(trip) {
   overlay.querySelector("#mn-edit").addEventListener("click", () => {
     overlay.remove();
     openTripForm(trip);
-  });
-  overlay.querySelector("#mn-discover").addEventListener("click", () => {
-    overlay.remove();
-    openDiscoverSheet(trip);
   });
   overlay.querySelector("#mn-share").addEventListener("click", async () => {
     overlay.remove();
@@ -852,7 +847,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, openDiscoverSheet };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
