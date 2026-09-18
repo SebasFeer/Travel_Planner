@@ -31,7 +31,7 @@ import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { geocode } from "./geocode.js";
-import { nearbyAttractions } from "./discover.js";
+import { nearbyAttractions, nearbyLodging } from "./discover.js";
 
 // ============================================================
 // ESTADO
@@ -302,6 +302,7 @@ async function renderApp() {
  * al instante como antes — nunca rompe nada.
  */
 function withTransition(renderFn, direction = "forward") {
+  if (direction === "forward") pushNavState();
   document.documentElement.dataset.navDir = direction;
   if (document.startViewTransition) {
     document.startViewTransition(() => renderFn());
@@ -314,16 +315,14 @@ function withTransition(renderFn, direction = "forward") {
  * Navegación "atrás": del detalle de una sección al resumen del
  * viaje, o del resumen a la lista de viajes. La usan tanto el botón
  * ← del topbar como el gesto de deslizar desde el borde izquierdo.
+ * En vez de cambiar el estado directamente, retrocede una entrada
+ * del historial del navegador: así el mismo código sirve también
+ * para el botón/gesto "atrás" físico de Android (ver más abajo).
  */
 function goBack() {
   if (document.querySelector(".modal-overlay") || document.getElementById("lock-overlay")) return;
   if (state.tripId === null) return;
-  if (state.section !== "dashboard") {
-    state.section = "dashboard";
-  } else {
-    state.tripId = null;
-  }
-  withTransition(renderApp, "back");
+  history.back();
 }
 
 /**
@@ -363,6 +362,97 @@ function installSwipeBack() {
     },
     { passive: true }
   );
+}
+
+/**
+ * Botón/gesto "atrás" de Android (o el de cualquier navegador).
+ *
+ * La app no usa URLs de verdad (todo es una sola pantalla), así que
+ * el sistema no tiene forma de saber en qué "página" estás. Para que
+ * la flechita de atrás de Android no cierre la app de golpe, cada
+ * vez que se avanza a un viaje, a una sección o se abre una ventana
+ * emergente, se añade una entrada al historial del navegador
+ * (`pushNavState`). Cuando el usuario pulsa atrás, el navegador
+ * dispara "popstate": ahí cerramos la ventana emergente que esté
+ * abierta o retrocedemos un nivel dentro del viaje, en vez de dejar
+ * que Android salga de la aplicación.
+ *
+ * Las ventanas emergentes también pueden cerrarse de formas que no
+ * pasan por el botón atrás (tocar "Guardar", "Cancelar", tocar fuera
+ * de ellas...). Para que el historial no se desincronice en esos
+ * casos, se vigila también cuándo desaparece un `.modal-overlay` del
+ * documento y, si no fue el propio botón atrás quien lo cerró, se
+ * consume igualmente una entrada del historial (`history.back()`).
+ * Una única bandera evita que ambos caminos se disparen a la vez.
+ */
+let suppressNextPush = false;
+let suppressHistorySync = false;
+
+function pushNavState() {
+  if (suppressNextPush) {
+    suppressNextPush = false;
+    return;
+  }
+  history.pushState({ tp: Date.now() }, "");
+}
+
+function isModalOverlayNode(node) {
+  return node.nodeType === 1 && node.classList && node.classList.contains("modal-overlay");
+}
+
+function installAndroidBackHandling() {
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (isModalOverlayNode(node)) pushNavState();
+      }
+      for (const node of m.removedNodes) {
+        if (!isModalOverlayNode(node)) continue;
+        if (suppressHistorySync) {
+          // Ya se cerró desde el propio botón atrás (ver más abajo);
+          // esta desaparición ya está contabilizada.
+          suppressHistorySync = false;
+        } else {
+          // Se cerró de otra forma (Guardar, Cancelar, tocar fuera...):
+          // consumimos igualmente la entrada que se apiló al abrirla.
+          suppressHistorySync = true;
+          history.back();
+        }
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true });
+
+  window.addEventListener("popstate", () => {
+    if (suppressHistorySync) {
+      suppressHistorySync = false;
+      return; // era solo la sincronización de un cierre que ya ocurrió
+    }
+
+    const overlays = document.querySelectorAll(".modal-overlay");
+    if (overlays.length) {
+      suppressHistorySync = true; // el remove() que esto provoque ya está pagado
+      overlays[overlays.length - 1].click();
+      return;
+    }
+    if (document.getElementById("lock-overlay")) return; // la pantalla de PIN no se cierra con atrás
+
+    if (state.tripId !== null) {
+      if (state.section !== "dashboard") {
+        state.section = "dashboard";
+      } else {
+        state.tripId = null;
+      }
+      // Esta pantalla ya "gastó" la entrada del historial que el
+      // propio popstate acaba de consumir, así que no hay que
+      // volver a apilar otra.
+      suppressNextPush = true;
+      withTransition(renderApp, "back");
+    }
+    // Si ya estábamos en el inicio sin nada abierto, no hacemos nada
+    // especial: la siguiente pulsación de atrás cierra la app, como
+    // es normal en Android.
+  });
 }
 
 // ============================================================
@@ -670,8 +760,10 @@ async function openDiscoverSheet(trip) {
         Lugares de interés cercanos, con datos abiertos de Wikipedia y
         OpenStreetMap.
       </p>
-      <div id="discover-body" style="min-height:140px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13.5px; text-align:center; padding:20px 0;">
-        Buscando cerca de ${escapeHtml(trip.destination)}…
+      <div id="discover-body" class="discover-loading">
+        <span class="discover-spinner">${icon("compass")}</span>
+        <p>Buscando destinos de interés cerca de ${escapeHtml(trip.destination)}…</p>
+        <p class="discover-loading-sub">Por favor espera un momento</p>
       </div>
       <div class="modal-actions"><button class="btn btn-ghost" id="discover-close">Cerrar</button></div>
     </div>`;
@@ -915,7 +1007,7 @@ async function renderHome() {
                     : ""
                 }
               </div>
-              <p class="trip-dest">${flagFor(trip.destination)} ${escapeHtml(trip.destination)}</p>
+              <p class="trip-dest"><span class="trip-pin">${icon("pin")}</span> ${escapeHtml(trip.destination)}</p>
               <p class="trip-name">${formatDatePretty(trip.start_date)} – ${formatDatePretty(trip.end_date)}</p>
               <div class="trip-meta-row">
                 <span>${icon("clock", "stat-icon")} ${tripLen || 0} día${tripLen === 1 ? "" : "s"}</span>
@@ -978,11 +1070,12 @@ async function renderHome() {
       <p class="hero-sub">¿A dónde te llevamos hoy?</p>
       <div class="hero-search">
         ${icon("search")}
-        <input type="search" id="trip-search" placeholder="Buscar destino, viaje o actividad…" autocomplete="off" />
+        <input type="search" id="trip-search" placeholder="Busca un destino: hoteles y lugares al momento…" autocomplete="off" />
       </div>
       <button class="hero-cta" id="fab-new-trip">＋ Nuevo viaje</button>
     </div>
     <div class="view has-tabbar">
+      <div id="destination-search"></div>
       <div class="section-title-row">
         <p class="section-title">Mis viajes</p>
         ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">Ver todos ${icon("chevron")}</button>` : ""}
@@ -998,6 +1091,7 @@ async function renderHome() {
   `;
 
   const searchEl = root.querySelector("#trip-search");
+  const destResultsEl = root.querySelector("#destination-search");
   if (searchEl) {
     searchEl.addEventListener("input", () => {
       const q = searchEl.value.trim().toLowerCase();
@@ -1005,6 +1099,18 @@ async function renderHome() {
         const text = card.textContent.toLowerCase();
         card.style.display = !q || text.includes(q) ? "" : "none";
       });
+      if (!q && destResultsEl) destResultsEl.innerHTML = "";
+    });
+    searchEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const q = searchEl.value.trim();
+        if (q) runDestinationSearch(q, destResultsEl);
+      }
+    });
+    searchEl.addEventListener("search", () => {
+      // El botón "×" nativo del input dispara este evento con value vacío.
+      if (!searchEl.value.trim() && destResultsEl) destResultsEl.innerHTML = "";
     });
   }
 
@@ -1060,44 +1166,120 @@ async function renderHome() {
 }
 
 /**
- * Bandera de país aproximada a partir del texto del destino (busca
- * el nombre de país conocido más específico dentro del texto).
- * Puramente decorativa, como en la maqueta ("🇫🇷 París").
- */
-const COUNTRY_FLAGS = {
-  "francia": "🇫🇷", "paris": "🇫🇷", "parís": "🇫🇷",
-  "italia": "🇮🇹", "roma": "🇮🇹", "venecia": "🇮🇹", "milan": "🇮🇹", "milán": "🇮🇹",
-  "japon": "🇯🇵", "japón": "🇯🇵", "tokio": "🇯🇵", "tokyo": "🇯🇵", "kyoto": "🇯🇵",
-  "españa": "🇪🇸", "espana": "🇪🇸", "madrid": "🇪🇸", "barcelona": "🇪🇸", "sevilla": "🇪🇸",
-  "portugal": "🇵🇹", "lisboa": "🇵🇹", "oporto": "🇵🇹",
-  "reino unido": "🇬🇧", "londres": "🇬🇧", "inglaterra": "🇬🇧",
-  "estados unidos": "🇺🇸", "nueva york": "🇺🇸", "new york": "🇺🇸", "miami": "🇺🇸",
-  "mexico": "🇲🇽", "méxico": "🇲🇽", "cancun": "🇲🇽", "cancún": "🇲🇽",
-  "grecia": "🇬🇷", "atenas": "🇬🇷", "santorini": "🇬🇷",
-  "alemania": "🇩🇪", "berlin": "🇩🇪", "berlín": "🇩🇪", "munich": "🇩🇪",
-  "brasil": "🇧🇷", "rio de janeiro": "🇧🇷",
-  "argentina": "🇦🇷", "buenos aires": "🇦🇷",
-  "venezuela": "🇻🇪", "caracas": "🇻🇪",
-  "colombia": "🇨🇴", "bogota": "🇨🇴", "bogotá": "🇨🇴", "cartagena": "🇨🇴",
-  "peru": "🇵🇪", "perú": "🇵🇪", "lima": "🇵🇪", "cusco": "🇵🇪",
-  "tailandia": "🇹🇭", "bangkok": "🇹🇭",
-  "turquia": "🇹🇷", "turquía": "🇹🇷", "estambul": "🇹🇷",
-  "egipto": "🇪🇬", "cairo": "🇪🇬", "el cairo": "🇪🇬",
-  "marruecos": "🇲🇦", "marrakech": "🇲🇦",
-};
-function flagFor(destination) {
-  const d = (destination || "").toLowerCase();
-  for (const key of Object.keys(COUNTRY_FLAGS)) {
-    if (d.includes(key)) return COUNTRY_FLAGS[key];
-  }
-  return "📍";
-}
-
-/**
  * Reúne los próximos vuelos y actividades de itinerario de todos
  * los viajes (fecha de hoy en adelante), ordenados por fecha, para
  * la sección "Próximos eventos" del inicio.
  */
+/**
+ * Búsqueda de destino desde el buscador del inicio: geocodifica el
+ * texto y sugiere alojamientos y lugares de interés cercanos (datos
+ * abiertos de OpenStreetMap/Wikipedia, igual que "Descubre"), con un
+ * botón para añadir directamente ese destino como viaje nuevo. Más
+ * sugerencias y ordenar la ruta de forma óptima quedan como mejora
+ * de pago (Pro), igual que el resto de funciones Pro de la app.
+ */
+async function runDestinationSearch(query, container) {
+  if (!container) return;
+  container.innerHTML = h`
+    <div class="dest-search-panel discover-loading" style="margin:4px 0 18px;">
+      <span class="discover-spinner">${icon("compass")}</span>
+      <p>Buscando "${escapeHtml(query)}"…</p>
+      <p class="discover-loading-sub">Localizando hoteles y lugares de interés</p>
+    </div>`;
+
+  const coords = await geocode(query);
+  if (container.innerHTML.indexOf(escapeHtml(query)) === -1) return; // el usuario ya cambió de búsqueda
+
+  if (!coords) {
+    container.innerHTML = h`
+      <div class="dest-search-panel">
+        <p style="font-size:13.5px; color:var(--muted); text-align:center; padding:16px 0;">
+          No se pudo localizar "${escapeHtml(query)}". Prueba con un nombre más concreto (p. ej. "Roma, Italia").
+        </p>
+      </div>`;
+    return;
+  }
+
+  const pro = await isPro();
+  const hotelLimit = pro ? 6 : 3;
+  const poiLimit = pro ? 10 : 5;
+
+  const [hotels, attractions] = await Promise.all([
+    nearbyLodging(coords.lat, coords.lng, { limit: hotelLimit }),
+    nearbyAttractions(coords.lat, coords.lng, { limit: poiLimit }),
+  ]);
+
+  const hotelsHtml = hotels.length
+    ? hotels
+        .map(
+          (hotel) => `
+        <div class="dest-result-row">
+          <span class="dest-result-icon">${icon("hotels")}</span>
+          <div class="dest-result-info">
+            <p class="dest-result-title">${escapeHtml(hotel.name)}</p>
+            <p class="dest-result-sub">${escapeHtml(hotel.typeLabel)}</p>
+          </div>
+        </div>`
+        )
+        .join("")
+    : `<p class="dest-result-empty">No se encontraron alojamientos cercanos con datos abiertos.</p>`;
+
+  const poiHtml = attractions.length
+    ? attractions
+        .map(
+          (a) => `
+        <div class="dest-result-row">
+          ${
+            a.photoUrl
+              ? `<img class="dest-result-thumb" src="${a.photoUrl}" alt="" loading="lazy" />`
+              : `<span class="dest-result-icon">${icon("compass")}</span>`
+          }
+          <div class="dest-result-info">
+            <p class="dest-result-title">${escapeHtml(a.name)}</p>
+            <p class="dest-result-sub">${escapeHtml(a.category)}</p>
+          </div>
+        </div>`
+        )
+        .join("")
+    : `<p class="dest-result-empty">No se encontraron lugares de interés con datos abiertos.</p>`;
+
+  container.innerHTML = h`
+    <div class="dest-search-panel">
+      <div class="dest-search-header">
+        <p class="dest-search-title">${icon("pin", "dest-search-pin")} Resultados para "${escapeHtml(query)}"</p>
+        <button class="icon-btn" id="dest-search-close" title="Cerrar">✕</button>
+      </div>
+      <p class="dest-search-label">${icon("hotels", "stat-icon")} Hoteles sugeridos</p>
+      <div class="dest-result-list">${hotelsHtml}</div>
+      <p class="dest-search-label" style="margin-top:12px;">${icon("compass", "stat-icon")} Lugares de interés</p>
+      <div class="dest-result-list">${poiHtml}</div>
+      <button class="hero-cta" id="dest-search-add" style="margin-top:14px;">＋ Agregar "${escapeHtml(query)}" a mi lista</button>
+      ${
+        pro
+          ? ""
+          : `<button class="dest-search-pro" id="dest-search-pro">🔒 Ver más sugerencias y ordenar la ruta óptima — función Pro</button>`
+      }
+    </div>`;
+
+  const closeBtn = container.querySelector("#dest-search-close");
+  if (closeBtn) closeBtn.addEventListener("click", () => { container.innerHTML = ""; });
+
+  const addBtn = container.querySelector("#dest-search-add");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      openTripForm(null, { destination: query });
+      container.innerHTML = "";
+    });
+  }
+
+  const proBtn = container.querySelector("#dest-search-pro");
+  if (proBtn) {
+    proBtn.addEventListener("click", () => {
+      toast("Más sugerencias y ordenar la ruta óptima es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+    });
+  }
+}
+
 async function collectUpcomingEvents(trips) {
   const today = todayString();
   const events = [];
@@ -1133,10 +1315,10 @@ async function collectUpcomingEvents(trips) {
   return events.slice(0, 3);
 }
 
-function openTripForm(trip) {
+function openTripForm(trip, prefill) {
   showFormModal({
     title: trip ? "Editar viaje" : "Nuevo viaje",
-    initial: trip,
+    initial: trip || prefill || null,
     fields: [
       { name: "name", label: "Nombre del viaje", required: true, placeholder: "Ej. Escapada de verano" },
       { name: "destination", label: "Destino", required: true, placeholder: "Ej. Lisboa, Portugal" },
@@ -1230,7 +1412,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, openDiscoverSheet };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, openDiscoverSheet };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local

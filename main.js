@@ -1,4 +1,4 @@
-import { renderApp, installSwipeBack, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
+import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange, enableAutoSync, syncOnLaunch } from "./cloud.js";
 
@@ -17,11 +17,13 @@ installPullToRefresh();
 if (DEV_DISABLE_PIN) {
   renderApp();
   installSwipeBack();
+  installAndroidBackHandling();
 } else {
   guardOnLaunch(() => {
     renderApp();
     installBackgroundLock();
     installSwipeBack();
+    installAndroidBackHandling();
   });
 }
 

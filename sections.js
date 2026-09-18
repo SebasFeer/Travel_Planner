@@ -30,11 +30,30 @@ const TABS = [
 ];
 
 const TRANSPORT_ICONS = {
+  Avión: "✈️",
   Tren: "🚆",
   Bus: "🚌",
   Coche: "🚗",
   Barco: "🚢",
   Otro: "➡️",
+};
+// Icono SVG + color para la ficha de cada trayecto (según el tipo
+// elegido en la lista, no según el texto libre de compañía/nombre).
+const TRANSPORT_STUB_ICONS = {
+  Avión: "plane",
+  Tren: "transport",
+  Bus: "transport",
+  Coche: "transport",
+  Barco: "transport",
+  Otro: "transport",
+};
+const TRANSPORT_COLORS = {
+  Avión: "var(--cat-flights)",
+  Tren: "var(--cat-transport)",
+  Bus: "var(--cat-transport)",
+  Coche: "var(--cat-transport)",
+  Barco: "var(--cat-hotels)",
+  Otro: "var(--muted-dark)",
 };
 
 const RESERVATION_ICONS = {
@@ -374,7 +393,27 @@ async function renderDashboard(trip) {
       <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
       <div class="stat-card" data-nav="hotels"><div class="stat-label">${icon("hotels","stat-icon")} Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
       <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} Actividades</div><div class="stat-value">${itin.length}</div></div>
-      <div class="stat-card" data-nav="expenses"><div class="stat-label">${icon("expenses","stat-icon")} Gastado</div><div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div></div>
+      <div class="stat-card stat-card-expenses" data-nav="expenses">
+        <div class="stat-label">${icon("expenses","stat-icon")} Gastado</div>
+        <div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div>
+        ${
+          expenses.length
+            ? `<div class="mini-expense-list">
+                 ${[...expenses]
+                   .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                   .slice(0, 3)
+                   .map(
+                     (e) => `
+                   <div class="mini-expense-row">
+                     <span>${escapeHtml(e.description || e.category || "Gasto")}</span>
+                     <b>${money(e.amount)}</b>
+                   </div>`
+                   )
+                   .join("")}
+               </div>`
+            : `<p class="mini-expense-empty">Sin gastos aún</p>`
+        }
+      </div>
       <div class="stat-card stat-card-discover${trip.photo_url ? " stat-card-discover-photo" : ""}" data-action="discover" ${trip.photo_url ? `style="background-image:url('${trip.photo_url}')"` : ""}>
         <div class="stat-card-discover-icon">
           <svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">
@@ -720,13 +759,19 @@ async function renderTransport(trip) {
 
   const list = items.length
     ? items
-        .map(
-          (t) => h`
-        <div class="ticket cat-transport" data-id="${t.id}">
-          ${stub(icon("transport"), t.date, t.photo_url)}
+        .map((t) => {
+          const type = t.type || "Otro";
+          const isFlight = type === "Avión";
+          const accent = TRANSPORT_COLORS[type] || "var(--cat-transport)";
+          const stubHtml = isFlight
+            ? `<div class="ticket-stub"><div class="stub-icon brand-logo-badge">${icon("plane")}</div></div>`
+            : stub(icon(TRANSPORT_STUB_ICONS[type] || "transport"), t.date);
+          return h`
+        <div class="ticket cat-transport" data-id="${t.id}" style="--accent-a:${accent}; --accent-b:${accent}; --accent:${accent};">
+          ${stubHtml}
           <div class="ticket-body">
             <div class="ticket-title-row">
-              <p class="ticket-title">${escapeHtml(t.type || "Transporte")}${t.company ? ` · ${escapeHtml(t.company)}` : ""}</p>
+              <p class="ticket-title">${escapeHtml(type)}${t.company ? ` · ${escapeHtml(t.company)}` : ""}</p>
               ${t.price ? `<span class="ticket-amount">${money(t.price)}</span>` : ""}
             </div>
             <p class="ticket-meta"><span class="mono">${escapeHtml(t.origin || "?")} → ${escapeHtml(t.destination || "?")}</span>${t.time ? ` · ${t.time}` : ""}</p>
@@ -738,8 +783,8 @@ async function renderTransport(trip) {
               <button data-act="delete" class="danger">🗑️ Eliminar</button>
             </div>
           </div>
-        </div>`
-        )
+        </div>`;
+        })
         .join("")
     : emptyState("🚗", "No hay trayectos añadidos todavía.");
 
@@ -753,7 +798,6 @@ async function renderTransport(trip) {
     (t) => openMapsMultiple([t.origin, t.destination])
   );
   document.getElementById("fab-add").addEventListener("click", () => openTransportForm(trip));
-  fetchStubPhotos("transport", items, (t) => t.company || t.type);
 }
 
 function openTransportForm(trip, t) {
@@ -761,7 +805,7 @@ function openTransportForm(trip, t) {
     title: t ? "Editar transporte" : "Nuevo transporte",
     initial: t,
     fields: [
-      { name: "type", label: "Tipo", type: "select", options: ["Tren", "Bus", "Coche", "Barco", "Otro"], half: true },
+      { name: "type", label: "Tipo", type: "select", options: ["Avión", "Tren", "Bus", "Coche", "Barco", "Otro"], half: true },
       { name: "company", label: "Compañía", half: true },
       { name: "origin", label: "Origen", half: true },
       { name: "destination", label: "Destino", half: true },

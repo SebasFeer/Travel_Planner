@@ -32,6 +32,7 @@ const PATHS = {
   chevron: `<path d="M9 6l6 6-6 6"/>`,
   dots_v: `<circle cx="12" cy="5.5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="18.5" r="1.4"/>`,
   ruler: `<path d="M4 9h16v6H4z"/><path d="M8 9v2.5M12 9v3.5M16 9v2.5"/>`,
+  pin: `<path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.4"/>`,
 };
 
 /**
