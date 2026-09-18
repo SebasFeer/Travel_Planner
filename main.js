@@ -47,9 +47,16 @@ syncOnLaunch().then((updated) => {
   if (updated) renderApp();
 });
 
-// Aviso local de vuelos/actividades de hoy (solo si el usuario lo activó
-// en Ajustes → Notificaciones). Nunca bloquea ni rompe el arranque.
+// Aviso local de vuelos, reservas de hotel y actividades (solo si el
+// usuario lo activó en Ajustes → Notificaciones). Se comprueba al
+// abrir la app, cada 15 minutos mientras siga abierta, y al volver a
+// esta pestaña — así se detecta a tiempo cuando algo entra en la
+// ventana de "24h antes" / "8h antes". Nunca bloquea ni rompe nada.
 checkAndNotifyToday();
+setInterval(checkAndNotifyToday, 15 * 60 * 1000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkAndNotifyToday();
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

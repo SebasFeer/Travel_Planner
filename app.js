@@ -1815,8 +1815,19 @@ async function openThemeSheet() {
 // ------------------------------------------------------------
 
 const NOTIF_KEY = "notifications_enabled";
-const NOTIF_LAST_KEY = "notifications_last_date";
 const FLIGHT_ALERTS_KEY = "flight_alerts_enabled";
+const NOTIFIED_SET_KEY = "notified_reminders";
+
+const FLIGHT_LEAD_HOURS = 24;
+const HOTEL_RESERVATION_LEAD_HOURS = 24;
+const CHECK_LEAD_HOURS = 8;
+// Los hoteles no guardan hora de check-in/check-out, solo fecha —
+// se asumen horas típicas para poder calcular el aviso de "X horas
+// antes". Si más adelante añades hora al formulario de hoteles, se
+// puede afinar esto para que use la hora real de cada reserva.
+const DEFAULT_CHECKIN_HOUR = 15;
+const DEFAULT_CHECKOUT_HOUR = 11;
+const NOTIFIED_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 
 async function openNotificationsSheet() {
   const enabledRaw = await Data.settingGet(NOTIF_KEY);
@@ -1834,8 +1845,13 @@ async function openNotificationsSheet() {
       <div class="modal-handle"></div>
       <h2 class="modal-title">Notificaciones</h2>
       <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
-        Si las activas, la app te avisará cuando tengas un vuelo o una actividad
-        programada para hoy. Se generan en este dispositivo, sin servidor externo.
+        Si las activas, la app te avisará de tus vuelos y reservas de
+        hotel <b>24 horas antes</b>, y del check-in/check-out del
+        hotel <b>8 horas antes</b>. También avisa si tienes alguna
+        actividad programada para hoy. Se generan en este dispositivo,
+        sin servidor externo — eso sí, solo mientras tengas la app
+        abierta en una pestaña (los navegadores no dejan avisar en
+        segundo plano sin un servidor propio detrás).
       </p>
       ${permission === "unsupported" ? `<p style="color:var(--muted); font-size:13px;">Tu navegador no admite notificaciones.</p>` : ""}
       ${permission === "denied" ? `<p style="color:var(--rose); font-size:13px;">Están bloqueadas en el navegador. Actívalas desde los ajustes del sitio.</p>` : ""}
@@ -1888,58 +1904,126 @@ async function openNotificationsSheet() {
   });
 }
 
-/** Revisa, como máximo una vez al día, si hay vuelos o actividades de
- * hoy en cualquier viaje y lanza una notificación local si es así.
- * Se llama al arrancar la app; nunca rompe nada si falla (sin
- * permiso, navegador sin soporte, etc.). */
+function combineDateTime(dateStr, timeStr, fallbackHour) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  let hh = fallbackHour;
+  let mm = 0;
+  if (timeStr) {
+    const [h2, m2] = timeStr.split(":").map(Number);
+    if (!isNaN(h2)) {
+      hh = h2;
+      mm = isNaN(m2) ? 0 : m2;
+    }
+  }
+  return new Date(y, m - 1, d, hh, mm, 0);
+}
+
+function isWithinLead(target, leadHours) {
+  if (!target) return false;
+  const diffMs = target.getTime() - Date.now();
+  return diffMs > 0 && diffMs <= leadHours * 60 * 60 * 1000;
+}
+
+async function getNotifiedSet() {
+  const raw = await Data.settingGet(NOTIFIED_SET_KEY);
+  const set = raw && typeof raw === "object" ? raw : {};
+  // Limpieza: no dejar que esto crezca para siempre.
+  const cutoff = Date.now() - NOTIFIED_TTL_MS;
+  for (const key of Object.keys(set)) {
+    if (set[key] < cutoff) delete set[key];
+  }
+  return set;
+}
+
+/** Revisa si hay vuelos, reservas de hotel o actividades a punto de
+ * empezar y lanza una notificación local por cada aviso que toque
+ * (una vez cada uno, nunca se repite). Se llama al arrancar la app y
+ * periódicamente mientras esté abierta; nunca rompe nada si falla
+ * (sin permiso, navegador sin soporte, etc.). */
 async function checkAndNotifyToday() {
   try {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     const enabled = await Data.settingGet(NOTIF_KEY);
     if (!enabled) return;
 
-    const today = todayString();
-    const lastNotified = await Data.settingGet(NOTIF_LAST_KEY);
-    if (lastNotified === today) return;
-
+    const notified = await getNotifiedSet();
     const flightAlertsOn = await Data.settingGet(FLIGHT_ALERTS_KEY);
     const useFlightStatus = flightAlertsOn && (await isPro()) && isFlightStatusConfigured();
+    let idToken = null;
+    let changed = false;
 
+    async function fire(key, body) {
+      if (notified[key]) return;
+      new Notification("TravelPlanner", { body });
+      notified[key] = Date.now();
+      changed = true;
+    }
+
+    const today = todayString();
     const trips = await Data.getAll("trips");
-    const parts = [];
+
     for (const trip of trips) {
-      const [flights, itin] = await Promise.all([
+      const [flights, hotels, itin] = await Promise.all([
         Data.getAllByTrip("flights", trip.id),
+        Data.getAllByTrip("hotels", trip.id),
         Data.getAllByTrip("itinerary", trip.id),
       ]);
-      const todayFlights = flights.filter((f) => f.date === today);
-      const todayEvents = itin.filter((i) => i.date === today);
 
-      if (todayFlights.length) {
-        parts.push(`✈️ ${todayFlights.length} vuelo(s) en ${trip.destination}`);
-        if (useFlightStatus) {
-          const idToken = await getIdToken();
+      // Vuelos: aviso 24 horas antes de la salida.
+      for (const f of flights) {
+        const departure = combineDateTime(f.date, f.time, 9);
+        if (!isWithinLead(departure, FLIGHT_LEAD_HOURS)) continue;
+
+        let extra = "";
+        if (useFlightStatus && f.flight_number) {
+          if (!idToken) idToken = await getIdToken();
           if (idToken) {
-            for (const f of todayFlights) {
-              if (!f.flight_number) continue;
-              const info = await getFlightStatus(f.flight_number, f.date, idToken);
-              if (!info) continue;
-              if (info.delayMin > 0) {
-                parts.push(`⏱️ ${f.flight_number} con ${info.delayMin} min de retraso`);
-              }
-              if (info.gate) {
-                parts.push(`🚪 ${f.flight_number} · puerta ${info.gate}`);
-              }
+            const info = await getFlightStatus(f.flight_number, f.date, idToken);
+            if (info) {
+              if (info.delayMin > 0) extra += ` · retraso de ${info.delayMin} min`;
+              if (info.gate) extra += ` · puerta ${info.gate}`;
             }
           }
         }
+        await fire(
+          `flight:${f.id}:24h`,
+          `✈️ Tu vuelo ${f.flight_number || ""} (${trip.destination}) sale en 24 horas${extra}`
+        );
       }
-      if (todayEvents.length) parts.push(`📍 ${todayEvents.length} actividad(es) en ${trip.destination}`);
-    }
-    if (!parts.length) return;
 
-    new Notification("TravelPlanner", { body: parts.join(" · ") });
-    await Data.settingSet(NOTIF_LAST_KEY, today);
+      // Hoteles: la reserva (check-in) avisa 24h antes; el check-in y
+      // el check-out avisan también 8h antes, más cerca del momento.
+      for (const hRec of hotels) {
+        const checkIn = combineDateTime(hRec.check_in, null, DEFAULT_CHECKIN_HOUR);
+        const checkOut = combineDateTime(hRec.check_out, null, DEFAULT_CHECKOUT_HOUR);
+
+        if (isWithinLead(checkIn, HOTEL_RESERVATION_LEAD_HOURS)) {
+          await fire(
+            `hotel:${hRec.id}:reserva24h`,
+            `🏨 Tu reserva en ${hRec.name} (${trip.destination}) empieza en 24 horas`
+          );
+        }
+        if (isWithinLead(checkIn, CHECK_LEAD_HOURS)) {
+          await fire(`hotel:${hRec.id}:checkin8h`, `🛎️ Check-in en ${hRec.name} en 8 horas`);
+        }
+        if (isWithinLead(checkOut, CHECK_LEAD_HOURS)) {
+          await fire(`hotel:${hRec.id}:checkout8h`, `🧳 Check-out de ${hRec.name} en 8 horas`);
+        }
+      }
+
+      // Actividades de hoy: un aviso simple, una vez por día y viaje.
+      const todayEvents = itin.filter((i) => i.date === today);
+      if (todayEvents.length) {
+        await fire(
+          `itin:${trip.id}:${today}`,
+          `📍 ${todayEvents.length} actividad(es) hoy en ${trip.destination}`
+        );
+      }
+    }
+
+    if (changed) await Data.settingSet(NOTIFIED_SET_KEY, notified);
   } catch (err) {
     // sin permiso, sin soporte, o cualquier fallo: no pasa nada
   }
