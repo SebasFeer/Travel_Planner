@@ -1,49 +1,66 @@
-@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
   /* Superficies */
-  --bg: #f6f7fc;
+  --bg: #eef2fd;
   --surface: #ffffff;
-  --surface-tint: #f1f1fb;
-  --border: #e7e6f5;
-  --text: #201f3d;
-  --muted: #656a92;
-  --muted-dark: #454a70;
-  --overlay-bg: #171436; /* fondo oscuro dedicado para overlays (PIN, modales) */
+  --surface-tint: #f2f4fd;
+  --border: #e4e8f7;
+  --text: #171a33;
+  --muted: #7b81a3;
+  --muted-dark: #565c80;
+  --overlay-bg: #151733; /* fondo oscuro dedicado para overlays (PIN, modales) */
 
-  /* Marca — a juego con el logo (naranja sobre azul marino) */
-  --brand: #e8722a;
-  --brand-deep: #c85f1f;
-  --brand-soft: rgba(232, 114, 42, 0.13);
-  --brand-navy: #16213e;
+  /* Marca — azul→índigo con degradado (igual que el diseño de referencia) */
+  --brand: #6c5ce7;
+  --brand-deep: #4c3fd6;
+  --brand-light: #8b7bff;
+  --brand-soft: rgba(108, 92, 231, 0.12);
+  --brand-navy: #171a33;
+  --grad-brand: linear-gradient(100deg, #3f8ef7 0%, #7367f5 100%);
 
-  /* Colores por categoría (estilo Wanderlog: cada sección, su color) */
-  --cat-flights: #228be6;
-  --cat-flights-a: #4dabf7;
-  --cat-hotels: #12b886;
-  --cat-hotels-a: #38d9a9;
-  --cat-itinerary: #e64980;
-  --cat-itinerary-a: #f783ac;
-  --cat-transport: #f76707;
-  --cat-transport-a: #ffa94d;
-  --cat-reservations: #ae3ec9;
-  --cat-reservations-a: #da77f2;
-  --cat-expenses: #fa5252;
-  --cat-expenses-a: #ff8787;
-  --cat-checklist: #74b816;
-  --cat-checklist-a: #a9e34b;
+  /* Colores por categoría (cada sección, su color) */
+  --cat-flights: #3b82f6;
+  --cat-flights-a: #7cb0fb;
+  --cat-hotels: #14b8a6;
+  --cat-hotels-a: #5ed9cb;
+  --cat-itinerary: #6c5ce7;
+  --cat-itinerary-a: #a79bff;
+  --cat-transport: #f97316;
+  --cat-transport-a: #fdba74;
+  --cat-reservations: #ef4444;
+  --cat-reservations-a: #fca5a5;
+  --cat-expenses: #f59e0b;
+  --cat-expenses-a: #fcd34d;
+  --cat-checklist: #22c55e;
+  --cat-checklist-a: #86efac;
   --cat-calendar: #5c7cfa;
-  --cat-map: #22b8cf;
+  --cat-map: #06b6d4;
 
-  --teal: #12b886;
-  --rose: #fa5252;
+  /* Tipos de actividad del itinerario, como en la maqueta
+     (Museo = cian, Restaurante = coral, Monumento = índigo, ...) */
+  --tag-sight: #2fb8c4;
+  --tag-sight-soft: #c7f0f2;
+  --tag-food: #f3703a;
+  --tag-food-soft: #fdd9cc;
+  --tag-monument: #6c5ce7;
+  --tag-monument-soft: #e4dcff;
+  --tag-lodging: #d9822b;
+  --tag-lodging-soft: #f7ddb8;
+  --tag-other: #5c7cfa;
+  --tag-other-soft: #dbe3ff;
 
-  --font-display: "Baloo 2", "Inter", sans-serif;
+  --teal: #14b8a6;
+  --rose: #ef4444;
+
+  --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-body: "Inter", -apple-system, system-ui, sans-serif;
 
-  --radius-card: 24px;
-  --radius-btn: 14px;
+  --radius-card: 22px;
+  --radius-btn: 16px;
+  --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
+  --shadow-brand: 0 10px 24px rgba(92, 79, 220, 0.32);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 }
@@ -65,25 +82,27 @@
    sistema). Sin el atributo data-theme, la app sigue el tema del
    sistema como hasta ahora. */
 :root[data-theme="dark"] {
-  --bg: #14132b;
-  --surface: #1e1c3d;
-  --surface-tint: #272451;
-  --border: #322f5c;
-  --text: #f3f1ff;
-  --muted: #a5a3c9;
-  --muted-dark: #8785b3;
-  --overlay-bg: #0d0c22;
+  --bg: #10122a;
+  --surface: #1b1e3d;
+  --surface-tint: #252950;
+  --border: #2f3460;
+  --text: #f1f2ff;
+  --muted: #a2a7ce;
+  --muted-dark: #8b90bb;
+  --overlay-bg: #0b0d1f;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme="light"] {
-  --bg: #f6f7fc;
+  --bg: #eef2fd;
   --surface: #ffffff;
-  --surface-tint: #f1f1fb;
-  --border: #e7e6f5;
-  --text: #201f3d;
-  --muted: #656a92;
-  --muted-dark: #454a70;
-  --overlay-bg: #171436;
+  --surface-tint: #f2f4fd;
+  --border: #e4e8f7;
+  --text: #171a33;
+  --muted: #7b81a3;
+  --muted-dark: #565c80;
+  --overlay-bg: #151733;
+  --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
 }
 
 * {
@@ -193,7 +212,7 @@ a { color: inherit; }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: linear-gradient(180deg, var(--bg) 75%, rgba(246, 247, 252, 0));
+  background: linear-gradient(180deg, var(--bg) 72%, rgba(238, 242, 253, 0));
 }
 
 .topbar .icon-btn {
@@ -1397,4 +1416,1105 @@ a { color: inherit; }
 
 @keyframes ptr-spin {
   to { transform: rotate(360deg); }
+}
+
+/* --- Lista vertical de viajes ("Ver todos") --- */
+.trip-list { display: grid; gap: 12px; }
+.trip-list .trip-card { margin: 0; }
+.trip-list .trip-card-art { height: 132px; }
+.trip-list .trip-meta { flex-direction: row; gap: 14px; }
+
+/* --- Banner "Descubre" del resumen --- */
+.discover-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--text);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.discover-banner.has-photo { color: #fff; border-color: transparent; }
+.discover-banner.has-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(100deg, rgba(10, 18, 40, 0.85), rgba(10, 18, 40, 0.4));
+}
+.discover-banner-inner b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.discover-banner-inner small {
+  display: block;
+  font-size: 12px;
+  opacity: 0.85;
+  margin-top: 3px;
+}
+.discover-banner-go { margin-left: auto; opacity: 0.8; }
+
+/* --- Anillo de gastos por categoría --- */
+.donut { flex-shrink: 0; }
+
+/* ============================================================
+   ============================================================
+   CAPA DE REDISEÑO  ·  "Travel Planner" (maqueta de referencia)
+   Hero con foto, tarjetas blancas muy redondeadas, acentos
+   índigo/violeta, chips de día y barra inferior con botón
+   central. Va al final del archivo para poder ajustar los
+   componentes anteriores sin tocarlos.
+   ============================================================
+   ============================================================ */
+
+/* ---------- Tipografía general ---------- */
+
+.topbar-title,
+.section-title,
+.modal-title,
+.trip-card .trip-dest,
+.ticket-title,
+.panel h3 {
+  letter-spacing: -0.015em;
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24px 0 12px;
+}
+
+/* ---------- HERO (cabecera con foto) ---------- */
+
+.hero {
+  position: relative;
+  margin: 0 0 6px;
+  padding: calc(18px + var(--safe-top)) 20px 22px;
+  overflow: hidden;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+  background: linear-gradient(135deg, #2b2f6b, #4b4fae);
+  color: #fff;
+  isolation: isolate;
+}
+
+.hero-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+  animation: photo-fade-in 0.5s ease;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(12, 14, 40, 0.55) 0%, rgba(12, 14, 40, 0.25) 45%, rgba(12, 14, 40, 0.78) 100%);
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero-brand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  object-fit: cover;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+.hero-brand-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.hero-brand-tag {
+  font-size: 11.5px;
+  margin: 1px 0 0;
+  opacity: 0.8;
+}
+
+.hero .icon-btn {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+.hero .icon-btn:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+.hero .icon-btn.logged-in { border-color: var(--cat-hotels-a); }
+.hero .icon-btn.logged-in::after { border-color: rgba(255, 255, 255, 0.5); }
+
+.hero-greeting {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 800;
+  margin: 26px 0 4px;
+  line-height: 1.2;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hero-sub {
+  font-size: 13.5px;
+  margin: 0 0 16px;
+  opacity: 0.9;
+}
+
+.hero-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 11px 16px;
+  backdrop-filter: blur(10px);
+  margin-bottom: 14px;
+}
+
+.hero-search svg { opacity: 0.85; flex-shrink: 0; }
+
+.hero-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.hero-search input::placeholder { color: rgba(255, 255, 255, 0.75); }
+
+.hero-cta {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  background: var(--grad-brand);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--shadow-brand);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.hero-cta:active { transform: scale(0.98); }
+@media (hover: hover) { .hero-cta:hover { filter: brightness(1.06); } }
+
+/* Hero de un viaje concreto (detalle) */
+
+.hero-trip { padding-bottom: 26px; }
+
+.hero-trip-status {
+  display: inline-block;
+  background: var(--cat-hotels);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-top: 26px;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.35);
+}
+
+.hero-trip-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  margin: 8px 0 6px;
+  line-height: 1.15;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+
+.hero-trip-meta {
+  font-size: 13px;
+  margin: 0;
+  opacity: 0.92;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Fila de estadísticas flotante bajo el hero */
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  margin: -42px 0 10px;
+  position: relative;
+  z-index: 5;
+}
+
+.hero-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 11px 6px 10px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s ease;
+}
+.hero-stat:active { transform: scale(0.96); }
+
+.hero-stat .hs-icon {
+  color: var(--accent, var(--brand));
+  display: flex;
+  justify-content: center;
+  margin-bottom: 5px;
+}
+.hero-stat .hs-icon .icon-svg { width: 17px; height: 17px; }
+
+.hero-stat .hs-label {
+  font-size: 10.5px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.hero-stat .hs-value {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* ---------- Topbar más discreta (pantallas internas) ---------- */
+
+.topbar { padding-top: calc(14px + var(--safe-top)); }
+
+.topbar-eyebrow {
+  font-family: var(--font-body);
+  letter-spacing: 0.02em;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.topbar-title { font-size: 22px; font-weight: 800; }
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+.icon-btn:hover {
+  border-color: var(--brand);
+  box-shadow: 0 6px 16px rgba(108, 92, 231, 0.2);
+}
+
+/* ---------- Tarjetas de viaje (inicio) ---------- */
+
+.trip-card {
+  border-radius: 24px;
+  box-shadow: var(--shadow-card);
+  border-color: transparent;
+}
+
+.trip-card-art { height: 132px; }
+
+.trip-card-art::after {
+  background: linear-gradient(180deg, rgba(14, 16, 40, 0) 40%, rgba(14, 16, 40, 0.45) 100%);
+}
+
+.trip-countdown-badge {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--brand-deep);
+  border-radius: 999px;
+  font-weight: 700;
+}
+.trip-countdown-badge.is-today {
+  background: var(--grad-brand);
+  color: #fff;
+}
+
+.trip-card .trip-dest { font-size: 19px; font-weight: 800; padding-top: 14px; }
+.trip-card .trip-name { font-size: 12.5px; }
+
+.trip-card .trip-dates {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-dark);
+  background: var(--surface-tint);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+/* ---------- Tarjetas de elemento ---------- */
+
+.ticket {
+  border-radius: var(--radius-card);
+  border-color: transparent;
+  box-shadow: var(--shadow-card);
+  padding: 13px;
+}
+
+.ticket-stub { border-radius: 18px; }
+
+.ticket-stub.has-photo { box-shadow: 0 6px 14px rgba(23, 26, 51, 0.15); }
+
+.stub-date { border-radius: 999px; }
+.stub-day, .stub-month { font-family: var(--font-body); font-weight: 700; }
+
+.ticket-title { font-size: 16px; font-weight: 700; }
+
+.ticket-amount {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.ticket-meta .mono {
+  font-family: var(--font-body);
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.ticket-actions button {
+  border-radius: 999px;
+  padding: 7px 13px;
+  background: var(--surface-tint);
+}
+.ticket-actions button:hover { background: var(--brand-soft); color: var(--brand-deep); }
+
+/* Etiqueta de categoría de color (Museo, Restaurante, Monumento…) */
+
+.tag-chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, var(--brand)) 15%, transparent);
+  color: var(--accent, var(--brand));
+  margin-top: 4px;
+}
+
+/* ---------- Botones ---------- */
+
+.btn { border-radius: 999px; padding: 14px 18px; }
+
+.btn-primary {
+  background: var(--grad-brand);
+  box-shadow: var(--shadow-brand);
+}
+
+.btn-secondary { border-radius: 999px; }
+@media (hover: hover) {
+  .btn-secondary:hover { border-color: var(--brand); color: var(--brand-deep); }
+}
+
+.fab {
+  background: var(--grad-brand);
+  box-shadow: var(--shadow-brand);
+  font-size: 28px;
+}
+
+/* ---------- Tarjetas de resumen / paneles ---------- */
+
+.stat-card {
+  border-radius: 20px;
+  border-color: transparent;
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+}
+.stat-card::before {
+  left: 0; top: auto; bottom: 0; right: 0;
+  width: auto;
+  height: 4px;
+  background: var(--accent);
+  opacity: 0.9;
+}
+.stat-card-discover::before { height: 4px; top: auto; bottom: 0; }
+
+.stat-card .stat-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.stat-card .stat-value { font-size: 25px; font-weight: 800; color: var(--text); }
+
+.panel {
+  border-radius: 22px;
+  border-color: transparent;
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+  margin-top: 12px;
+}
+.panel[data-nav]::before {
+  left: 0; top: 0; bottom: auto; right: 0;
+  width: auto;
+  height: 4px;
+}
+.panel h3 { font-size: 15px; font-weight: 800; }
+
+.progress-track { border-radius: 999px; }
+.progress-fill { background: var(--grad-brand); }
+
+.today-banner {
+  background: var(--grad-brand);
+  border-radius: 20px;
+  box-shadow: var(--shadow-brand);
+}
+
+/* ---------- Chips (días del itinerario, filtros) ---------- */
+
+.pill-row {
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.pill-row::-webkit-scrollbar { display: none; }
+
+.pill-row button {
+  flex-shrink: 0;
+  border-radius: 16px;
+  padding: 9px 15px;
+  font-size: 12.5px;
+  background: var(--surface);
+  border-color: transparent;
+  box-shadow: var(--shadow-card);
+  line-height: 1.25;
+}
+
+.pill-row button.active {
+  background: var(--grad-brand);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-brand);
+}
+
+/* ---------- Formularios ---------- */
+
+.field input,
+.field select,
+.field textarea {
+  border-radius: 14px;
+  padding: 13px 14px;
+  background: var(--surface-tint);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--brand);
+}
+
+.modal-sheet {
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+}
+
+/* ---------- Barra inferior de navegación ---------- */
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: end;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 9px 6px calc(8px + var(--safe-bottom));
+  box-shadow: 0 -8px 26px rgba(23, 26, 51, 0.08);
+}
+
+.tabbar button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 4px 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.tabbar button:active { transform: scale(0.92); }
+.tabbar button .icon-svg { width: 21px; height: 21px; }
+
+.tabbar button.active { color: var(--brand); }
+
+.tabbar button.tab-center {
+  position: relative;
+  color: #fff;
+  font-size: 0;
+  gap: 0;
+}
+.tabbar button.tab-center span {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--grad-brand);
+  color: #fff;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-brand);
+  margin-top: -30px;
+  border: 4px solid var(--surface);
+}
+
+.view.has-tabbar { padding-bottom: calc(104px + var(--safe-bottom)); }
+
+/* Con barra inferior, el botón flotante sube para no solaparse */
+.has-tabbar ~ #fab-slot .fab { bottom: calc(104px + var(--safe-bottom)); }
+
+/* ---------- Estado vacío ---------- */
+
+.empty-state .emoji { font-size: 44px; }
+.empty-state p { font-size: 14px; }
+
+/* ---------- Pie de marca del inicio ---------- */
+
+.home-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 22px 0 6px;
+}
+.home-footer strong {
+  font-family: var(--font-display);
+  color: var(--muted-dark);
+  font-weight: 800;
+}
+
+/* ============================================================
+   ============================================================
+   CAPA DE REDISEÑO 2  ·  fidelidad estricta a la maqueta
+   Carrusel de viajes, próximos eventos, chips de día del
+   itinerario y timeline con iconos de categoría.
+   ============================================================
+   ============================================================ */
+
+/* ---------- Encabezado de sección con "Ver todos" ---------- */
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 22px 0 12px;
+}
+.section-title-row .section-title { margin: 0; }
+
+.see-all {
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.see-all .icon-svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
+.see-all.expanded .icon-svg { transform: rotate(90deg); }
+
+/* ---------- Carrusel horizontal de viajes ---------- */
+
+.trip-carousel {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.trip-carousel::-webkit-scrollbar { display: none; }
+.trip-carousel .trip-card {
+  flex: 0 0 auto;
+  width: 210px;
+  scroll-snap-align: start;
+  margin-bottom: 0;
+}
+.trip-carousel.expanded {
+  flex-wrap: wrap;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+}
+.trip-carousel.expanded .trip-card { width: 100%; }
+
+.trip-meta-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 16px;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.trip-meta-row span { display: flex; align-items: center; gap: 4px; }
+.trip-meta-row .stat-icon { width: 13px; height: 13px; margin: 0; color: var(--muted); }
+
+.trip-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 16px;
+}
+.trip-progress-row .progress-track { flex: 1; height: 6px; margin: 0; }
+.trip-progress-row span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-dark);
+  flex-shrink: 0;
+}
+
+/* ---------- Próximos eventos ---------- */
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.event-row:active { transform: scale(0.98); }
+
+.event-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--grad-brand);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.event-icon .icon-svg { width: 19px; height: 19px; }
+
+.event-body { flex: 1; min-width: 0; }
+.event-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-sub { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+
+.event-chevron { color: var(--muted); flex-shrink: 0; }
+.event-chevron .icon-svg { width: 16px; height: 16px; }
+
+/* ---------- Logo del hero (avión de papel) ---------- */
+
+.hero-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #2fd4c4, #1fa9e0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+.hero-logo .icon-svg { width: 18px; height: 18px; }
+
+.hero-avatar { font-size: 18px; }
+
+/* ============================================================
+   ITINERARIO — chips de día + timeline con iconos de categoría
+   ============================================================ */
+
+.day-chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -20px 16px;
+  padding: 2px 20px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.day-chip-row::-webkit-scrollbar { display: none; }
+
+.day-chip {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 9px 14px;
+  text-align: center;
+  min-width: 64px;
+  box-shadow: var(--shadow-card);
+}
+.day-chip .dc-num { display: block; font-size: 12.5px; font-weight: 800; color: var(--text); }
+.day-chip .dc-date { display: block; font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 1px; }
+
+.day-chip.active {
+  background: var(--grad-brand);
+  border-color: transparent;
+  box-shadow: var(--shadow-brand);
+}
+.day-chip.active .dc-num,
+.day-chip.active .dc-date { color: #fff; }
+
+.day-banner {
+  position: relative;
+  height: 96px;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #2b2f6b, #4b4fae);
+}
+.day-banner img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.day-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(10, 12, 30, 0.05) 30%, rgba(10, 12, 30, 0.75) 100%);
+}
+.day-banner-title { font-size: 15.5px; font-weight: 800; margin: 0; }
+.day-banner-sub {
+  font-size: 12px;
+  margin: 3px 0 0;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.day-banner-sub .icon-svg { width: 13px; height: 13px; }
+
+.timeline {
+  position: relative;
+}
+
+.tl-row {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 20px;
+  position: relative;
+}
+.tl-row:last-child { padding-bottom: 4px; }
+
+.tl-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 34px;
+}
+.tl-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+.tl-dot .icon-svg { width: 13px; height: 13px; }
+.tl-line {
+  flex: 1;
+  width: 2px;
+  background: var(--border);
+  margin-top: 2px;
+}
+.tl-row:last-child .tl-line { display: none; }
+
+.tl-cat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.tl-cat-icon .icon-svg { width: 19px; height: 19px; }
+
+.tl-content { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px; }
+.tl-info { flex: 1; min-width: 0; }
+.tl-time { font-size: 11.5px; color: var(--muted); font-weight: 600; margin: 0; }
+.tl-title { font-size: 15px; font-weight: 700; margin: 2px 0 5px; }
+.tl-addr { font-size: 12px; color: var(--muted); margin: 5px 0 0; }
+
+.tl-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-tint);
+}
+
+.tl-menu {
+  color: var(--muted);
+  flex-shrink: 0;
+  padding: 4px;
+  margin-left: 2px;
+}
+.tl-menu .icon-svg { width: 15px; height: 15px; }
+
+/* ============================================================
+   GASTOS — segmentado, total, donut y lista reciente
+   ============================================================ */
+
+.segmented {
+  display: flex;
+  background: var(--surface-tint);
+  border-radius: 16px;
+  padding: 4px;
+  margin-bottom: 16px;
+  gap: 4px;
+}
+.segmented button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 10px;
+  border-radius: 12px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.segmented button.active {
+  background: var(--surface);
+  color: var(--brand);
+  box-shadow: var(--shadow-card);
+}
+
+.expense-total-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 14px;
+}
+.expense-total-card .et-label { font-size: 12.5px; color: var(--muted); margin: 0; }
+.expense-total-card .et-amount {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  margin: 2px 0 10px;
+  letter-spacing: -0.5px;
+}
+.expense-total-card .et-progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.donut-wrap .donut { flex-shrink: 0; }
+.donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.donut-legend > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.donut-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.donut-legend span { flex: 1; color: var(--muted-dark); font-weight: 600; }
+.donut-legend b { font-weight: 700; color: var(--text); white-space: nowrap; }
+
+.expense-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.expense-row:last-child { border-bottom: none; }
+.expense-row .exp-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.expense-row .exp-icon .icon-svg { width: 18px; height: 18px; }
+.expense-row .exp-info { flex: 1; min-width: 0; }
+.expense-row .exp-title { font-size: 13.5px; font-weight: 700; margin: 0; }
+.expense-row .exp-sub { font-size: 11.5px; color: var(--muted); margin: 2px 0 0; }
+.expense-row .exp-amount { font-family: var(--font-display); font-weight: 800; font-size: 14px; flex-shrink: 0; }
+
+/* ---------- Lista del mapa (bottom sheet) ---------- */
+
+.map-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.map-sheet-row:last-child { border-bottom: none; }
+.map-sheet-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.map-sheet-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.map-sheet-icon .icon-svg { width: 16px; height: 16px; }
+.map-sheet-info { flex: 1; min-width: 0; }
+.map-sheet-title { font-size: 13.5px; font-weight: 700; margin: 0; }
+.map-sheet-sub { font-size: 11.5px; color: var(--muted); margin: 2px 0 0; }
+.map-sheet-chevron { color: var(--muted); flex-shrink: 0; }
+.map-sheet-chevron .icon-svg { width: 15px; height: 15px; }
+
+.tp-map-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--grad-brand);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid #fff;
+}
+
+/* ---------- Tabs rápidas + resumen del viaje (dashboard) ---------- */
+
+.quick-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin: 18px 0 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.quick-tabs::-webkit-scrollbar { display: none; }
+.quick-tabs button {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 10px 14px 12px;
+  position: relative;
+}
+.quick-tabs button.active { color: var(--brand); }
+.quick-tabs button.active::after {
+  content: "";
+  position: absolute;
+  left: 14px; right: 14px; bottom: -1px;
+  height: 2px;
+  background: var(--grad-brand);
+  border-radius: 2px;
+}
+
+.summary-panel { margin-top: 14px; }
+
+.photo-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-top: 4px;
+}
+.photo-strip::-webkit-scrollbar { display: none; }
+.photo-strip img {
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex-shrink: 0;
 }

@@ -379,18 +379,62 @@ async function renderTripShell() {
     return;
   }
 
+  const isDashboard = state.section === "dashboard";
+
+  // Cabecera grande con la foto del destino (solo en el Resumen); en
+  // las secciones internas se mantiene la barra compacta de siempre.
+  let headerHtml;
+  if (isDashboard) {
+    const days = daysUntil(trip.start_date);
+    let status = "";
+    if (days === null) status = "";
+    else if (days > 0) status = `Faltan ${days} día${days === 1 ? "" : "s"}`;
+    else if (days === 0) status = "¡Empieza hoy!";
+    else if (trip.end_date && daysUntil(trip.end_date) >= 0) status = "En curso";
+    else status = "Finalizado";
+
+    const totalDays = daysBetween(trip.start_date, trip.end_date);
+
+    headerHtml = h`
+      <div class="hero hero-trip">
+        ${trip.photo_url ? `<img class="hero-photo" src="${escapeHtml(trip.photo_url)}" alt="" />` : ""}
+        <div class="hero-top">
+          <button class="icon-btn" id="btn-back">←</button>
+          <div class="hero-brand"></div>
+          <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
+          <button class="icon-btn" id="btn-trip-menu">⋮</button>
+        </div>
+        ${status ? `<span class="hero-trip-status">${status}</span>` : ""}
+        <h1 class="hero-trip-title">${escapeHtml(trip.destination)}</h1>
+        <p class="hero-trip-meta">
+          <span>🗓️ ${formatDatePretty(trip.start_date)} – ${formatDatePretty(trip.end_date)}</span>
+          ${totalDays ? `<span>· ${totalDays} día${totalDays === 1 ? "" : "s"}</span>` : ""}
+          ${trip.name ? `<span>· ${escapeHtml(trip.name)}</span>` : ""}
+        </p>
+      </div>`;
+  } else {
+    const labels = {
+      flights: "Vuelos", hotels: "Hospedajes", itinerary: "Itinerario",
+      transport: "Transporte", reservations: "Reservas", expenses: "Gastos",
+      checklist: "Checklist", calendar: "Calendario", map: "Mapa",
+    };
+    headerHtml = h`
+      <div class="topbar">
+        <button class="icon-btn" id="btn-back">←</button>
+        <div class="topbar-titles">
+          <p class="topbar-eyebrow">${escapeHtml(trip.destination)}</p>
+          <h1 class="topbar-title">${labels[state.section] || "Viaje"}</h1>
+        </div>
+        <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
+        <button class="icon-btn" id="btn-trip-menu">⋮</button>
+      </div>`;
+  }
+
   root.innerHTML = h`
-    <div class="topbar">
-      <button class="icon-btn" id="btn-back">←</button>
-      <div class="topbar-titles">
-        <p class="topbar-eyebrow">${escapeHtml(trip.name)}</p>
-        <h1 class="topbar-title">${escapeHtml(trip.destination)}</h1>
-      </div>
-      <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
-      <button class="icon-btn" id="btn-trip-menu">⋮</button>
-    </div>
-    <div class="view no-tabbar" id="section-content"></div>
+    ${headerHtml}
+    <div class="view has-tabbar" id="section-content"></div>
     <div id="fab-slot"></div>
+    ${renderTabbarHtml("trip")}
     <div id="print-area"></div>
   `;
 
@@ -402,7 +446,148 @@ async function renderTripShell() {
     openTripMenu(trip);
   });
 
+  bindTabbar(trip);
+
   await renderSection(trip);
+}
+
+// ============================================================
+// BARRA INFERIOR DE NAVEGACIÓN
+// Inicio · Itinerario · Mapa · Gastos · Más dentro de un viaje;
+// Inicio · Viajes · (+) · Mapa · Más en la portada — como en el
+// diseño de referencia.
+// ============================================================
+
+const TABBAR_HOME = [
+  { id: "dashboard", icon: "home", label: "Inicio" },
+  { id: "__trips", icon: "luggage", label: "Viajes" },
+  { id: "__add", icon: null, label: "Añadir" },
+  { id: "__map", icon: "map", label: "Mapa" },
+  { id: "__more", icon: "more", label: "Más" },
+];
+
+const TABBAR_TRIP = [
+  { id: "dashboard", icon: "home", label: "Inicio" },
+  { id: "itinerary", icon: "itinerary", label: "Itinerario" },
+  { id: "map", icon: "map", label: "Mapa" },
+  { id: "expenses", icon: "expenses", label: "Gastos" },
+  { id: "__more", icon: "more", label: "Más" },
+];
+
+function renderTabbarHtml(mode) {
+  const items = mode === "home" ? TABBAR_HOME : TABBAR_TRIP;
+  const buttons = items
+    .map((t) => {
+      if (t.id === "__add") {
+        return `<button class="tab-center" data-tab="__add" aria-label="Añadir"><span>＋</span></button>`;
+      }
+      const active = state.tripId !== null && state.section === t.id ? "active" : "";
+      return `<button class="${active}" data-tab="${t.id}">${icon(t.icon)}<span>${t.label}</span></button>`;
+    })
+    .join("");
+  return `<nav class="tabbar">${buttons}</nav>`;
+}
+
+function bindHomeTabbar() {
+  root.querySelectorAll(".tabbar [data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      if (tab === "dashboard" || tab === "__trips") {
+        root.querySelector("#trip-search")?.focus();
+        return;
+      }
+      if (tab === "__add") {
+        openTripForm();
+        return;
+      }
+      if (tab === "__map") {
+        const withMap = document.querySelectorAll(".trip-card")[0];
+        if (withMap) {
+          state.tripId = parseInt(withMap.dataset.id, 10);
+          state.section = "map";
+          withTransition(renderApp, "forward");
+        } else {
+          toast("Crea un viaje primero");
+        }
+        return;
+      }
+      if (tab === "__more") {
+        openSettingsSheet();
+      }
+    });
+  });
+}
+
+function bindTabbar(trip) {
+  root.querySelectorAll(".tabbar [data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+
+      if (tab === "__more") {
+        openSectionsSheet(trip);
+        return;
+      }
+
+      if (state.section === tab) return;
+      const dir = tab === "dashboard" ? "back" : "forward";
+      state.section = tab;
+      withTransition(renderApp, dir);
+    });
+  });
+}
+
+/**
+ * Hoja "Más": el resto de secciones del viaje que no caben en la
+ * barra inferior.
+ */
+function openSectionsSheet(trip) {
+  const items = [
+    { id: "flights", icon: "flights", label: "Vuelos" },
+    { id: "hotels", icon: "hotels", label: "Hospedajes" },
+    { id: "transport", icon: "transport", label: "Transporte" },
+    { id: "reservations", icon: "reservations", label: "Reservas" },
+    { id: "checklist", icon: "checklist", label: "Checklist" },
+    { id: "calendar", icon: "calendar", label: "Calendario" },
+  ];
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Secciones del viaje</h2>
+      <div class="stat-grid">
+        ${items
+          .map(
+            (it) => `
+            <div class="stat-card" data-goto="${it.id}">
+              <div class="stat-label">${icon(it.icon, "stat-icon")} ${it.label}</div>
+            </div>`
+          )
+          .join("")}
+      </div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="btn btn-secondary" id="sheet-discover">✨ Descubre</button>
+        <button class="btn btn-ghost" id="sheet-close">Cerrar</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  overlay.querySelector("#sheet-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#sheet-discover").addEventListener("click", () => {
+    overlay.remove();
+    openDiscoverSheet(trip);
+  });
+  overlay.querySelectorAll("[data-goto]").forEach((el) => {
+    el.addEventListener("click", () => {
+      overlay.remove();
+      state.section = el.dataset.goto;
+      withTransition(renderApp, "forward");
+    });
+  });
 }
 
 function openTripMenu(trip) {
@@ -684,9 +869,26 @@ async function renderHome() {
   const trips = await Data.getAll("trips");
   trips.sort((a, b) => (a.start_date || "").localeCompare(b.start_date || ""));
 
+  // Para cada viaje: nº de actividades (itinerario) y % de checklist
+  // completado, para la barra de progreso de la tarjeta.
+  const tripStats = {};
+  await Promise.all(
+    trips.map(async (trip) => {
+      const [itin, checklist] = await Promise.all([
+        Data.getAllByTrip("itinerary", trip.id),
+        Data.getAllByTrip("checklist", trip.id),
+      ]);
+      const done = checklist.filter((c) => c.completed).length;
+      tripStats[trip.id] = {
+        activities: itin.length,
+        pct: checklist.length ? Math.round((done / checklist.length) * 100) : 0,
+      };
+    })
+  );
+
   const cardsHtml = trips.length
     ? trips
-        .map((trip, i) => {
+        .map((trip) => {
           const days = daysUntil(trip.start_date);
           let countdown = "";
           if (days === null) countdown = "";
@@ -696,8 +898,11 @@ async function renderHome() {
             countdown = "En curso";
           else countdown = "Finalizado";
 
+          const tripLen = daysBetween(trip.start_date, trip.end_date);
+          const stats = tripStats[trip.id] || { activities: 0, pct: 0 };
+
           return h`
-            <div class="trip-card trip-color-${(i % 6) + 1}" data-id="${trip.id}">
+            <div class="trip-card" data-id="${trip.id}">
               <div class="trip-card-art">
                 ${
                   trip.photo_url
@@ -710,31 +915,98 @@ async function renderHome() {
                     : ""
                 }
               </div>
-              <p class="trip-dest">${escapeHtml(trip.destination)} ${trip.share_code ? "🔗" : ""}</p>
-              <p class="trip-name">${escapeHtml(trip.name)}</p>
-              <span class="trip-dates">${formatDatePretty(trip.start_date)} → ${formatDatePretty(trip.end_date)}</span>
+              <p class="trip-dest">${flagFor(trip.destination)} ${escapeHtml(trip.destination)}</p>
+              <p class="trip-name">${formatDatePretty(trip.start_date)} – ${formatDatePretty(trip.end_date)}</p>
+              <div class="trip-meta-row">
+                <span>${icon("clock", "stat-icon")} ${tripLen || 0} día${tripLen === 1 ? "" : "s"}</span>
+                <span>${icon("checklist", "stat-icon")} ${stats.activities} actividad${stats.activities === 1 ? "" : "es"}</span>
+              </div>
+              <div class="trip-progress-row">
+                <div class="progress-track"><div class="progress-fill" style="width:${stats.pct}%"></div></div>
+                <span>${stats.pct}%</span>
+              </div>
             </div>`;
         })
         .join("")
     : h`
         <div class="empty-state">
           <div class="emoji">🧳</div>
-          <p>Todavía no tienes ningún viaje.<br>Toca el botón + para crear el primero.</p>
+          <p>Todavía no tienes ningún viaje.<br>Toca "Nuevo viaje" para crear el primero.</p>
         </div>`;
 
+  // Próximos eventos: los vuelos y actividades más cercanos, de
+  // cualquier viaje, para tenerlos a mano desde el inicio.
+  const upcoming = await collectUpcomingEvents(trips);
+  const eventsHtml = upcoming.length
+    ? upcoming
+        .map(
+          (ev) => h`
+        <div class="event-row" data-trip="${ev.tripId}">
+          <span class="event-icon">${icon(ev.icon)}</span>
+          <div class="event-body">
+            <p class="event-title">${escapeHtml(ev.title)}</p>
+            <p class="event-sub">${formatDatePretty(ev.date)}${ev.time ? ` · ${ev.time}` : ""}</p>
+          </div>
+          <span class="event-chevron">${icon("chevron")}</span>
+        </div>`
+        )
+        .join("")
+    : `<p style="color:var(--muted); font-size:13px; padding:4px 2px;">No hay próximos eventos.</p>`;
+
+  // Foto de cabecera: la del próximo viaje (o el primero que tenga).
+  const heroTrip =
+    trips.find((t) => t.photo_url && daysUntil(t.start_date) >= 0) ||
+    trips.find((t) => t.photo_url);
+
+  const hour = new Date().getHours();
+  const greetWord = hour < 6 ? "Buenas noches" : hour < 13 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches";
+
   root.innerHTML = h`
-    <div class="topbar">
-      <div class="topbar-titles">
-        <p class="topbar-eyebrow">TRAVEL PLANNER</p>
-        <h1 class="topbar-title">Mis viajes</h1>
+    <div class="hero">
+      ${heroTrip ? `<img class="hero-photo" src="${escapeHtml(heroTrip.photo_url)}" alt="" />` : ""}
+      <div class="hero-top">
+        <div class="hero-brand">
+          <span class="hero-logo">${icon("plane")}</span>
+          <div>
+            <p class="hero-brand-name">Travel Planner</p>
+            <p class="hero-brand-tag">Tus viajes, en un solo lugar</p>
+          </div>
+        </div>
+        <button class="icon-btn hero-avatar ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">🙂</button>
       </div>
-      <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
+      <h1 class="hero-greeting">${greetWord} 👋</h1>
+      <p class="hero-sub">¿A dónde te llevamos hoy?</p>
+      <div class="hero-search">
+        ${icon("search")}
+        <input type="search" id="trip-search" placeholder="Buscar destino, viaje o actividad…" autocomplete="off" />
+      </div>
+      <button class="hero-cta" id="fab-new-trip">＋ Nuevo viaje</button>
     </div>
-    <div class="view no-tabbar">
-      ${cardsHtml}
+    <div class="view has-tabbar">
+      <div class="section-title-row">
+        <p class="section-title">Mis viajes</p>
+        ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">Ver todos ${icon("chevron")}</button>` : ""}
+      </div>
+      <div class="trip-carousel" id="trip-list">${cardsHtml}</div>
+      <div class="section-title-row">
+        <p class="section-title">Próximos eventos</p>
+      </div>
+      <div id="events-list">${eventsHtml}</div>
     </div>
-    <button class="fab" id="fab-new-trip">＋</button>
+    <div id="fab-slot"></div>
+    ${renderTabbarHtml("home")}
   `;
+
+  const searchEl = root.querySelector("#trip-search");
+  if (searchEl) {
+    searchEl.addEventListener("input", () => {
+      const q = searchEl.value.trim().toLowerCase();
+      root.querySelectorAll(".trip-card").forEach((card) => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = !q || text.includes(q) ? "" : "none";
+      });
+    });
+  }
 
   root.querySelectorAll(".trip-card").forEach((card) => {
     card.addEventListener("click", () => {
@@ -743,6 +1015,24 @@ async function renderHome() {
       withTransition(renderApp, "forward");
     });
   });
+
+  root.querySelectorAll(".event-row[data-trip]").forEach((row) => {
+    row.addEventListener("click", () => {
+      state.tripId = parseInt(row.dataset.trip, 10);
+      state.section = "dashboard";
+      withTransition(renderApp, "forward");
+    });
+  });
+
+  const seeAllBtn = root.querySelector("#see-all-trips");
+  if (seeAllBtn) {
+    seeAllBtn.addEventListener("click", () => {
+      root.querySelector(".trip-carousel").classList.toggle("expanded");
+      seeAllBtn.classList.toggle("expanded");
+    });
+  }
+
+  bindHomeTabbar();
 
   root.querySelector("#fab-new-trip").addEventListener("click", () => openTripForm());
   root.querySelector("#btn-settings").addEventListener("click", () => openSettingsSheet());
@@ -767,6 +1057,80 @@ async function renderHome() {
       await Data.put("trips", { ...trip, photo_url: url });
     });
   });
+}
+
+/**
+ * Bandera de país aproximada a partir del texto del destino (busca
+ * el nombre de país conocido más específico dentro del texto).
+ * Puramente decorativa, como en la maqueta ("🇫🇷 París").
+ */
+const COUNTRY_FLAGS = {
+  "francia": "🇫🇷", "paris": "🇫🇷", "parís": "🇫🇷",
+  "italia": "🇮🇹", "roma": "🇮🇹", "venecia": "🇮🇹", "milan": "🇮🇹", "milán": "🇮🇹",
+  "japon": "🇯🇵", "japón": "🇯🇵", "tokio": "🇯🇵", "tokyo": "🇯🇵", "kyoto": "🇯🇵",
+  "españa": "🇪🇸", "espana": "🇪🇸", "madrid": "🇪🇸", "barcelona": "🇪🇸", "sevilla": "🇪🇸",
+  "portugal": "🇵🇹", "lisboa": "🇵🇹", "oporto": "🇵🇹",
+  "reino unido": "🇬🇧", "londres": "🇬🇧", "inglaterra": "🇬🇧",
+  "estados unidos": "🇺🇸", "nueva york": "🇺🇸", "new york": "🇺🇸", "miami": "🇺🇸",
+  "mexico": "🇲🇽", "méxico": "🇲🇽", "cancun": "🇲🇽", "cancún": "🇲🇽",
+  "grecia": "🇬🇷", "atenas": "🇬🇷", "santorini": "🇬🇷",
+  "alemania": "🇩🇪", "berlin": "🇩🇪", "berlín": "🇩🇪", "munich": "🇩🇪",
+  "brasil": "🇧🇷", "rio de janeiro": "🇧🇷",
+  "argentina": "🇦🇷", "buenos aires": "🇦🇷",
+  "venezuela": "🇻🇪", "caracas": "🇻🇪",
+  "colombia": "🇨🇴", "bogota": "🇨🇴", "bogotá": "🇨🇴", "cartagena": "🇨🇴",
+  "peru": "🇵🇪", "perú": "🇵🇪", "lima": "🇵🇪", "cusco": "🇵🇪",
+  "tailandia": "🇹🇭", "bangkok": "🇹🇭",
+  "turquia": "🇹🇷", "turquía": "🇹🇷", "estambul": "🇹🇷",
+  "egipto": "🇪🇬", "cairo": "🇪🇬", "el cairo": "🇪🇬",
+  "marruecos": "🇲🇦", "marrakech": "🇲🇦",
+};
+function flagFor(destination) {
+  const d = (destination || "").toLowerCase();
+  for (const key of Object.keys(COUNTRY_FLAGS)) {
+    if (d.includes(key)) return COUNTRY_FLAGS[key];
+  }
+  return "📍";
+}
+
+/**
+ * Reúne los próximos vuelos y actividades de itinerario de todos
+ * los viajes (fecha de hoy en adelante), ordenados por fecha, para
+ * la sección "Próximos eventos" del inicio.
+ */
+async function collectUpcomingEvents(trips) {
+  const today = todayString();
+  const events = [];
+  await Promise.all(
+    trips.map(async (trip) => {
+      const [flights, itin] = await Promise.all([
+        Data.getAllByTrip("flights", trip.id),
+        Data.getAllByTrip("itinerary", trip.id),
+      ]);
+      flights.forEach((f) => {
+        if (!f.date || f.date < today) return;
+        events.push({
+          tripId: trip.id,
+          date: f.date,
+          time: f.time || "",
+          icon: "flights",
+          title: `Vuelo a ${f.destination || trip.destination}`,
+        });
+      });
+      itin.forEach((i) => {
+        if (!i.date || i.date < today) return;
+        events.push({
+          tripId: trip.id,
+          date: i.date,
+          time: i.time || "",
+          icon: "itinerary",
+          title: i.title || "Actividad",
+        });
+      });
+    })
+  );
+  events.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+  return events.slice(0, 3);
 }
 
 function openTripForm(trip) {

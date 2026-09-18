@@ -44,6 +44,45 @@ const RESERVATION_ICONS = {
   Otro: "📌",
 };
 
+/**
+ * Clasifica una actividad del itinerario por palabras clave de su
+ * título/lugar, solo para elegir icono y color (etiqueta tipo
+ * "Museo" / "Restaurante" / "Monumento" de la maqueta). No se
+ * guarda en los datos: se calcula al vuelo cada vez que se pinta.
+ */
+const ACTIVITY_TYPES = {
+  food: {
+    label: "Restaurante", icon: "reservations",
+    color: "var(--tag-food)", soft: "var(--tag-food-soft)",
+    words: ["restaurante", "almuerzo", "cena", "desayuno", "café", "cafe", "bar ", "brunch", "comida", "tapas", "bistro"],
+  },
+  sight: {
+    label: "Museo", icon: "itinerary",
+    color: "var(--tag-sight)", soft: "var(--tag-sight-soft)",
+    words: ["museo", "galería", "galeria", "exposición", "exposicion"],
+  },
+  monument: {
+    label: "Monumento", icon: "compass",
+    color: "var(--tag-monument)", soft: "var(--tag-monument-soft)",
+    words: ["torre", "catedral", "iglesia", "palacio", "monumento", "castillo", "plaza", "puente", "basílica", "basilica", "ruinas", "templo"],
+  },
+  lodging: {
+    label: "Alojamiento", icon: "hotels",
+    color: "var(--tag-lodging)", soft: "var(--tag-lodging-soft)",
+    words: ["hotel", "hostal", "check-in", "check in", "alojamiento"],
+  },
+};
+function classifyActivity(item) {
+  const text = `${item.title || ""} ${item.location || ""}`.toLowerCase();
+  for (const type of Object.values(ACTIVITY_TYPES)) {
+    if (type.words.some((w) => text.includes(w))) return type;
+  }
+  return {
+    label: "Actividad", icon: "itinerary",
+    color: "var(--tag-other)", soft: "var(--tag-other-soft)",
+  };
+}
+
 function stub(iconHtml, isoDate, photoUrl) {
   const [y, m, d] = (isoDate || "").split("-");
   const months = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
@@ -72,6 +111,17 @@ function fetchStubPhotos(storeName, items, queryField, context) {
     if (item.photo_url || !query) return;
     findDestinationPhoto(query, context, item.address).then(async (url) => {
       if (!url) return;
+      // En la línea de tiempo del itinerario la foto va en la
+      // miniatura de la derecha, no en el talón de la tarjeta.
+      const thumbEl = root.querySelector(`.tl-item[data-id="${item.id}"] .tl-thumb`);
+      if (thumbEl && thumbEl.tagName !== "IMG") {
+        const img = document.createElement("img");
+        img.className = "tl-thumb";
+        img.src = url;
+        img.alt = "";
+        img.loading = "lazy";
+        thumbEl.replaceWith(img);
+      }
       const stubEl = root.querySelector(`.ticket[data-id="${item.id}"] .ticket-stub`);
       if (stubEl) {
         const iconEl = stubEl.querySelector(".stub-icon");
@@ -103,6 +153,32 @@ function budgetRing(pct, over) {
         stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
         transform="rotate(-90 32 32)"/>
       <text x="32" y="37" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)" font-family="var(--font-body)">${Math.min(pct,999)}%</text>
+    </svg>`;
+}
+
+/**
+ * Anillo tipo "donut" con el reparto de gastos por categoría.
+ * `slices` es una lista [categoría, importe] ya ordenada.
+ */
+function donutChart(slices, total, colors) {
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+  const arcs = slices
+    .map(([cat, amount]) => {
+      const len = total ? (amount / total) * c : 0;
+      const arc = `<circle cx="56" cy="56" r="${r}" fill="none"
+          stroke="${colors[cat] || "var(--muted)"}" stroke-width="15"
+          stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-offset}"
+          transform="rotate(-90 56 56)"/>`;
+      offset += len;
+      return arc;
+    })
+    .join("");
+  return `
+    <svg width="112" height="112" viewBox="0 0 112 112" class="donut">
+      <circle cx="56" cy="56" r="${r}" fill="none" stroke="var(--surface-tint)" stroke-width="15"/>
+      ${arcs}
     </svg>`;
 }
 
@@ -207,8 +283,92 @@ async function renderDashboard(trip) {
     budgetHtml = `<p style="font-size:13.5px; color:var(--muted);">Gastado ${money(totalSpent)} · Sin presupuesto establecido</p>`;
   }
 
+  const tripDays = daysBetween(trip.date_start || trip.start_date, trip.date_end || trip.end_date);
+  const reservationCount = itin.length + transport.length;
+
+  const heroStatsHtml = h`
+    <div class="hero-stats">
+      <div class="hero-stat" data-nav="expenses" style="--accent: var(--cat-expenses);">
+        <span class="hs-icon">${icon("wallet")}</span>
+        <span class="hs-label">Presupuesto</span>
+        <span class="hs-value">${budget > 0 ? money(budget) : money(totalSpent)}</span>
+      </div>
+      <div class="hero-stat" data-nav="map" style="--accent: var(--cat-map);">
+        <span class="hs-icon">${icon("itinerary")}</span>
+        <span class="hs-label">Lugares</span>
+        <span class="hs-value">${hotels.length + itin.length}</span>
+      </div>
+      <div class="hero-stat" data-nav="itinerary" style="--accent: var(--cat-itinerary);">
+        <span class="hs-icon">${icon("reservations")}</span>
+        <span class="hs-label">Reservas</span>
+        <span class="hs-value">${reservationCount}</span>
+      </div>
+      <div class="hero-stat" data-nav="calendar" style="--accent: var(--cat-calendar);">
+        <span class="hs-icon">${icon("calendar")}</span>
+        <span class="hs-label">Días</span>
+        <span class="hs-value">${tripDays || "—"}</span>
+      </div>
+    </div>`;
+
+  // Próximo evento (vuelo o actividad) más cercano, para la tarjeta
+  // destacada bajo "Resumen del viaje".
+  const structuredEvents = [];
+  itin.forEach((i) => {
+    if (!i.date) return;
+    structuredEvents.push({ key: `${i.date} ${i.time || ""}`, date: i.date, time: i.time, icon: "itinerary", title: i.title || "Actividad" });
+  });
+  flights.forEach((f) => {
+    if (!f.date) return;
+    structuredEvents.push({ key: `${f.date} ${f.time || ""}`, date: f.date, time: f.time, icon: "flights", title: `Vuelo a ${f.destination || trip.destination}` });
+  });
+  structuredEvents.sort((a, b) => a.key.localeCompare(b.key));
+  const nextEvent = structuredEvents.find((e) => e.key >= `${today} `) || structuredEvents[structuredEvents.length - 1];
+
+  // Tira de fotos del viaje: la del propio viaje + las de hoteles y
+  // actividades que ya tengan una guardada.
+  const stripPhotos = [trip.photo_url, ...hotels.map((h) => h.photo_url), ...itin.map((i) => i.photo_url)]
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const quickTabsHtml = h`
+    <div class="quick-tabs">
+      <button data-nav="itinerary" class="${state.section === "itinerary" ? "active" : ""}">Itinerario</button>
+      <button data-nav="reservations">Reservas</button>
+      <button data-nav="expenses">Gastos</button>
+      <button data-nav="map">Mapa</button>
+    </div>`;
+
+  const summaryPanelHtml = h`
+    <div class="panel summary-panel">
+      <h3>${icon("heart", "panel-icon")} Resumen del viaje</h3>
+      <p style="font-size:13.5px; color:var(--muted); line-height:1.6; margin:0 0 12px;">
+        ${trip.notes ? escapeHtml(trip.notes) : "Añade una nota al viaje para verla aquí."}
+      </p>
+      ${
+        stripPhotos.length
+          ? `<div class="photo-strip">${stripPhotos.map((p) => `<img src="${escapeHtml(p)}" alt="" loading="lazy" />`).join("")}</div>`
+          : ""
+      }
+      ${
+        nextEvent
+          ? `<div class="event-row" data-nav="calendar" style="margin-top:14px; background:var(--brand-soft); box-shadow:none;">
+               <span class="event-icon">${icon(nextEvent.icon)}</span>
+               <div class="event-body">
+                 <p class="exp-sub" style="margin:0; color:var(--muted); font-size:11px;">Próximo evento</p>
+                 <p class="event-title">${escapeHtml(nextEvent.title)}</p>
+                 <p class="exp-sub" style="margin:2px 0 0;">${formatDatePretty(nextEvent.date)}${nextEvent.time ? ` · ${nextEvent.time}` : ""}</p>
+               </div>
+               <span class="event-chevron">${icon("chevron")}</span>
+             </div>`
+          : ""
+      }
+    </div>`;
+
   section(h`
+    ${heroStatsHtml}
     ${bannerHtml}
+    ${quickTabsHtml}
+    ${summaryPanelHtml}
     <div class="stat-grid">
       <div class="stat-card" data-nav="flights"><div class="stat-label">${icon("flights","stat-icon")} Vuelos</div><div class="stat-value">${flights.length}</div></div>
       <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
@@ -228,27 +388,15 @@ async function renderDashboard(trip) {
         <div class="stat-label">Descubre</div>
       </div>
     </div>
-    <div class="panel" data-nav="map">
-      <h3>${icon("map","panel-icon")} Mapa del viaje</h3>
-      <p style="font-size:13.5px; color:var(--muted);">Ver hoteles, actividades y transporte sobre el mapa →</p>
-    </div>
-    <div class="panel" data-nav="expenses">
-      <h3>${icon("wallet","panel-icon")} Presupuesto</h3>
-      ${budgetHtml}
-    </div>
     <div class="panel" data-nav="checklist">
       <h3>${icon("checklist","panel-icon")} Checklist</h3>
       <p style="font-size:13.5px; color:var(--muted);">
         ${checklist.length ? `${completedCount}/${checklist.length} tareas completadas (${checklistPct}%)` : "No hay tareas."}
       </p>
     </div>
-    <div class="panel" data-nav="calendar">
-      <h3>${icon("clock","panel-icon")} Próximos eventos</h3>
-      ${nextEventsHtml}
-    </div>
     ${
       trip.notes
-        ? `<div class="panel"><h3>${icon("notes","panel-icon")} Notas del viaje</h3><p style="font-size:13.5px; line-height:1.6; white-space:pre-wrap;">${escapeHtml(trip.notes)}</p></div>`
+        ? ""
         : ""
     }
   `);
@@ -404,6 +552,8 @@ function openHotelForm(trip, hotel) {
 // ITINERARIO
 // ============================================================
 
+let itinDayFilter = null; // null = aún no elegido → se usa el primer día
+
 async function renderItinerary(trip) {
   const items = await Data.getAllByTrip("itinerary", trip.id);
   // Agrupamos por fecha; dentro de cada día se respeta el orden manual
@@ -419,55 +569,128 @@ async function renderItinerary(trip) {
   }
   const dates = Object.keys(byDate).sort();
 
-  function ticketHtml(item) {
+  if (!dates.length && !noDate.length) {
+    section(emptyState("📍", "Todavía no has planificado ninguna actividad."));
+    setFab(fabBtn());
+    document.getElementById("fab-add").addEventListener("click", () => openItineraryForm(trip));
+    return;
+  }
+
+  // Chips de día (Día 1, Día 2…), como en la maqueta: seleccionan un
+  // único día a la vez. Si hay actividades sin fecha, se agrupan en
+  // un chip final "Sin fecha".
+  if (itinDayFilter === null || (itinDayFilter !== "__nodate" && !dates.includes(itinDayFilter))) {
+    itinDayFilter = dates[0] || "__nodate";
+  }
+  if (itinDayFilter === "__nodate" && !noDate.length) itinDayFilter = dates[0] || "__nodate";
+
+  const chipsHtml = `
+    <div class="day-chip-row">
+      ${dates
+        .map(
+          (d, i) => `
+        <button class="day-chip ${itinDayFilter === d ? "active" : ""}" data-itin-day="${d}">
+          <span class="dc-num">Día ${i + 1}</span>
+          <span class="dc-date">${formatDatePretty(d).replace(/\s+\d{4}$/, "")}</span>
+        </button>`
+        )
+        .join("")}
+      ${
+        noDate.length
+          ? `<button class="day-chip ${itinDayFilter === "__nodate" ? "active" : ""}" data-itin-day="__nodate">
+               <span class="dc-num">Sin fecha</span>
+               <span class="dc-date">${noDate.length} actividad${noDate.length === 1 ? "" : "es"}</span>
+             </button>`
+          : ""
+      }
+    </div>`;
+
+  const activeItems = itinDayFilter === "__nodate" ? noDate : byDate[itinDayFilter] || [];
+  const dayIndex = dates.indexOf(itinDayFilter) + 1;
+
+  const bannerPhoto = activeItems.find((i) => i.photo_url)?.photo_url || trip.photo_url;
+  const dayLabel =
+    itinDayFilter === "__nodate"
+      ? "Actividades sin fecha"
+      : `Día ${dayIndex} - ${capitalize(formatWeekdayLong(itinDayFilter))}`;
+
+  const bannerHtml = `
+    <div class="day-banner">
+      ${bannerPhoto ? `<img src="${escapeHtml(bannerPhoto)}" alt="" />` : ""}
+      <div>
+        <p class="day-banner-title">${dayLabel}</p>
+        <p class="day-banner-sub">${icon("sun")} ${activeItems.length} actividad${activeItems.length === 1 ? "" : "es"}</p>
+      </div>
+    </div>`;
+
+  function timelineRow(item, isLast) {
+    const type = classifyActivity(item);
     return h`
-      <div class="ticket cat-itinerary" data-id="${item.id}">
-        <div class="drag-handle">⠿</div>
-        ${stub(icon("itinerary"), item.date, item.photo_url)}
-        <div class="ticket-body">
-          <div class="ticket-title-row">
-            <p class="ticket-title">${escapeHtml(item.title || "Actividad")}</p>
-            <span class="ticket-amount">${item.time || ""}</span>
+      <div class="tl-row tl-item" data-id="${item.id}">
+        <div class="tl-rail drag-handle">
+          <div class="tl-dot" style="background:${type.color};">${icon(type.icon)}</div>
+          ${isLast ? "" : `<div class="tl-line"></div>`}
+        </div>
+        <div class="tl-content">
+          <div class="tl-cat-icon" style="background:${type.soft}; color:${type.color};">${icon(type.icon)}</div>
+          <div class="tl-info">
+            <p class="tl-time">${item.time || ""}</p>
+            <p class="tl-title">${escapeHtml(item.title || "Actividad")}</p>
+            <span class="tag-chip" style="background:${type.soft}; color:${type.color};">${type.label}</span>
+            ${item.location ? `<p class="tl-addr">${escapeHtml(item.location)}</p>` : ""}
+            ${item.notes ? `<p class="tl-addr">${escapeHtml(item.notes)}</p>` : ""}
+            <div class="ticket-actions" style="margin-top:8px;">
+              ${item.location ? `<button data-act="map">🗺️ Mapa</button>` : ""}
+              <button data-act="edit">✏️ Editar</button>
+              <button data-act="delete" class="danger">🗑️</button>
+            </div>
           </div>
-          ${item.location ? `<p class="ticket-meta">${escapeHtml(item.location)}</p>` : ""}
-          ${item.notes ? `<p class="ticket-meta">${escapeHtml(item.notes)}</p>` : ""}
-          <div class="ticket-actions">
-            ${item.location ? `<button data-act="map">🗺️ Mapa</button>` : ""}
-            <button data-act="edit">✏️ Editar</button>
-            <button data-act="delete" class="danger">🗑️ Eliminar</button>
-          </div>
+          ${item.photo_url ? `<img class="tl-thumb" src="${escapeHtml(item.photo_url)}" alt="" loading="lazy" />` : `<div class="tl-thumb"></div>`}
         </div>
       </div>`;
   }
 
-  let html = "";
-  for (const date of dates) {
-    html += `<p class="section-title">${formatDatePretty(date)}</p>`;
-    html += `<div class="drag-list" data-date="${date}">${byDate[date].map(ticketHtml).join("")}</div>`;
-  }
-  if (noDate.length) {
-    html += `<p class="section-title">Sin fecha</p>`;
-    html += `<div class="drag-list" data-date="">${noDate.map(ticketHtml).join("")}</div>`;
-  }
-  if (!dates.length && !noDate.length) {
-    html = emptyState("📍", "Todavía no has planificado ninguna actividad.");
-  } else {
-    html += `<p style="text-align:center; color:var(--muted); font-size:12px; margin-top:6px;">Mantén pulsado ⠿ para reordenar</p>`;
-  }
+  const listHtml = activeItems.length
+    ? `<div class="timeline drag-list" data-date="${itinDayFilter === "__nodate" ? "" : itinDayFilter}">${activeItems
+        .map((it, i) => timelineRow(it, i === activeItems.length - 1))
+        .join("")}</div>`
+    : emptyState("📍", "No hay actividades este día todavía.");
 
-  section(html);
+  section(chipsHtml + bannerHtml + listHtml);
   setFab(fabBtn());
 
   wireTicketActions("itinerary", items, (item) => openItineraryForm(trip, item), (item) => openMaps(item.location));
   wireDragReorder("itinerary", items);
-  document.getElementById("fab-add").addEventListener("click", () => openItineraryForm(trip));
+  root.querySelectorAll("[data-itin-day]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      itinDayFilter = btn.dataset.itinDay;
+      renderItinerary(trip);
+    });
+  });
+  document.getElementById("fab-add").addEventListener("click", () =>
+    openItineraryForm(trip, null, itinDayFilter !== "__nodate" ? itinDayFilter : null)
+  );
   fetchStubPhotos("itinerary", items, (item) => item.location || item.title);
 }
 
-function openItineraryForm(trip, item) {
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+// Formatea "2026-08-12" a "martes, 12 de agosto" para la cabecera del día.
+function formatWeekdayLong(isoDate) {
+  const [y, m, d] = (isoDate || "").split("-").map(Number);
+  if (!y || !m || !d) return isoDate || "";
+  const dt = new Date(y, m - 1, d);
+  const weekdays = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  return `${weekdays[dt.getDay()]}, ${d} de ${months[m - 1]}`;
+}
+
+function openItineraryForm(trip, item, defaultDate) {
   showFormModal({
     title: item ? "Editar actividad" : "Nueva actividad",
-    initial: item,
+    initial: item || (defaultDate ? { date: defaultDate } : null),
     fields: [
       { name: "title", label: "Título", required: true },
       { name: "date", label: "Fecha", type: "date", half: true, required: true },
@@ -619,55 +842,114 @@ function openReservationForm(trip, r) {
 
 const EXPENSE_CATEGORIES = ["Transporte", "Alojamiento", "Comida", "Ocio", "Compras", "Otros"];
 
+const EXPENSE_CATEGORY_META = {
+  Alojamiento: { color: "var(--cat-hotels)", soft: "var(--tag-lodging-soft)", icon: "hotels" },
+  Comida: { color: "var(--tag-food)", soft: "var(--tag-food-soft)", icon: "reservations" },
+  Transporte: { color: "var(--cat-transport)", soft: "var(--cat-transport-a)", icon: "transport" },
+  Ocio: { color: "var(--cat-itinerary)", soft: "var(--tag-monument-soft)", icon: "itinerary" },
+  Compras: { color: "var(--cat-reservations)", soft: "#fde2e2", icon: "wallet" },
+  Otros: { color: "var(--cat-calendar)", soft: "var(--tag-other-soft)", icon: "notes" },
+};
+
+let expenseTab = "resumen"; // "resumen" | "categoria"
+
 async function renderExpenses(trip) {
   const items = await Data.getAllByTrip("expenses", trip.id);
   items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   const total = items.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
   const budget = parseFloat(trip.budget || 0);
+  const pct = budget > 0 ? Math.round((total / budget) * 100) : 0;
 
-  const list = items.length
-    ? items
-        .map(
-          (e) => h`
-        <div class="ticket cat-expenses" data-id="${e.id}">
-          ${stub(icon("expenses"), e.date)}
-          <div class="ticket-body">
-            <div class="ticket-title-row">
-              <p class="ticket-title">${escapeHtml(e.description || e.category || "Gasto")}</p>
-              <span class="ticket-amount">${money(e.amount)}</span>
-            </div>
-            <p class="ticket-meta"><span class="mono">${escapeHtml(e.category || "Otros")}</span></p>
-            <div class="ticket-actions">
-              <button data-act="edit">✏️ Editar</button>
-              <button data-act="delete" class="danger">🗑️ Eliminar</button>
-            </div>
-          </div>
+  const byCategory = {};
+  items.forEach((e) => {
+    const cat = e.category || "Otros";
+    byCategory[cat] = (byCategory[cat] || 0) + parseFloat(e.amount || 0);
+  });
+  const slices = Object.entries(byCategory)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const colorsForDonut = {};
+  Object.keys(EXPENSE_CATEGORY_META).forEach((k) => (colorsForDonut[k] = EXPENSE_CATEGORY_META[k].color));
+
+  const donutHtml = slices.length ? donutChart(slices, total, colorsForDonut) : "";
+  const legendHtml = slices
+    .map(
+      ([cat, amount]) => `
+        <div>
+          <i style="background:${colorsForDonut[cat] || "var(--muted)"}"></i>
+          <span>${escapeHtml(cat)}</span>
+          <b>${money(amount)} (${total ? Math.round((amount / total) * 100) : 0}%)</b>
         </div>`
-        )
+    )
+    .join("");
+
+  const totalCardHtml = h`
+    <div class="expense-total-card">
+      <p class="et-label">Gasto total</p>
+      <p class="et-amount">${money(total)}</p>
+      ${
+        budget > 0
+          ? `<div class="progress-track"><div class="progress-fill ${total > budget ? "over" : ""}" style="width:${Math.min(100, pct)}%"></div></div>
+             <div class="et-progress-row"><span>${pct}% del presupuesto</span><span>${money(budget)}</span></div>`
+          : `<p style="font-size:12.5px; color:var(--muted); margin-top:6px;">Sin presupuesto establecido</p>`
+      }
+    </div>`;
+
+  const categoryPanelHtml = slices.length
+    ? h`
+      <div class="panel">
+        <h3>Por categoría</h3>
+        <div class="donut-wrap">
+          ${donutHtml}
+          <div class="donut-legend">${legendHtml}</div>
+        </div>
+      </div>`
+    : `<p style="color:var(--muted); font-size:13px; padding:8px 2px;">Todavía no hay gastos para repartir por categoría.</p>`;
+
+  const recentHtml = items.length
+    ? items
+        .slice(0, expenseTab === "resumen" ? 6 : items.length)
+        .map((e) => {
+          const meta = EXPENSE_CATEGORY_META[e.category] || EXPENSE_CATEGORY_META.Otros;
+          return h`
+        <div class="expense-row" data-id="${e.id}">
+          <span class="exp-icon" style="background:${meta.soft}; color:${meta.color};">${icon(meta.icon)}</span>
+          <div class="exp-info">
+            <p class="exp-title">${escapeHtml(e.description || e.category || "Gasto")}</p>
+            <p class="exp-sub">${formatDatePretty(e.date)}${e.category ? ` · ${escapeHtml(e.category)}` : ""}</p>
+          </div>
+          <span class="exp-amount">${money(e.amount)}</span>
+        </div>`;
+        })
         .join("")
     : emptyState("💶", "No hay gastos registrados todavía.");
 
   section(h`
-    <div class="panel" style="margin-top:0;">
-      <h3>Total gastado</h3>
-      ${
-        budget > 0
-          ? `<div style="display:flex; align-items:center; gap:14px;">
-               ${budgetRing(Math.round((total / budget) * 100), total > budget)}
-               <div>
-                 <p style="font-family:var(--font-display); font-size:24px; font-weight:700; margin:0;">${money(total)}</p>
-                 <p style="font-size:12.5px; color:var(--muted); margin:4px 0 0;">de ${money(budget)} presupuestados</p>
-               </div>
-             </div>`
-          : `<p style="font-family:var(--font-display); font-size:26px; font-weight:600; margin:0;">${money(total)}</p>`
-      }
+    <div class="segmented">
+      <button data-tab="resumen" class="${expenseTab === "resumen" ? "active" : ""}">Resumen</button>
+      <button data-tab="categoria" class="${expenseTab === "categoria" ? "active" : ""}">Por categoría</button>
     </div>
-    <div style="margin-top:16px;">${list}</div>
+    ${expenseTab === "resumen" ? totalCardHtml : categoryPanelHtml}
+    <div class="section-title-row">
+      <p class="section-title">Gastos recientes</p>
+    </div>
+    <div>${recentHtml}</div>
   `);
   setFab(fabBtn());
 
-  wireTicketActions("expenses", items, (e) => openExpenseForm(trip, e));
+  root.querySelectorAll(".segmented [data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      expenseTab = btn.dataset.tab;
+      renderExpenses(trip);
+    });
+  });
+
+  root.querySelectorAll(".expense-row").forEach((row) => {
+    const id = parseInt(row.dataset.id, 10);
+    const item = items.find((i) => i.id === id);
+    if (item) row.addEventListener("click", () => openExpenseForm(trip, item));
+  });
   document.getElementById("fab-add").addEventListener("click", () => openExpenseForm(trip));
 }
 
@@ -869,6 +1151,12 @@ let mapDayFilter = "all";
 let leafletInstance = null;
 
 const KIND_ICON = { hotel: "🏨", itinerary: "📍", reservation: "🎟️", transport: "🚗" };
+const KIND_SVG = {
+  hotel: icon("hotels"),
+  itinerary: icon("itinerary"),
+  reservation: icon("reservations"),
+  transport: icon("transport"),
+};
 
 async function collectMapPins(trip) {
   const [hotels, itin, reservations, transport] = await Promise.all([
@@ -918,7 +1206,8 @@ async function renderMap(trip) {
   section(h`
     <div class="pill-row">${chips}</div>
     <p id="map-status" style="color:var(--muted); font-size:13px; margin:0 0 10px;">Localizando lugares…</p>
-    <div id="leaflet-map" style="height:58vh; border-radius:16px; overflow:hidden;"></div>
+    <div id="leaflet-map" style="height:46vh; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-card);"></div>
+    <div id="map-list" style="margin-top:14px;"></div>
   `);
   setFab("");
 
@@ -952,9 +1241,9 @@ async function renderMap(trip) {
     maxZoom: 19,
   }).addTo(map);
 
-  const markers = located.map((p) => {
+  const markers = located.map((p, i) => {
     const icon = L.divIcon({
-      html: `<div class="map-pin">${KIND_ICON[p.kind] || "📍"}</div>`,
+      html: `<div class="tp-map-marker">${i + 1}</div>`,
       className: "",
       iconSize: [30, 30],
       iconAnchor: [15, 28],
@@ -964,6 +1253,22 @@ async function renderMap(trip) {
       .bindPopup(`<strong>${escapeHtml(p.title)}</strong><br>${p.time || ""}`);
   });
 
+  const listEl = document.getElementById("map-list");
+  if (listEl) {
+    listEl.innerHTML = located
+      .map(
+        (p) => `
+        <div class="map-sheet-row">
+          <span class="map-sheet-icon" style="background:var(--brand-soft); color:var(--brand);">${KIND_SVG[p.kind] || icon("compass")}</span>
+          <div class="map-sheet-info">
+            <p class="map-sheet-title">${escapeHtml(p.title)}</p>
+            <p class="map-sheet-sub">${p.time || ""}${p.date ? ` · ${formatDatePretty(p.date)}` : ""}</p>
+          </div>
+        </div>`
+      )
+      .join("");
+  }
+
   const bounds = L.latLngBounds(located.map((p) => [p.lat, p.lng]));
   map.fitBounds(bounds.pad(0.25));
 
@@ -972,7 +1277,7 @@ async function renderMap(trip) {
     const ordered = [...located].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
     const route = await routeBetween(ordered);
     if (route) {
-      L.polyline(route.coords, { color: "#e4a421", weight: 4, opacity: 0.85 }).addTo(map);
+      L.polyline(route.coords, { color: "#5b6ef5", weight: 4, opacity: 0.85 }).addTo(map);
       const h = Math.floor(route.durationMin / 60);
       const m = Math.round(route.durationMin % 60);
       statusEl.textContent = `Ruta del día: ${route.distanceKm.toFixed(1)} km · ${h > 0 ? h + " h " : ""}${m} min en coche`;
@@ -997,7 +1302,7 @@ function fabBtn() {
 }
 
 function wireTicketActions(storeName, items, onEdit, onMap) {
-  root.querySelectorAll(".ticket").forEach((card) => {
+  root.querySelectorAll(".ticket, .tl-item").forEach((card) => {
     const id = parseInt(card.dataset.id, 10);
     const item = items.find((i) => i.id === id);
     if (!item) return;
@@ -1025,11 +1330,12 @@ function wireTicketActions(storeName, items, onEdit, onMap) {
 
 // Activa arrastrar-y-soltar (SortableJS) en cada `.drag-list` de la
 // pantalla actual, y persiste el nuevo orden en IndexedDB al soltar.
-function wireDragReorder(storeName, items) {
+function wireDragReorder(storeName, items, opts = {}) {
   if (typeof Sortable === "undefined") return; // sin conexión la primera vez
   root.querySelectorAll(".drag-list").forEach((list) => {
     Sortable.create(list, {
       handle: ".drag-handle",
+      ...opts,
       animation: 150,
       ghostClass: "drag-ghost",
       onEnd: async () => {
