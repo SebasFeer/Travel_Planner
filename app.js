@@ -2027,18 +2027,56 @@ async function openProfileSheet() {
 
   let upcoming = 0,
     past = 0,
-    ongoing = 0;
-  const destinations = new Set();
+    ongoing = 0,
+    daysTraveled = 0;
+  const cities = new Map(); // clave en minúsculas -> texto original (para no duplicar por mayúsculas)
+  const countries = new Map();
+  const perYear = new Map(); // año -> { count, spent }
   let totalSpent = 0;
 
   for (const trip of trips) {
-    if (trip.destination) destinations.add(trip.destination.trim().toLowerCase());
-    if (trip.start_date > today) upcoming++;
-    else if (trip.end_date && trip.end_date < today) past++;
-    else ongoing++;
+    if (trip.destination) {
+      const dest = trip.destination.trim();
+      cities.set(dest.toLowerCase(), dest);
+      const parts = dest.split(",").map((p) => p.trim()).filter(Boolean);
+      const country = parts.length > 1 ? parts[parts.length - 1] : dest;
+      if (country) countries.set(country.toLowerCase(), country);
+    }
+
+    const duration = trip.start_date && trip.end_date ? (daysBetween(trip.start_date, trip.end_date) || 0) + 1 : 0;
+
+    if (trip.start_date > today) {
+      upcoming++;
+    } else if (trip.end_date && trip.end_date < today) {
+      past++;
+      daysTraveled += duration;
+    } else {
+      ongoing++;
+      // Viaje en curso: solo cuentan los días ya vividos, no los que faltan.
+      daysTraveled += trip.start_date ? Math.min(duration, (daysBetween(trip.start_date, today) || 0) + 1) : 0;
+    }
 
     const expenses = await Data.getAllByTrip("expenses", trip.id);
-    totalSpent += expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const spent = expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    totalSpent += spent;
+
+    const year = (trip.start_date || "").slice(0, 4);
+    if (year) {
+      const y = perYear.get(year) || { count: 0, spent: 0 };
+      y.count += 1;
+      y.spent += spent;
+      perYear.set(year, y);
+    }
+  }
+
+  const years = [...perYear.keys()].sort((a, b) => b.localeCompare(a));
+
+  function chipList(map) {
+    const values = [...map.values()].sort((a, b) => a.localeCompare(b, "es"));
+    if (!values.length) return `<p style="color:var(--muted); font-size:12.5px;">Todavía ninguno.</p>`;
+    return `<div style="display:flex; flex-wrap:wrap; gap:6px;">${values
+      .map((v) => `<span class="tag-chip" style="background:var(--surface-tint); color:var(--muted-dark);">${escapeHtml(v)}</span>`)
+      .join("")}</div>`;
   }
 
   const user = currentUser();
@@ -2056,13 +2094,41 @@ async function openProfileSheet() {
       }
       <div class="stat-grid" style="margin-top:14px;">
         <div class="stat-card"><div class="stat-label">🧳 Viajes</div><div class="stat-value">${trips.length}</div></div>
-        <div class="stat-card"><div class="stat-label">🌍 Destinos</div><div class="stat-value">${destinations.size}</div></div>
+        <div class="stat-card"><div class="stat-label">🌍 Países</div><div class="stat-value">${countries.size}</div></div>
+        <div class="stat-card"><div class="stat-label">🏙️ Ciudades</div><div class="stat-value">${cities.size}</div></div>
         <div class="stat-card"><div class="stat-label">🔜 Próximos</div><div class="stat-value">${upcoming}</div></div>
         <div class="stat-card"><div class="stat-label">✅ Realizados</div><div class="stat-value">${past}</div></div>
-        <div class="stat-card"><div class="stat-label">💶 Gastado total</div><div class="stat-value" style="font-size:17px;">${money(totalSpent)}</div></div>
+        <div class="stat-card"><div class="stat-label">🗓️ Días viajados</div><div class="stat-value">${daysTraveled}</div></div>
+        <div class="stat-card" style="grid-column: 1 / -1;"><div class="stat-label">💶 Gastado total</div><div class="stat-value" style="font-size:20px;">${money(totalSpent)}</div></div>
       </div>
+
+      <div class="section-title-row" style="margin-top:6px;"><p class="section-title">Países visitados</p></div>
+      ${chipList(countries)}
+
+      <div class="section-title-row" style="margin-top:14px;"><p class="section-title">Ciudades visitadas</p></div>
+      ${chipList(cities)}
+
+      ${
+        years.length
+          ? `<div class="section-title-row" style="margin-top:14px;"><p class="section-title">Por año</p></div>
+             <div class="panel">
+               ${years
+                 .map(
+                   (y) => `
+                 <div class="expense-row">
+                   <div class="exp-info"><p class="exp-title">${y}</p><p class="exp-sub">${perYear.get(y).count} viaje${
+                     perYear.get(y).count === 1 ? "" : "s"
+                   }</p></div>
+                   <span class="exp-amount">${money(perYear.get(y).spent)}</span>
+                 </div>`
+                 )
+                 .join("")}
+             </div>`
+          : ""
+      }
+
       <p style="color:var(--muted); font-size:12.5px; text-align:center; margin-top:16px;">
-        Aquí irán apareciendo más cosas a medida que uses la app (insignias, países visitados, preferencias de viaje...).
+        Aquí irán apareciendo más cosas a medida que uses la app (insignias, preferencias de viaje...).
       </p>
       <div class="modal-actions" style="margin-top:6px;"><button class="btn btn-ghost" id="profile-close">Cerrar</button></div>
     </div>`;
