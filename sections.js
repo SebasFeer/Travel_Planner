@@ -12,6 +12,7 @@ import { geocodeAll, routeBetween } from "./geocode.js";
 import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
+import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
 
 // ============================================================
 // CONFIGURACIÓN DE PESTAÑAS
@@ -609,9 +610,15 @@ async function renderItinerary(trip) {
   const dates = Object.keys(byDate).sort();
 
   if (!dates.length && !noDate.length) {
-    section(emptyState("📍", "Todavía no has planificado ninguna actividad."));
+    const aiRow = isAiCopilotConfigured()
+      ? `<div class="ai-actions-row"><button class="btn btn-primary" id="ai-generate-empty">✨ Generar itinerario con IA</button></div>`
+      : "";
+    section(aiRow + emptyState("📍", "Todavía no has planificado ninguna actividad."));
     setFab(fabBtn());
     document.getElementById("fab-add").addEventListener("click", () => openItineraryForm(trip));
+    document
+      .getElementById("ai-generate-empty")
+      ?.addEventListener("click", () => openAiPlannerSheet(trip, (updated) => renderItinerary(updated || trip)));
     return;
   }
 
@@ -662,6 +669,34 @@ async function renderItinerary(trip) {
       </div>
     </div>`;
 
+  const aiMeta = itinDayFilter !== "__nodate" ? trip.ai_plan?.byDate?.[itinDayFilter] : null;
+  const aiActionsHtml = isAiCopilotConfigured()
+    ? `<div class="ai-actions-row">
+         <button class="btn btn-ghost btn-sm" id="ai-generate-day">✨ Generar todo el itinerario</button>
+         ${
+           itinDayFilter !== "__nodate"
+             ? `<button class="btn btn-ghost btn-sm" id="ai-regenerate-day">🔄 Regenerar este día</button>`
+             : ""
+         }
+       </div>`
+    : "";
+  const aiRecosHtml =
+    aiMeta && aiMeta.restaurants && aiMeta.restaurants.length
+      ? `<div class="panel ai-day-card" style="margin-bottom:12px;">
+           <h3>🍽️ Recomendaciones de la IA para hoy</h3>
+           <div style="display:flex; flex-wrap:wrap; gap:6px;">
+             ${aiMeta.restaurants
+               .map(
+                 (r) =>
+                   `<span class="tag-chip" style="background:var(--cat-hotels-a); color:var(--cat-hotels);">${escapeHtml(
+                     r.name
+                   )}${r.priceRange ? ` · ${escapeHtml(r.priceRange)}` : ""}</span>`
+               )
+               .join(" ")}
+           </div>
+         </div>`
+      : "";
+
   function timelineRow(item, isLast) {
     const type = classifyActivity(item);
     return h`
@@ -695,7 +730,7 @@ async function renderItinerary(trip) {
         .join("")}</div>`
     : emptyState("📍", "No hay actividades este día todavía.");
 
-  section(chipsHtml + bannerHtml + listHtml);
+  section(chipsHtml + bannerHtml + aiActionsHtml + aiRecosHtml + listHtml);
   setFab(fabBtn());
 
   wireTicketActions("itinerary", items, (item) => openItineraryForm(trip, item), (item) => openMaps(item.location));
@@ -705,6 +740,13 @@ async function renderItinerary(trip) {
       itinDayFilter = btn.dataset.itinDay;
       renderItinerary(trip);
     });
+  });
+  document
+    .getElementById("ai-generate-day")
+    ?.addEventListener("click", () => openAiPlannerSheet(trip, (updated) => renderItinerary(updated || trip)));
+  document.getElementById("ai-regenerate-day")?.addEventListener("click", () => {
+    const dayNum = dayIndex || null;
+    openAiDayRegenerateSheet(trip, itinDayFilter, dayNum, (updated) => renderItinerary(updated || trip));
   });
   document.getElementById("fab-add").addEventListener("click", () =>
     openItineraryForm(trip, null, itinDayFilter !== "__nodate" ? itinDayFilter : null)
