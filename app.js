@@ -1820,13 +1820,10 @@ const NOTIFIED_SET_KEY = "notified_reminders";
 
 const FLIGHT_LEAD_HOURS = 24;
 const HOTEL_RESERVATION_LEAD_HOURS = 24;
-const CHECK_LEAD_HOURS = 8;
-// Los hoteles no guardan hora de check-in/check-out, solo fecha —
-// se asumen horas típicas para poder calcular el aviso de "X horas
-// antes". Si más adelante añades hora al formulario de hoteles, se
-// puede afinar esto para que use la hora real de cada reserva.
-const DEFAULT_CHECKIN_HOUR = 15;
-const DEFAULT_CHECKOUT_HOUR = 11;
+// Los hoteles no siempre tienen hora de check-in guardada — si no se
+// indicó ninguna, se asume las 14:00 para poder calcular el aviso de
+// "24 horas antes". Si se guardó una hora, se usa esa.
+const DEFAULT_CHECKIN_HOUR = 14;
 const NOTIFIED_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 
 async function openNotificationsSheet() {
@@ -1845,13 +1842,14 @@ async function openNotificationsSheet() {
       <div class="modal-handle"></div>
       <h2 class="modal-title">Notificaciones</h2>
       <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
-        Si las activas, la app te avisará de tus vuelos y reservas de
-        hotel <b>24 horas antes</b>, y del check-in/check-out del
-        hotel <b>8 horas antes</b>. También avisa si tienes alguna
-        actividad programada para hoy. Se generan en este dispositivo,
-        sin servidor externo — eso sí, solo mientras tengas la app
-        abierta en una pestaña (los navegadores no dejan avisar en
-        segundo plano sin un servidor propio detrás).
+        Si las activas, la app te avisará <b>24 horas antes</b> de cada
+        vuelo (con la hora que hayas puesto) y <b>24 horas antes</b>
+        del check-in de cada hotel (con su hora si la indicaste, o a
+        las 14:00 si no). También avisa si tienes alguna actividad
+        programada para hoy. Se generan en este dispositivo, sin
+        servidor externo — eso sí, solo mientras tengas la app abierta
+        en una pestaña (los navegadores no dejan avisar en segundo
+        plano sin un servidor propio detrás).
       </p>
       ${permission === "unsupported" ? `<p style="color:var(--muted); font-size:13px;">Tu navegador no admite notificaciones.</p>` : ""}
       ${permission === "denied" ? `<p style="color:var(--rose); font-size:13px;">Están bloqueadas en el navegador. Actívalas desde los ajustes del sitio.</p>` : ""}
@@ -1993,24 +1991,15 @@ async function checkAndNotifyToday() {
         );
       }
 
-      // Hoteles: la reserva (check-in) avisa 24h antes; el check-in y
-      // el check-out avisan también 8h antes, más cerca del momento.
+      // Hoteles: aviso 24 horas antes del check-in. Usa la hora
+      // indicada en el registro si se guardó; si no, 14:00 por defecto.
       for (const hRec of hotels) {
-        const checkIn = combineDateTime(hRec.check_in, null, DEFAULT_CHECKIN_HOUR);
-        const checkOut = combineDateTime(hRec.check_out, null, DEFAULT_CHECKOUT_HOUR);
-
-        if (isWithinLead(checkIn, HOTEL_RESERVATION_LEAD_HOURS)) {
-          await fire(
-            `hotel:${hRec.id}:reserva24h`,
-            `🏨 Tu reserva en ${hRec.name} (${trip.destination}) empieza en 24 horas`
-          );
-        }
-        if (isWithinLead(checkIn, CHECK_LEAD_HOURS)) {
-          await fire(`hotel:${hRec.id}:checkin8h`, `🛎️ Check-in en ${hRec.name} en 8 horas`);
-        }
-        if (isWithinLead(checkOut, CHECK_LEAD_HOURS)) {
-          await fire(`hotel:${hRec.id}:checkout8h`, `🧳 Check-out de ${hRec.name} en 8 horas`);
-        }
+        const checkIn = combineDateTime(hRec.check_in, hRec.check_in_time, DEFAULT_CHECKIN_HOUR);
+        if (!isWithinLead(checkIn, HOTEL_RESERVATION_LEAD_HOURS)) continue;
+        await fire(
+          `hotel:${hRec.id}:reserva24h`,
+          `🏨 Tu reserva en ${hRec.name} (${trip.destination}) empieza en 24 horas`
+        );
       }
 
       // Actividades de hoy: un aviso simple, una vez por día y viaje.

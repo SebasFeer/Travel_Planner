@@ -578,6 +578,7 @@ function openHotelForm(trip, hotel) {
       { name: "name", label: "Nombre", required: true },
       { name: "address", label: "Dirección" },
       { name: "check_in", label: "Entrada", type: "date", half: true },
+      { name: "check_in_time", label: "Hora de entrada (opcional)", type: "time", half: true },
       { name: "check_out", label: "Salida", type: "date", half: true },
       { name: "booking_code", label: "Código de reserva", half: true },
       { name: "price", label: "Precio (€)", type: "number", half: true },
@@ -1255,7 +1256,7 @@ async function collectMapPins(trip) {
   const pins = [];
   hotels.forEach((hh) => {
     if (!hh.address) return;
-    if (hh.check_in) pins.push({ kind: "hotel", text: hh.address, date: hh.check_in, time: "15:00", title: `Entrada: ${hh.name || "Hotel"}` });
+    if (hh.check_in) pins.push({ kind: "hotel", text: hh.address, date: hh.check_in, time: hh.check_in_time || "14:00", title: `Entrada: ${hh.name || "Hotel"}` });
     if (hh.check_out) pins.push({ kind: "hotel", text: hh.address, date: hh.check_out, time: "11:00", title: `Salida: ${hh.name || "Hotel"}` });
   });
   itin.forEach((i) => {
