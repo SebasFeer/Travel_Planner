@@ -637,10 +637,18 @@ function bindTabbar(trip) {
         return;
       }
 
+      if (tab === "dashboard") {
+        // "Inicio" siempre lleva a la pantalla principal de la app
+        // (el listado de "Mis viajes"), no al resumen de este viaje
+        // — para eso ya está el resumen que se ve nada más entrar.
+        state.tripId = null;
+        withTransition(renderApp, "back");
+        return;
+      }
+
       if (state.section === tab) return;
-      const dir = tab === "dashboard" ? "back" : "forward";
       state.section = tab;
-      withTransition(renderApp, dir);
+      withTransition(renderApp, "forward");
     });
   });
 }

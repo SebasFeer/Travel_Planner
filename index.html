@@ -6,6 +6,23 @@
 <title>TravelPlanner</title>
 <meta name="description" content="Organizador personal de viajes: vuelos, hoteles, itinerario, gastos y más." />
 
+<script>
+  // Marca de "ya arrancó en esta sesión" — se guarda en sessionStorage
+  // (vive mientras la pestaña/app siga abierta; desaparece si se cierra
+  // del todo). Si ya estaba puesta, es que esto NO es el primer arranque
+  // real: es una recarga del documento a medio uso (p. ej. un "atrás" del
+  // sistema que termina recargando la página en vez de navegar dentro de
+  // la SPA). En ese caso añadimos esta clase ANTES de que el body llegue
+  // a pintarse, así el CSS oculta la bienvenida sin que llegue a verse ni
+  // un frame — el arranque se siente instantáneo en vez de repetir la
+  // animación de bienvenida cada vez.
+  try {
+    if (sessionStorage.getItem("tp_booted")) {
+      document.documentElement.classList.add("tp-skip-splash");
+    }
+  } catch (e) {}
+</script>
+
 <!-- Instalable en el iPhone/Android (Añadir a pantalla de inicio) -->
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#eef3ff" />
@@ -42,15 +59,30 @@
 
 <script type="module" src="main.js"></script>
 <script>
+  // Se marca la sesión como "ya arrancada" de inmediato (no hace falta
+  // esperar los 2s de la animación): así, si el documento se recarga
+  // por cualquier motivo mientras la app sigue abierta, la próxima
+  // carga se detecta como recarga (ver script del <head>) y no como
+  // primer arranque. La marca solo desaparece si se cierra la pestaña
+  // o la app del todo, que es cuando sí queremos ver la bienvenida.
+  try { sessionStorage.setItem("tp_booted", "1"); } catch (e) {}
+
   // Bienvenida: se ve ~1s y se desvanece sola. No depende de si la
   // app ya ha terminado de cargar (eso sigue su curso por su lado,
-  // debajo del splash) — es puramente decorativo.
-  setTimeout(function () {
-    var splash = document.getElementById("splash-screen");
-    if (!splash) return;
-    splash.classList.add("splash-hide");
-    setTimeout(function () { splash.remove(); }, 2000);
-  }, 2000);
+  // debajo del splash) — es puramente decorativo. Si ya se detectó
+  // que es una recarga (tp-skip-splash), ni se anima ni se espera:
+  // se retira al instante.
+  if (document.documentElement.classList.contains("tp-skip-splash")) {
+    var splashNow = document.getElementById("splash-screen");
+    if (splashNow) splashNow.remove();
+  } else {
+    setTimeout(function () {
+      var splash = document.getElementById("splash-screen");
+      if (!splash) return;
+      splash.classList.add("splash-hide");
+      setTimeout(function () { splash.remove(); }, 2000);
+    }, 2000);
+  }
 </script>
 </body>
 </html>

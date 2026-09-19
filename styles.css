@@ -1205,6 +1205,14 @@ a { color: inherit; }
   pointer-events: none;
 }
 
+/* Si el <head> detecta que esto es una recarga dentro de la misma
+   sesión (no el primer arranque real), oculta el splash al instante
+   por CSS — evita que llegue a pintarse ni un frame mientras el JS
+   del final del body decide si lo retira del DOM. */
+html.tp-skip-splash #splash-screen {
+  display: none;
+}
+
 .splash-logo {
   width: 116px;
   height: 116px;
