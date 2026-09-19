@@ -13,11 +13,11 @@
 // Instrucciones de despliegue: ver DEPLOY_AI_COPILOT.md
 //
 // Mientras esto esté vacío, el botón "✨ Generar con IA" simplemente
-// no aparece — no rompe el resto de la app.
+// no aparece — no rompe el resto de la app. (El interruptor de
+// mock en Ajustes → Modo desarrollador funciona aparte, sin
+// necesidad de tocar esta URL.)
 // ============================================================
 
 const AI_COPILOT_ENDPOINT = "";
 
 export { AI_COPILOT_ENDPOINT };
-
-const AI_COPILOT_ENDPOINT = "http://localhost:8787/generateItinerary";
