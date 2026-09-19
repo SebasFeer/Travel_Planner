@@ -41,6 +41,18 @@ function getAiCopilotMockUrl() {
   return localStorage.getItem(AI_COPILOT_MOCK_URL_KEY) || AI_COPILOT_MOCK_URL_DEFAULT;
 }
 
+// Normaliza la URL guardada para que siempre acabe en
+// "/generateItinerary": es un fallo muy fácil de cometer al pegar la
+// URL del túnel/worker sin esa parte (p. ej. solo
+// "https://xxx.trycloudflare.com"), y el mock devuelve "Ruta no
+// encontrada" en cuanto la ruta no coincide exactamente. Así, se
+// pegue como se pegue, siempre se llama a la ruta correcta.
+function normalizeMockUrl(url) {
+  const trimmed = (url || "").trim().replace(/\/+$/, "");
+  if (!trimmed) return AI_COPILOT_MOCK_URL_DEFAULT;
+  return trimmed.endsWith("/generateItinerary") ? trimmed : `${trimmed}/generateItinerary`;
+}
+
 function setAiCopilotMockUrl(url) {
   localStorage.setItem(AI_COPILOT_MOCK_URL_KEY, url || AI_COPILOT_MOCK_URL_DEFAULT);
 }
@@ -56,7 +68,7 @@ function isAiCopilotConfigured() {
 // ------------------------------------------------------------
 async function requestItinerary(payload) {
   const useMock = isAiCopilotMockEnabled();
-  const endpoint = useMock ? getAiCopilotMockUrl() : AI_COPILOT_ENDPOINT;
+  const endpoint = useMock ? normalizeMockUrl(getAiCopilotMockUrl()) : AI_COPILOT_ENDPOINT;
 
   const idToken = await getIdToken();
   if (!idToken && !useMock) {

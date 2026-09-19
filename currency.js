@@ -9,7 +9,11 @@
 
 import { Data } from "./db.js";
 
-const RATES_URL = "https://api.frankfurter.app/latest";
+// api.frankfurter.app quedó descontinuado (ahora redirige, con 301,
+// a este dominio nuevo) — se pide directamente aquí para no depender
+// de esa redirección, que en el navegador puede fallar o venir
+// bloqueada según el dispositivo/red.
+const RATES_URL = "https://api.frankfurter.dev/v1/latest";
 const CACHE_KEY = "currency_rates_cache";
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
 
