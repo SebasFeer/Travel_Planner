@@ -14,24 +14,62 @@ import { Data } from "./db.js";
 import { h, toast } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
 
+// ------------------------------------------------------------
+// TEMPORAL — mock local del Copiloto IA (desarrollo, sin gastar
+// créditos de la API). Se activa/desactiva en Ajustes → Modo
+// desarrollador. Usa localStorage (no Data.settingGet) para poder
+// leerse de forma síncrona en isAiCopilotConfigured(). Quitar este
+// bloque (y el botón en app.js) cuando ya no haga falta.
+// ------------------------------------------------------------
+const AI_COPILOT_MOCK_KEY = "ai_copilot_use_mock_DEV";
+const AI_COPILOT_MOCK_URL_KEY = "ai_copilot_mock_url_DEV";
+const AI_COPILOT_MOCK_URL_DEFAULT = "http://localhost:8787/generateItinerary";
+
+function isAiCopilotMockEnabled() {
+  return localStorage.getItem(AI_COPILOT_MOCK_KEY) === "1";
+}
+
+function setAiCopilotMockEnabled(value) {
+  localStorage.setItem(AI_COPILOT_MOCK_KEY, value ? "1" : "0");
+}
+
+// URL del mock: por defecto localhost (probando desde el propio
+// ordenador), pero se puede cambiar por una URL de túnel (ngrok,
+// Cloudflare Tunnel...) para probar desde el móvil contra la app
+// real publicada en GitHub Pages.
+function getAiCopilotMockUrl() {
+  return localStorage.getItem(AI_COPILOT_MOCK_URL_KEY) || AI_COPILOT_MOCK_URL_DEFAULT;
+}
+
+function setAiCopilotMockUrl(url) {
+  localStorage.setItem(AI_COPILOT_MOCK_URL_KEY, url || AI_COPILOT_MOCK_URL_DEFAULT);
+}
+
 function isAiCopilotConfigured() {
-  return !!AI_COPILOT_ENDPOINT;
+  return isAiCopilotMockEnabled() || !!AI_COPILOT_ENDPOINT;
 }
 
 // ------------------------------------------------------------
-// Llamada a la Cloud Function. Devuelve el JSON del itinerario o
-// null si algo falló (y ya se ha avisado con un toast).
+// Llamada a la Cloud Function (o al mock local si está activo).
+// Devuelve el JSON del itinerario o null si algo falló (y ya se ha
+// avisado con un toast).
 // ------------------------------------------------------------
 async function requestItinerary(payload) {
+  const useMock = isAiCopilotMockEnabled();
+  const endpoint = useMock ? getAiCopilotMockUrl() : AI_COPILOT_ENDPOINT;
+
   const idToken = await getIdToken();
-  if (!idToken) {
+  if (!idToken && !useMock) {
     toast("Inicia sesión en Ajustes → Mi cuenta para usar el Copiloto IA");
     return null;
   }
   try {
-    const res = await fetch(AI_COPILOT_ENDPOINT, {
+    const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      headers: {
+        "Content-Type": "application/json",
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
@@ -338,4 +376,12 @@ function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
   });
 }
 
-export { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet };
+export {
+  isAiCopilotConfigured,
+  openAiPlannerSheet,
+  openAiDayRegenerateSheet,
+  isAiCopilotMockEnabled,
+  setAiCopilotMockEnabled,
+  getAiCopilotMockUrl,
+  setAiCopilotMockUrl,
+};

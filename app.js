@@ -26,6 +26,13 @@ import {
   getIdToken,
 } from "./cloud.js";
 import { isPro, setPro } from "./pro.js";
+// TEMPORAL — interruptor de mock local del Copiloto IA, ver ai-copilot.js
+import {
+  isAiCopilotMockEnabled,
+  setAiCopilotMockEnabled,
+  getAiCopilotMockUrl,
+  setAiCopilotMockUrl,
+} from "./ai-copilot.js";
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
@@ -1712,6 +1719,7 @@ function openSettingsSheet() {
 
 async function openDevModeSheet() {
   const pro = await isPro();
+  const aiMock = isAiCopilotMockEnabled();
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.innerHTML = h`
@@ -1729,6 +1737,22 @@ async function openDevModeSheet() {
           ${pro ? "🧪 Desactivar modo Pro" : "🧪 Activar modo Pro (pruebas)"}
         </button>
       </div>
+      <p style="color:var(--muted); font-size:12.5px; line-height:1.6; margin-top:14px;">
+        🤖 <b>Copiloto IA — mock local (TEMPORAL):</b> con esto activado,
+        "Generar con IA" usa un servidor de ejemplo
+        (mock-ai-copilot-server.js) en vez de tu Cloud Function real,
+        para probar la interfaz sin gastar créditos de la API.
+        ${aiMock ? `URL actual: <code>${escapeHtmlDev(getAiCopilotMockUrl())}</code>.` : ""}
+        Si vas a probar desde el móvil contra la app publicada,
+        pon aquí la URL de un túnel (ngrok, etc.) que apunte a tu
+        ordenador, no "localhost". Quítalo cuando ya no lo necesites.
+      </p>
+      <div class="modal-actions">
+        <button class="btn ${aiMock ? "btn-danger" : "btn-secondary"}" id="dev-ai-mock-toggle">
+          ${aiMock ? "🤖 Desactivar mock del Copiloto IA" : "🤖 Activar mock del Copiloto IA (dev)"}
+        </button>
+      </div>
+      ${aiMock ? `<div class="modal-actions"><button class="btn btn-secondary" id="dev-ai-mock-url">🔗 Cambiar URL del mock</button></div>` : ""}
       <div class="modal-actions"><button class="btn btn-ghost" id="dev-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1739,6 +1763,37 @@ async function openDevModeSheet() {
     toast(!pro ? "Modo Pro activado" : "Modo Pro desactivado");
     overlay.remove();
   });
+  overlay.querySelector("#dev-ai-mock-toggle").addEventListener("click", () => {
+    if (!aiMock) {
+      const url = prompt(
+        "URL del mock (usa la de tu túnel ngrok si vas a probar desde el móvil; deja la de localhost si pruebas solo desde este ordenador):",
+        getAiCopilotMockUrl()
+      );
+      if (url === null) return; // canceló
+      setAiCopilotMockUrl(url.trim());
+    }
+    setAiCopilotMockEnabled(!aiMock);
+    toast(!aiMock ? "Mock del Copiloto IA activado" : "Mock del Copiloto IA desactivado");
+    overlay.remove();
+  });
+  const urlBtn = overlay.querySelector("#dev-ai-mock-url");
+  if (urlBtn) {
+    urlBtn.addEventListener("click", () => {
+      const url = prompt("Nueva URL del mock:", getAiCopilotMockUrl());
+      if (url === null) return;
+      setAiCopilotMockUrl(url.trim());
+      toast("URL del mock actualizada");
+      overlay.remove();
+    });
+  }
+}
+
+// Pequeño escape de texto local para no depender de otro módulo aquí.
+function escapeHtmlDev(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /**
