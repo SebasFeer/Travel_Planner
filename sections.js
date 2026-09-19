@@ -13,6 +13,8 @@ import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTra
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
+import { isPro } from "./pro.js";
+import { CURRENCIES, convertCurrency } from "./currency.js";
 
 // ============================================================
 // CONFIGURACIÓN DE PESTAÑAS
@@ -1020,6 +1022,7 @@ async function renderExpenses(trip) {
     ${expenseTab === "resumen" ? totalCardHtml : categoryPanelHtml}
     <div class="section-title-row">
       <p class="section-title">Gastos recientes</p>
+      <button class="btn-icon-inline" id="open-currency-converter" title="Convertir moneda">🔁</button>
     </div>
     <div>${recentHtml}</div>
   `);
@@ -1038,12 +1041,103 @@ async function renderExpenses(trip) {
     if (item) row.addEventListener("click", () => openExpenseForm(trip, item));
   });
   document.getElementById("fab-add").addEventListener("click", () => openExpenseForm(trip));
+  const converterBtn = document.getElementById("open-currency-converter");
+  if (converterBtn) {
+    converterBtn.addEventListener("click", async () => {
+      if (!(await isPro())) {
+        toast("El conversor de moneda es una función Pro");
+        return;
+      }
+      openCurrencyConverterSheet(trip);
+    });
+  }
 }
 
-function openExpenseForm(trip, e) {
+// ------------------------------------------------------------
+// CONVERSOR DE MONEDA (Pro) — convierte un importe en otra moneda a
+// euros, y opcionalmente lo pasa como gasto nuevo ya en EUR.
+// ------------------------------------------------------------
+
+function openCurrencyConverterSheet(trip) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+
+  const currencyOptions = CURRENCIES.filter((c) => c.code !== "EUR")
+    .map((c) => `<option value="${c.code}">${escapeHtml(c.label)}</option>`)
+    .join("");
+
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">🔁 Conversor de moneda</h2>
+      <p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">
+        Tipos de cambio del Banco Central Europeo. Todos los gastos
+        del viaje se guardan en euros, así que aquí conviertes antes
+        de apuntarlo.
+      </p>
+      <div class="field">
+        <label>Importe</label>
+        <input type="number" id="conv-amount" step="0.01" placeholder="0.00" />
+      </div>
+      <div class="field">
+        <label>Moneda de origen</label>
+        <select id="conv-from">${currencyOptions}</select>
+      </div>
+      <div id="conv-result" style="min-height:34px; font-size:20px; font-weight:700; color:var(--brand); margin:10px 0;"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="conv-close">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="conv-use" disabled>Usar en un gasto nuevo</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#conv-close").addEventListener("click", () => overlay.remove());
+
+  const amountEl = overlay.querySelector("#conv-amount");
+  const fromEl = overlay.querySelector("#conv-from");
+  const resultEl = overlay.querySelector("#conv-result");
+  const useBtn = overlay.querySelector("#conv-use");
+  let lastConverted = null;
+
+  async function recalc() {
+    const amount = parseFloat(amountEl.value || 0);
+    if (!amount) {
+      resultEl.textContent = "";
+      useBtn.disabled = true;
+      lastConverted = null;
+      return;
+    }
+    resultEl.textContent = "Calculando…";
+    const converted = await convertCurrency(amount, fromEl.value, "EUR");
+    if (converted === null) {
+      resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">No se pudo obtener el tipo de cambio (revisa tu conexión).</span>`;
+      useBtn.disabled = true;
+      lastConverted = null;
+      return;
+    }
+    lastConverted = converted;
+    resultEl.textContent = money(converted);
+    useBtn.disabled = false;
+  }
+
+  amountEl.addEventListener("input", recalc);
+  fromEl.addEventListener("change", recalc);
+
+  useBtn.addEventListener("click", () => {
+    if (lastConverted === null) return;
+    overlay.remove();
+    openExpenseForm(trip, null, {
+      amount: Math.round(lastConverted * 100) / 100,
+      date: todayString(),
+      description: `Pago en ${fromEl.options[fromEl.selectedIndex].text}`,
+    });
+  });
+}
+
+function openExpenseForm(trip, e, prefill) {
   showFormModal({
     title: e ? "Editar gasto" : "Nuevo gasto",
-    initial: e,
+    initial: e || prefill || null,
     fields: [
       { name: "description", label: "Descripción", required: true },
       { name: "category", label: "Categoría", type: "select", options: EXPENSE_CATEGORIES, half: true },
@@ -1275,6 +1369,52 @@ async function collectMapPins(trip) {
   return pins;
 }
 
+const TILE_MIN_ZOOM = 13;
+const TILE_MAX_ZOOM = 16;
+const TILE_DOWNLOAD_LIMIT = 600; // límite de seguridad: buen uso del servicio gratuito de OSM
+
+function lon2tileX(lon, zoom) {
+  return Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));
+}
+function lat2tileY(lat, zoom) {
+  const rad = (lat * Math.PI) / 180;
+  return Math.floor(((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, zoom));
+}
+
+function tileUrlsForBounds(bounds) {
+  const urls = [];
+  for (let z = TILE_MIN_ZOOM; z <= TILE_MAX_ZOOM; z++) {
+    const xMin = lon2tileX(bounds.getWest(), z);
+    const xMax = lon2tileX(bounds.getEast(), z);
+    const yMin = lat2tileY(bounds.getNorth(), z);
+    const yMax = lat2tileY(bounds.getSouth(), z);
+    for (let x = xMin; x <= xMax; x++) {
+      for (let y = yMin; y <= yMax; y++) {
+        urls.push(`https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`);
+      }
+    }
+  }
+  return urls;
+}
+
+async function downloadMapOffline(bounds) {
+  if (!(await isPro())) {
+    toast("Guardar el mapa sin conexión es una función Pro");
+    return;
+  }
+  if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) {
+    toast("Recarga la app una vez (con conexión) antes de poder guardar el mapa");
+    return;
+  }
+  const urls = tileUrlsForBounds(bounds);
+  if (urls.length > TILE_DOWNLOAD_LIMIT) {
+    toast(`Esta zona es muy grande para guardar de golpe (${urls.length} teselas). Acércate un poco más en el mapa e inténtalo de nuevo.`);
+    return;
+  }
+  toast(`Descargando ${urls.length} teselas del mapa…`);
+  navigator.serviceWorker.controller.postMessage({ type: "CACHE_TILES", urls });
+}
+
 async function renderMap(trip) {
   const pins = await collectMapPins(trip);
 
@@ -1294,6 +1434,7 @@ async function renderMap(trip) {
     <div class="pill-row">${chips}</div>
     <p id="map-status" style="color:var(--muted); font-size:13px; margin:0 0 10px;">Localizando lugares…</p>
     <div id="leaflet-map" style="height:46vh; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-card);"></div>
+    <button class="btn btn-secondary" id="map-download-offline" style="width:100%; margin-top:10px;">📥 Guardar este mapa para sin conexión (Pro)</button>
     <div id="map-list" style="margin-top:14px;"></div>
   `);
   setFab("");
@@ -1323,7 +1464,10 @@ async function renderMap(trip) {
 
   const map = L.map("leaflet-map");
   leafletInstance = map;
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    // Subdominio fijo (en vez de {s} rotando entre a/b/c): así las
+    // teselas que ves aquí son exactamente las mismas URLs que se
+    // descargan con "Guardar para sin conexión", y el caché coincide.
     attribution: "© OpenStreetMap",
     maxZoom: 19,
   }).addTo(map);
@@ -1358,6 +1502,11 @@ async function renderMap(trip) {
 
   const bounds = L.latLngBounds(located.map((p) => [p.lat, p.lng]));
   map.fitBounds(bounds.pad(0.25));
+
+  const downloadBtn = document.getElementById("map-download-offline");
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", () => downloadMapOffline(map.getBounds()));
+  }
 
   if (mapDayFilter !== "all" && located.length >= 2) {
     statusEl.textContent = "Calculando ruta…";

@@ -1,4 +1,4 @@
-import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
+import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, checkAndNotifyToday, installPullToRefresh, toast } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange, enableAutoSync, syncOnLaunch } from "./cloud.js";
 
@@ -64,5 +64,13 @@ if ("serviceWorker" in navigator) {
       // Si falla el registro (p. ej. abierto en local sin https),
       // la app sigue funcionando, solo sin caché offline.
     });
+  });
+
+  // Aviso cuando termina de guardarse un mapa para uso sin conexión
+  // (lo dispara el botón "Guardar para sin conexión" de la sección Mapa).
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "CACHE_TILES_DONE") {
+      toast(`Mapa guardado para uso sin conexión (${event.data.count} teselas) ✅`);
+    }
   });
 }

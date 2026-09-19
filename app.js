@@ -320,7 +320,16 @@ function withTransition(renderFn, direction = "forward") {
  * para el botón/gesto "atrás" físico de Android (ver más abajo).
  */
 function goBack() {
-  if (document.querySelector(".modal-overlay") || document.getElementById("lock-overlay")) return;
+  if (document.getElementById("lock-overlay")) return; // la pantalla de PIN no se cierra así
+
+  // Si hay una ventana emergente abierta, la cerramos primero (igual
+  // que hace el botón físico de Android) en vez de no hacer nada.
+  const overlays = document.querySelectorAll(".modal-overlay");
+  if (overlays.length) {
+    overlays[overlays.length - 1].click();
+    return;
+  }
+
   if (state.tripId === null) return;
   history.back();
 }

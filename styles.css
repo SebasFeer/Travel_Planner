@@ -2046,6 +2046,19 @@ a { color: inherit; }
 }
 .section-title-row .section-title { margin: 0; }
 
+.btn-icon-inline {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon-inline:active { transform: scale(0.94); }
+
 .see-all {
   border: none;
   background: transparent;

@@ -2,7 +2,14 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v13";
+const CACHE_NAME = "travelplanner-v15";
+
+// Caché de teselas del mapa: va SEPARADA a propósito y con nombre
+// fijo (sin número de versión de la app), para que sobreviva a las
+// actualizaciones. Si fuera parte de CACHE_NAME, cada vez que
+// subiéramos cambios se borraría el mapa descargado sin conexión.
+const TILE_CACHE_NAME = "travelplanner-tiles-v1";
+const TILE_HOST = "tile.openstreetmap.org";
 
 const APP_SHELL = [
   "./",
@@ -16,6 +23,9 @@ const APP_SHELL = [
   "./utils.js",
   "./geocode.js",
   "./discover.js",
+  "./currency.js",
+  "./ai-copilot.js",
+  "./ai-copilot-config.js",
   "./cloud.js",
   "./firebase-config.js",
   "./pro.js",
@@ -62,7 +72,12 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        // OJO: nunca se borra TILE_CACHE_NAME aquí — es justo lo que
+        // hace posible que el mapa descargado sobreviva a las
+        // actualizaciones de la app.
+        keys
+          .filter((k) => k !== CACHE_NAME && k !== TILE_CACHE_NAME)
+          .map((k) => caches.delete(k))
       )
     )
   );
@@ -71,6 +86,24 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // Teselas del mapa: caché propia y persistente (modo sin conexión).
+  if (event.request.url.includes(TILE_HOST)) {
+    event.respondWith(
+      caches.open(TILE_CACHE_NAME).then((cache) =>
+        cache.match(event.request).then((cached) => {
+          const network = fetch(event.request)
+            .then((response) => {
+              if (response) cache.put(event.request, response.clone());
+              return response;
+            })
+            .catch(() => cached);
+          return cached || network;
+        })
+      )
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
@@ -85,5 +118,29 @@ self.addEventListener("fetch", (event) => {
         .catch(() => cached);
       return cached || network;
     })
+  );
+});
+
+// Descarga por adelantado de un conjunto de teselas concretas — lo
+// usa el botón "Descargar mapa sin conexión" de la sección Mapa.
+self.addEventListener("message", (event) => {
+  if (!event.data || event.data.type !== "CACHE_TILES") return;
+  const urls = event.data.urls || [];
+
+  event.waitUntil(
+    caches
+      .open(TILE_CACHE_NAME)
+      .then((cache) =>
+        Promise.all(
+          urls.map((url) =>
+            fetch(url, { mode: "no-cors" })
+              .then((res) => cache.put(url, res))
+              .catch(() => {})
+          )
+        )
+      )
+      .then(() => {
+        if (event.source) event.source.postMessage({ type: "CACHE_TILES_DONE", count: urls.length });
+      })
   );
 });
