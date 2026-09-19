@@ -74,19 +74,29 @@ const RESERVATION_ICONS = {
  */
 const ACTIVITY_TYPES = {
   food: {
-    label: "Restaurante", icon: "reservations",
+    label: "Restaurante", icon: "restaurant",
     color: "var(--tag-food)", soft: "var(--tag-food-soft)",
-    words: ["restaurante", "almuerzo", "cena", "desayuno", "café", "cafe", "bar ", "brunch", "comida", "tapas", "bistro"],
+    words: ["restaurante", "almuerzo", "cena", "desayuno", "café", "cafe", "bar ", "brunch", "comida", "tapas", "bistro", "pizzería", "pizzeria", "marisquería", "marisqueria", "asador", "cervecería", "cerveceria", "taberna", "food tour", "degustación", "degustacion"],
   },
   sight: {
-    label: "Museo", icon: "itinerary",
+    label: "Museo", icon: "museum",
     color: "var(--tag-sight)", soft: "var(--tag-sight-soft)",
-    words: ["museo", "galería", "galeria", "exposición", "exposicion"],
+    words: ["museo", "galería", "galeria", "exposición", "exposicion", "acuario", "planetario", "centro de arte", "exhibición", "exhibicion"],
   },
   monument: {
-    label: "Monumento", icon: "compass",
+    label: "Monumento", icon: "landmark",
     color: "var(--tag-monument)", soft: "var(--tag-monument-soft)",
-    words: ["torre", "catedral", "iglesia", "palacio", "monumento", "castillo", "plaza", "puente", "basílica", "basilica", "ruinas", "templo"],
+    words: ["torre", "catedral", "iglesia", "palacio", "monumento", "castillo", "plaza", "puente", "basílica", "basilica", "ruinas", "templo", "mirador", "estatua", "muralla", "arco de", "fortaleza", "ciudadela"],
+  },
+  nature: {
+    label: "Naturaleza", icon: "leaf",
+    color: "var(--tag-nature)", soft: "var(--tag-nature-soft)",
+    words: ["parque", "playa", "jardín", "jardin", "lago", "montaña", "montana", "senderismo", "sendero", "bosque", "isla", "cascada", "reserva natural", "paseo por", "paseo en"],
+  },
+  shopping: {
+    label: "Compras", icon: "bag",
+    color: "var(--tag-shopping)", soft: "var(--tag-shopping-soft)",
+    words: ["mercado", "tienda", "compras", "centro comercial", "boutique", "souvenir", "outlet", "zoco", "bazar"],
   },
   lodging: {
     label: "Alojamiento", icon: "hotels",
@@ -94,15 +104,23 @@ const ACTIVITY_TYPES = {
     words: ["hotel", "hostal", "check-in", "check in", "alojamiento"],
   },
 };
+const DEFAULT_ACTIVITY_TYPE = {
+  label: "Actividad", icon: "compass",
+  color: "var(--tag-other)", soft: "var(--tag-other-soft)",
+};
+// Si la actividad tiene un tipo elegido a mano (campo "type" del
+// formulario), ese manda siempre sobre la detección por palabras
+// clave — así el icono es exacto y no depende de adivinar el texto.
 function classifyActivity(item) {
+  if (item.type && item.type !== "Detectar automático") {
+    const forced = Object.values(ACTIVITY_TYPES).find((t) => t.label === item.type);
+    if (forced) return forced;
+  }
   const text = `${item.title || ""} ${item.location || ""}`.toLowerCase();
   for (const type of Object.values(ACTIVITY_TYPES)) {
     if (type.words.some((w) => text.includes(w))) return type;
   }
-  return {
-    label: "Actividad", icon: "itinerary",
-    color: "var(--tag-other)", soft: "var(--tag-other-soft)",
-  };
+  return DEFAULT_ACTIVITY_TYPE;
 }
 
 function stub(iconHtml, isoDate, photoUrl) {
@@ -779,7 +797,11 @@ function openItineraryForm(trip, item, defaultDate) {
       { name: "title", label: "Título", required: true },
       { name: "date", label: "Fecha", type: "date", half: true, required: true },
       { name: "time", label: "Hora", type: "time", half: true },
-      { name: "location", label: "Lugar" },
+      { name: "location", label: "Lugar", half: true },
+      {
+        name: "type", label: "Tipo", type: "select", half: true,
+        options: ["Detectar automático", "Restaurante", "Museo", "Monumento", "Naturaleza", "Compras", "Alojamiento"],
+      },
       { name: "notes", label: "Notas", type: "textarea" },
     ],
     onDelete: item ? () => deleteAndRefresh("itinerary", item.id, "Actividad eliminada") : null,

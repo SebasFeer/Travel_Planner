@@ -33,6 +33,16 @@ const PATHS = {
   dots_v: `<circle cx="12" cy="5.5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="18.5" r="1.4"/>`,
   ruler: `<path d="M4 9h16v6H4z"/><path d="M8 9v2.5M12 9v3.5M16 9v2.5"/>`,
   pin: `<path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.4"/>`,
+  // Tenedor y cuchillo — actividades de comida (restaurantes, tapas...).
+  restaurant: `<path d="M7 3v7a2 2 0 0 0 2 2v9"/><path d="M7 3v5M10 3v5"/><path d="M17 3c-1.4 0-2.5 1.6-2.5 5s1.1 4.6 2.5 4.6V21"/>`,
+  // Fachada con frontón triangular y columnas — museos/galerías.
+  museum: `<path d="M3 9.5 12 4l9 5.5"/><path d="M4.5 9.5V20M8.5 9.5V20M12 9.5V20M15.5 9.5V20M19.5 9.5V20"/><path d="M3 20h18"/>`,
+  // Monumento tipo obelisco/torre — monumentos y miradores.
+  landmark: `<path d="M12 3 8.5 12h7L12 3Z"/><path d="M7 21l1.6-9h6.8l1.6 9"/><path d="M4.5 21h15"/>`,
+  // Hoja — naturaleza, parques, playas, senderismo.
+  leaf: `<path d="M5 19c0-8 5-14.5 14-14.5C19 13.5 12.5 19 5 19Z"/><path d="M5 19c2-3 4.5-5.5 8-8"/>`,
+  // Bolsa de la compra — mercados, tiendas, compras.
+  bag: `<path d="M6 8h12l1 12.5a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 20.5L6 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>`,
 };
 
 /**

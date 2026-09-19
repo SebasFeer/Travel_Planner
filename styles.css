@@ -47,6 +47,10 @@
   --tag-monument-soft: #e4dcff;
   --tag-lodging: #d9822b;
   --tag-lodging-soft: #f7ddb8;
+  --tag-nature: #2ea86b;
+  --tag-nature-soft: #cdf0dc;
+  --tag-shopping: #d94f8c;
+  --tag-shopping-soft: #f8d3e4;
   --tag-other: #5c7cfa;
   --tag-other-soft: #dbe3ff;
 
@@ -1630,6 +1634,82 @@ a { color: inherit; }
 }
 .hero-cta:active { transform: scale(0.98); }
 @media (hover: hover) { .hero-cta:hover { filter: brightness(1.06); } }
+
+/* Botón "Planificar viaje con IA" — CTA propia entre la búsqueda y
+   "Mis viajes", con el mismo lenguaje visual que el resto de la app
+   (degradado de marca, esquinas grandes, sombra suave). */
+.ai-plan-cta {
+  width: 100%;
+  border: none;
+  border-radius: 20px;
+  background: var(--grad-brand);
+  color: #fff;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px;
+  margin: 2px 0 20px;
+  box-shadow: var(--shadow-brand);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.ai-plan-cta::after {
+  /* Un halo suave, como un "destello" de IA, en la esquina —
+     puramente decorativo, sin depender de ninguna imagen externa. */
+  content: "";
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+.ai-plan-cta:active { transform: scale(0.98); }
+@media (hover: hover) { .ai-plan-cta:hover { filter: brightness(1.06); } }
+
+.ai-plan-cta-art {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  backdrop-filter: blur(4px);
+}
+
+.ai-plan-cta-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ai-plan-cta-text strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ai-plan-cta-text span {
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.ai-plan-cta-arrow {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.ai-plan-cta-arrow .icon-svg { width: 18px; height: 18px; }
 
 /* Hero de un viaje concreto (detalle) */
 

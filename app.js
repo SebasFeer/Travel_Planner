@@ -32,6 +32,7 @@ import {
   setAiCopilotMockEnabled,
   getAiCopilotMockUrl,
   setAiCopilotMockUrl,
+  openAiNewTripSheet,
 } from "./ai-copilot.js";
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
@@ -459,10 +460,12 @@ function installAndroidBackHandling() {
       } else {
         state.tripId = null;
       }
-      // Esta pantalla ya "gastó" la entrada del historial que el
-      // propio popstate acaba de consumir, así que no hay que
-      // volver a apilar otra.
-      suppressNextPush = true;
+      // Nota: withTransition(..., "back") nunca apila una entrada
+      // nueva (solo lo hace "forward"), así que aquí NO hay que
+      // marcar suppressNextPush — hacerlo dejaba la bandera activada
+      // y "robaba" la siguiente navegación hacia delante (p.ej. al
+      // volver a entrar a un viaje, esa entrada no se apilaba y el
+      // siguiente "atrás" se salía de la app en vez de volver a inicio).
       withTransition(renderApp, "back");
     }
     // Si ya estábamos en el inicio sin nada abierto, no hacemos nada
@@ -1091,6 +1094,14 @@ async function renderHome() {
     </div>
     <div class="view has-tabbar">
       <div id="destination-search"></div>
+      <button class="ai-plan-cta" id="btn-ai-plan-trip">
+        <span class="ai-plan-cta-art">✨</span>
+        <span class="ai-plan-cta-text">
+          <strong>Planificar viaje con IA</strong>
+          <span>Dinos el destino y tus gustos, y te armamos el itinerario</span>
+        </span>
+        <span class="ai-plan-cta-arrow">${icon("chevron")}</span>
+      </button>
       <div class="section-title-row">
         <p class="section-title">Mis viajes</p>
         ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">Ver todos ${icon("chevron")}</button>` : ""}
@@ -1157,6 +1168,7 @@ async function renderHome() {
 
   root.querySelector("#fab-new-trip").addEventListener("click", () => openTripForm());
   root.querySelector("#btn-settings").addEventListener("click", () => openSettingsSheet());
+  root.querySelector("#btn-ai-plan-trip").addEventListener("click", () => openAiNewTripSheet());
 
   // Fotos reales del destino: se buscan en segundo plano (no bloquean
   // el primer pintado) y se guardan en el viaje para no tener que

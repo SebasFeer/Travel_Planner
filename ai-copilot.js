@@ -11,7 +11,7 @@
 import { AI_COPILOT_ENDPOINT } from "./ai-copilot-config.js";
 import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
-import { h, toast } from "./app.js";
+import { h, toast, state, withTransition, renderApp } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
 
 // ------------------------------------------------------------
@@ -82,6 +82,14 @@ async function requestItinerary(payload) {
     toast("Sin conexión con el Copiloto IA.");
     return null;
   }
+}
+
+// Navega directamente al resumen de un viaje recién creado, igual
+// que si se hubiera tocado su tarjeta desde el inicio.
+function goToTrip(tripId) {
+  state.tripId = tripId;
+  state.section = "dashboard";
+  withTransition(renderApp, "forward");
 }
 
 function addDaysIso(iso, n) {
@@ -376,10 +384,132 @@ function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
   });
 }
 
+// ============================================================
+// SHEET: crear un viaje nuevo desde cero con IA (desde el inicio,
+// antes de que exista ningún viaje). A partir de destino + fechas +
+// gustos, crea el viaje y le aplica el itinerario generado.
+// ============================================================
+
+function openAiNewTripSheet() {
+  if (!isAiCopilotConfigured()) {
+    toast("El Copiloto IA todavía no está desplegado en esta app (ver DEPLOY_AI_COPILOT.md)");
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">✨ Planificar viaje con IA</h2>
+      <p style="color:var(--muted); font-size:13px; margin-top:-8px;">
+        Dinos destino, fechas y qué te apetece: la IA crea el viaje y te arma el itinerario día a día.
+      </p>
+      <div class="field">
+        <label for="ai-new-destination">Destino</label>
+        <input type="text" id="ai-new-destination" placeholder="Ej. Roma, Italia" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="ai-new-start">Fecha de inicio</label>
+          <input type="date" id="ai-new-start" />
+        </div>
+        <div class="field">
+          <label for="ai-new-end">Fecha de fin</label>
+          <input type="date" id="ai-new-end" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="ai-new-budget">Presupuesto (€) — opcional</label>
+        <input type="number" step="0.01" id="ai-new-budget" placeholder="Ej. 800" />
+      </div>
+      <div class="field">
+        <label for="ai-new-interests">¿Qué te gustaría en este viaje?</label>
+        <textarea id="ai-new-interests" rows="3" placeholder="Ej. comida local, arte, ritmo tranquilo por las mañanas..."></textarea>
+      </div>
+      <div id="ai-new-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="ai-new-cancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="ai-new-generate">✨ Crear viaje</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#ai-new-cancel").addEventListener("click", () => overlay.remove());
+
+  overlay.querySelector("#ai-new-generate").addEventListener("click", async () => {
+    const destination = overlay.querySelector("#ai-new-destination").value.trim();
+    const startDate = overlay.querySelector("#ai-new-start").value;
+    const endDate = overlay.querySelector("#ai-new-end").value;
+    const budgetRaw = overlay.querySelector("#ai-new-budget").value;
+    const interests = overlay.querySelector("#ai-new-interests").value.trim();
+
+    if (!destination) {
+      toast("Escribe un destino");
+      return;
+    }
+    if (!startDate || !endDate) {
+      toast("Elige fecha de inicio y de fin");
+      return;
+    }
+    const totalDays = (daysBetween(startDate, endDate) || 0) + 1;
+    if (totalDays < 1) {
+      toast("La fecha de fin debe ser posterior a la de inicio");
+      return;
+    }
+
+    const body = overlay.querySelector("#ai-new-body");
+    const genBtn = overlay.querySelector("#ai-new-generate");
+    genBtn.disabled = true;
+    body.innerHTML = aiLoadingHtml("Diseñando tu viaje…");
+
+    const budget = budgetRaw ? parseFloat(budgetRaw) : null;
+    const result = await requestItinerary({
+      mode: "full",
+      destination,
+      startDate,
+      endDate,
+      days: totalDays,
+      budget,
+      currency: "EUR",
+      interests,
+    });
+
+    genBtn.disabled = false;
+    if (!result) {
+      body.innerHTML = "";
+      return;
+    }
+
+    body.innerHTML = resultPreviewHtml(result);
+    overlay.querySelector(".modal-actions").innerHTML = `
+      <button type="button" class="btn btn-ghost" id="ai-new-discard">Descartar</button>
+      <button type="button" class="btn btn-primary" id="ai-new-apply">✅ Crear viaje y aplicar</button>`;
+    overlay.querySelector("#ai-new-discard").addEventListener("click", () => overlay.remove());
+    overlay.querySelector("#ai-new-apply").addEventListener("click", async () => {
+      const tripId = await Data.add("trips", {
+        name: destination,
+        destination,
+        start_date: startDate,
+        end_date: endDate,
+        budget,
+      });
+      await Data.addDefaultChecklistItems(tripId);
+      let trip = await Data.get("trips", tripId);
+      await applyDaysToItinerary(trip, result.days);
+      trip = await saveAiPlanMeta(trip, result, { merge: false });
+      overlay.remove();
+      toast("Viaje creado con IA");
+      goToTrip(tripId);
+    });
+  });
+}
+
 export {
   isAiCopilotConfigured,
   openAiPlannerSheet,
   openAiDayRegenerateSheet,
+  openAiNewTripSheet,
   isAiCopilotMockEnabled,
   setAiCopilotMockEnabled,
   getAiCopilotMockUrl,
