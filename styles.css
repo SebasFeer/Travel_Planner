@@ -336,6 +336,7 @@ a { color: inherit; }
 .ticket.cat-hotels       { --accent-a: var(--cat-hotels-a);       --accent-b: var(--cat-hotels);       --accent: var(--cat-hotels); }
 .ticket.cat-itinerary    { --accent-a: var(--cat-itinerary-a);    --accent-b: var(--cat-itinerary);    --accent: var(--cat-itinerary); }
 .ticket.cat-transport    { --accent-a: var(--cat-transport-a);    --accent-b: var(--cat-transport);    --accent: var(--cat-transport); }
+.ticket.cat-checklist    { --accent-a: var(--cat-checklist-a);    --accent-b: var(--cat-checklist);    --accent: var(--cat-checklist); }
 .ticket.cat-reservations { --accent-a: var(--cat-reservations-a); --accent-b: var(--cat-reservations); --accent: var(--cat-reservations); }
 .ticket.cat-expenses     { --accent-a: var(--cat-expenses-a);     --accent-b: var(--cat-expenses);     --accent: var(--cat-expenses); }
 
@@ -1175,14 +1176,6 @@ a { color: inherit; }
 
 .discover-add:disabled {
   opacity: 0.6;
-}
-
-.discover-lodging-block {
-  margin-top: 18px;
-  padding: 14px 12px 4px;
-  border-top: 2px solid var(--border);
-  background: var(--bg);
-  border-radius: 14px;
 }
 
 /* ============================================================

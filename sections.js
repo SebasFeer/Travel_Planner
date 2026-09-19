@@ -355,7 +355,7 @@ async function renderDashboard(trip) {
   const quickTabsHtml = h`
     <div class="quick-tabs">
       <button data-nav="itinerary" class="${state.section === "itinerary" ? "active" : ""}">Itinerario</button>
-      <button data-nav="reservations">Reservas</button>
+      <button data-nav="hotels">Hoteles</button>
       <button data-nav="expenses">Gastos</button>
       <button data-nav="map">Mapa</button>
     </div>`;

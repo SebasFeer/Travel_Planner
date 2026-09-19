@@ -644,7 +644,6 @@ function openSectionsSheet(trip) {
     { id: "flights", icon: "flights", label: "Vuelos" },
     { id: "hotels", icon: "hotels", label: "Hospedajes" },
     { id: "transport", icon: "transport", label: "Transporte" },
-    { id: "reservations", icon: "reservations", label: "Reservas" },
     { id: "checklist", icon: "checklist", label: "Checklist" },
     { id: "calendar", icon: "calendar", label: "Calendario" },
   ];
