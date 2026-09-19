@@ -19,3 +19,5 @@
 const AI_COPILOT_ENDPOINT = "";
 
 export { AI_COPILOT_ENDPOINT };
+
+const AI_COPILOT_ENDPOINT = "http://localhost:8787/generateItinerary";
