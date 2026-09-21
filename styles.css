@@ -70,15 +70,16 @@
 
   /* Fondo "viaje + espacio" */
   --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
+  --space-wash-solid: #eef2fd;
   --space-star-color: #6c5ce7;
   --space-nebula-1: #7cb0fb;
   --space-nebula-2: #a79bff;
+  --space-nebula-3: #f5a9c9;
   --space-route-color: rgba(76, 63, 214, 0.28);
   --space-waypoint-color: rgba(76, 63, 214, 0.55);
-  --space-planet-grad: linear-gradient(135deg, #7367f5, #3f8ef7);
-  --space-planet-opacity: 0.14;
-  --space-moon-grad: linear-gradient(135deg, #ffd43b, #fab005);
-  --space-moon-opacity: 0.16;
+  --space-plane-color: rgba(76, 63, 214, 0.7);
+  --space-planet-opacity: 0.55;
+  --space-moon-opacity: 0.55;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -93,13 +94,16 @@
     --overlay-bg: #0d0c22;
 
     --space-wash: linear-gradient(180deg, #0b0c22 0%, #14132b 45%, #14132b 100%);
+    --space-wash-solid: #14132b;
     --space-star-color: #ffffff;
     --space-nebula-1: #4c3fd6;
     --space-nebula-2: #3f8ef7;
+    --space-nebula-3: #b4508f;
     --space-route-color: rgba(139, 123, 255, 0.35);
     --space-waypoint-color: rgba(167, 155, 255, 0.75);
-    --space-planet-opacity: 0.35;
-    --space-moon-opacity: 0.4;
+    --space-plane-color: rgba(210, 200, 255, 0.85);
+    --space-planet-opacity: 0.85;
+    --space-moon-opacity: 0.85;
   }
 }
 
@@ -118,13 +122,16 @@
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
 
   --space-wash: linear-gradient(180deg, #090a1e 0%, #10122a 45%, #10122a 100%);
+  --space-wash-solid: #10122a;
   --space-star-color: #ffffff;
   --space-nebula-1: #4c3fd6;
   --space-nebula-2: #3f8ef7;
+  --space-nebula-3: #b4508f;
   --space-route-color: rgba(139, 123, 255, 0.35);
   --space-waypoint-color: rgba(167, 155, 255, 0.75);
-  --space-planet-opacity: 0.35;
-  --space-moon-opacity: 0.4;
+  --space-plane-color: rgba(210, 200, 255, 0.85);
+  --space-planet-opacity: 0.85;
+  --space-moon-opacity: 0.85;
 }
 
 :root[data-theme="light"] {
@@ -139,13 +146,16 @@
   --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
 
   --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
+  --space-wash-solid: #eef2fd;
   --space-star-color: #6c5ce7;
   --space-nebula-1: #7cb0fb;
   --space-nebula-2: #a79bff;
+  --space-nebula-3: #f5a9c9;
   --space-route-color: rgba(76, 63, 214, 0.28);
   --space-waypoint-color: rgba(76, 63, 214, 0.55);
-  --space-planet-opacity: 0.14;
-  --space-moon-opacity: 0.16;
+  --space-plane-color: rgba(76, 63, 214, 0.7);
+  --space-planet-opacity: 0.55;
+  --space-moon-opacity: 0.55;
 }
 
 * {
@@ -170,6 +180,17 @@ html, body {
    Puramente decorativo — no captura clics ni afecta el layout.
    ============================================================ */
 
+/* ============================================================
+   FONDO "VIAJE + ESPACIO" (versión realista)
+   Capa fija detrás de #app: cielo con degradado, banda de vía
+   láctea con textura de ruido, nebulosas con textura real
+   (feTurbulence), estrellas de colores con halo, una Tierra con
+   continentes/nubes/atmósfera, una luna con cráteres, una ruta de
+   vuelo tipo mapa aéreo con pines y avión, y estrellas fugaces
+   ocasionales. Puramente decorativo — no captura clics ni afecta
+   el layout.
+   ============================================================ */
+
 .space-bg {
   position: fixed;
   inset: 0;
@@ -185,6 +206,7 @@ html, body {
   transition: background 0.4s ease;
 }
 
+.space-bg__milkyway,
 .space-bg__stars,
 .space-bg__route {
   position: absolute;
@@ -193,9 +215,7 @@ html, body {
   height: 100%;
 }
 
-.space-bg__stars circle {
-  fill: var(--space-star-color);
-}
+.space-bg__milkyway rect { fill: #ffffff; }
 
 .tp-star-tw {
   animation: tp-twinkle 4.5s ease-in-out infinite;
@@ -208,27 +228,74 @@ html, body {
 .tp-star-tw:nth-of-type(7n) { animation-delay: -3.6s; }
 
 @keyframes tp-twinkle {
-  0%, 100% { opacity: 0.25; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.15); }
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
 
+/* Tierra: esfera con océano, continentes, nubes en movimiento suave
+   y un halo de atmósfera. */
+.space-bg__earth {
+  position: absolute;
+  top: -68px;
+  right: -58px;
+  width: 220px;
+  height: 220px;
+  opacity: var(--space-planet-opacity);
+  animation: tp-float 11s ease-in-out infinite;
+}
+.space-bg__earth svg { width: 100%; height: 100%; display: block; }
+.space-bg__earth g[filter="url(#tp-earth-clouds)"],
+.space-bg__earth ellipse {
+  animation: tp-clouds-drift 60s linear infinite;
+  transform-origin: 110px 110px;
+}
+
+@keyframes tp-clouds-drift {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Luna: esfera gris con cráteres y sombra de fase. */
+.space-bg__moon {
+  position: absolute;
+  bottom: 10%;
+  left: -46px;
+  width: 120px;
+  height: 120px;
+  opacity: var(--space-moon-opacity);
+  animation: tp-float 13s ease-in-out infinite;
+  animation-delay: -5s;
+}
+.space-bg__moon svg { width: 100%; height: 100%; display: block; }
+
+@keyframes tp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(16px); }
+}
+
+/* Ruta de vuelo tipo mapa aéreo: línea punteada, pines de origen/
+   destino y avión que la recorre en bucle con sombra propia. */
 .space-bg__route-line {
   fill: none;
   stroke: var(--space-route-color);
-  stroke-width: 3;
+  stroke-width: 2.5;
   stroke-linecap: round;
-  stroke-dasharray: 2 14;
+  stroke-dasharray: 2 13;
 }
 
 .space-bg__waypoint {
   fill: var(--space-waypoint-color);
 }
 
-.space-bg__plane {
+.space-bg__waypoint-pin path {
   fill: var(--space-waypoint-color);
+}
+
+.space-bg__plane {
+  fill: var(--space-plane-color);
   offset-path: path("M70,1500 C260,1360 120,1120 320,980 C480,870 360,700 560,560 C680,478 620,340 760,220");
   offset-rotate: auto;
-  animation: tp-fly 22s linear infinite;
+  animation: tp-fly 24s linear infinite;
 }
 
 @keyframes tp-fly {
@@ -238,43 +305,54 @@ html, body {
   100% { offset-distance: 100%; opacity: 0; }
 }
 
-.space-bg__planet {
+/* Estrellas fugaces: cruzan el cielo de vez en cuando y desaparecen. */
+.space-bg__shooting-star {
   position: absolute;
-  top: -70px;
-  right: -60px;
-  width: 220px;
-  height: 220px;
+  top: 18%;
+  left: 12%;
+  width: 2px;
+  height: 2px;
   border-radius: 50%;
-  background: var(--space-planet-grad);
-  opacity: var(--space-planet-opacity);
-  filter: blur(1px);
-  animation: tp-float 9s ease-in-out infinite;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+  opacity: 0;
+  animation: tp-shoot 9s ease-in infinite;
+  animation-delay: 2s;
+}
+.space-bg__shooting-star::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 90px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), #ffffff);
+  transform: translateY(-50%);
+}
+.space-bg__shooting-star--2 {
+  top: 62%;
+  left: 68%;
+  animation-duration: 13s;
+  animation-delay: 7s;
 }
 
-.space-bg__planet--moon {
-  top: auto;
-  right: auto;
-  bottom: 12%;
-  left: -50px;
-  width: 130px;
-  height: 130px;
-  background: var(--space-moon-grad);
-  opacity: var(--space-moon-opacity);
-  animation-duration: 12s;
-  animation-delay: -4s;
-}
-
-@keyframes tp-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(18px); }
+@keyframes tp-shoot {
+  0%, 92%, 100% { opacity: 0; transform: translate(0, 0); }
+  93% { opacity: 1; }
+  97% { opacity: 0.9; transform: translate(-160px, 130px); }
+  98% { opacity: 0; transform: translate(-160px, 130px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tp-star-tw,
   .space-bg__plane,
-  .space-bg__planet {
+  .space-bg__earth,
+  .space-bg__earth ellipse,
+  .space-bg__moon,
+  .space-bg__shooting-star {
     animation: none !important;
   }
+  .space-bg__shooting-star { display: none; }
 }
 
 body {
