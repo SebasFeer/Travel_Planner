@@ -1069,6 +1069,9 @@ a { color: inherit; }
 .field select,
 .field textarea {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1076,6 +1079,20 @@ a { color: inherit; }
   padding: 12px 13px;
   font-size: 15px;
   font-family: inherit;
+}
+
+/* <input type="date"> trae su propio layout interno (segmentos
+   dd/mm/aaaa + icono de calendario) que en iOS Safari puede ignorar
+   width:100% y quedarse con un ancho mínimo de contenido propio. Se
+   fuerza a que el control entero (y su parte interna que pinta la
+   fecha) respete el ancho de su celda en vez del de su contenido. */
+.field input[type="date"] {
+  min-width: 0;
+  width: 100%;
+}
+.field input[type="date"]::-webkit-date-and-time-value {
+  width: 100%;
+  text-align: left;
 }
 
 .field input:focus,
@@ -1089,15 +1106,18 @@ a { color: inherit; }
 
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) en vez de un simple 1fr: así la pista del grid
+     queda anclada a 0 como mínimo de verdad. Con solo 1fr, un
+     <input type="date"> (con su propio ancho mínimo de contenido
+     para "dd/mm/aaaa" + icono de calendario) puede seguir forzando
+     su columna a crecer más de la cuenta en algunos motores (visto
+     en iOS Safari), rompiendo la simetría de la fila. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
-/* Sin esto, un <input type="date"> (con su propio ancho mínimo de
-   contenido para "dd/mm/aaaa" + icono de calendario) puede forzar a
-   su columna a crecer más allá de su 1fr, rompiendo la simetría de
-   la fila y empujando la otra columna a otra línea. */
 .field-row > .field {
   min-width: 0;
+  max-width: 100%;
 }
 
 .field-check {
@@ -1746,6 +1766,22 @@ html.tp-skip-splash #splash-screen {
   object-fit: cover;
   z-index: -2;
   animation: photo-fade-in 0.5s ease;
+}
+
+/* Ilustración decorativa fija del hero de la home — a propósito NO
+   depende de los datos del usuario (ni foto de un viaje guardado ni
+   nada dinámico), solo el motivo de ruta punteada + avión del logo,
+   como un detalle en la esquina en vez de una imagen de fondo. */
+.hero-art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 58%;
+  max-width: 230px;
+  height: auto;
+  aspect-ratio: 200 / 140;
+  z-index: -2;
+  opacity: 0.9;
 }
 
 .hero::after {

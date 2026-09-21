@@ -1127,17 +1127,16 @@ async function renderHome() {
         .join("")
     : `<p style="color:var(--muted); font-size:13px; padding:4px 2px;">No hay próximos eventos.</p>`;
 
-  // Foto de cabecera: la del próximo viaje (o el primero que tenga).
-  const heroTrip =
-    trips.find((t) => t.photo_url && daysUntil(t.start_date) >= 0) ||
-    trips.find((t) => t.photo_url);
-
   const hour = new Date().getHours();
   const greetWord = hour < 6 ? "Buenas noches" : hour < 13 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches";
 
   root.innerHTML = h`
     <div class="hero">
-      ${heroTrip ? `<img class="hero-photo" src="${escapeHtml(heroTrip.photo_url)}" alt="" />` : ""}
+      <svg class="hero-art" viewBox="0 0 200 140" preserveAspectRatio="xMaxYMin meet" fill="none" aria-hidden="true">
+        <path d="M70 95 Q 110 45, 175 30" stroke="rgba(255,255,255,0.4)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 12"/>
+        <circle cx="175" cy="30" r="5" fill="rgba(255,255,255,0.5)"/>
+        <g transform="translate(70 95) rotate(-30) scale(1.1)"><path d="M16 0 L-14 -9 L-4 0 L-14 9 Z" fill="rgba(255,255,255,0.45)"/></g>
+      </svg>
       <div class="hero-top">
         <div class="hero-brand">
           <span class="hero-logo">${brandMark()}</span>
