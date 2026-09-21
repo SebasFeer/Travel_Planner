@@ -1657,6 +1657,18 @@ async function afterLogin(user) {
     return;
   }
 
+  // Si este dispositivo todavía no tiene ningún viaje creado, no hay
+  // nada que se pueda perder al traer la copia de la nube: se
+  // descarga sola, sin preguntar. Solo se pide elegir manualmente
+  // cuando ambos lados tienen datos y podría haber que sustituir algo.
+  const localTrips = await Data.getAll("trips");
+  if (!localTrips.length) {
+    toast("Sesión iniciada. Descargando tus viajes…");
+    await pullFromCloud();
+    await renderApp();
+    return;
+  }
+
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.innerHTML = h`
