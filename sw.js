@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v21";
+const CACHE_NAME = "travelplanner-v22";
 
 // Caché de teselas del mapa: va SEPARADA a propósito y con nombre
 // fijo (sin número de versión de la app), para que sobreviva a las
@@ -46,6 +46,7 @@ const EXTERNAL_SHELL = [
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
   "https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js",
+  "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js",
 ];
 
 self.addEventListener("install", (event) => {
@@ -121,26 +122,3 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Descarga por adelantado de un conjunto de teselas concretas — lo
-// usa el botón "Descargar mapa sin conexión" de la sección Mapa.
-self.addEventListener("message", (event) => {
-  if (!event.data || event.data.type !== "CACHE_TILES") return;
-  const urls = event.data.urls || [];
-
-  event.waitUntil(
-    caches
-      .open(TILE_CACHE_NAME)
-      .then((cache) =>
-        Promise.all(
-          urls.map((url) =>
-            fetch(url, { mode: "no-cors" })
-              .then((res) => cache.put(url, res))
-              .catch(() => {})
-          )
-        )
-      )
-      .then(() => {
-        if (event.source) event.source.postMessage({ type: "CACHE_TILES_DONE", count: urls.length });
-      })
-  );
-});

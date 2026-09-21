@@ -1382,64 +1382,153 @@ async function collectMapPins(trip) {
   return pins;
 }
 
-const TILE_MIN_ZOOM = 13;
-const TILE_MAX_ZOOM = 16;
-const TILE_DOWNLOAD_LIMIT = 600; // límite de seguridad: buen uso del servicio gratuito de OSM
+const KIND_LABEL = { hotel: "Alojamiento", itinerary: "Actividad", reservation: "Reserva", transport: "Transporte" };
 
-function lon2tileX(lon, zoom) {
-  return Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));
-}
-function lat2tileY(lat, zoom) {
-  const rad = (lat * Math.PI) / 180;
-  return Math.floor(((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, zoom));
+// Calcula el zoom que hace que unos límites (bounding box) quepan en
+// un mapa estático de widthPx×heightPx — la misma cuenta que hace
+// Leaflet por dentro para fitBounds(), pero la necesitamos a mano
+// porque el mapa estático del PDF no es un Leaflet interactivo.
+function zoomForBounds(bounds, widthPx, heightPx) {
+  const WORLD_PX = 256;
+  const latRad = (lat) => {
+    const s = Math.sin((lat * Math.PI) / 180);
+    return Math.log((1 + s) / (1 - s)) / 2;
+  };
+  const zoomForDimension = (mapPx, worldFraction) =>
+    Math.floor(Math.log2(mapPx / WORLD_PX / worldFraction));
+
+  const latFraction = (latRad(bounds.north) - latRad(bounds.south)) / Math.PI;
+  const lngFraction = (bounds.east - bounds.west) / 360;
+
+  const latZoom = zoomForDimension(heightPx, Math.max(latFraction, 1e-9));
+  const lngZoom = zoomForDimension(widthPx, Math.max(lngFraction, 1e-9));
+  return Math.max(2, Math.min(latZoom, lngZoom, 17) - 1); // -1 de margen para que no queden pines pegados al borde
 }
 
-function tileUrlsForBounds(bounds) {
-  const urls = [];
-  for (let z = TILE_MIN_ZOOM; z <= TILE_MAX_ZOOM; z++) {
-    const xMin = lon2tileX(bounds.getWest(), z);
-    const xMax = lon2tileX(bounds.getEast(), z);
-    const yMin = lat2tileY(bounds.getNorth(), z);
-    const yMax = lat2tileY(bounds.getSouth(), z);
-    for (let x = xMin; x <= xMax; x++) {
-      for (let y = yMin; y <= yMax; y++) {
-        urls.push(`https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`);
-      }
-    }
+// Convierte una imagen remota (el mapa estático) en un data: URL, que
+// es lo que jsPDF necesita para incrustarla. Si falla (sin conexión,
+// el servicio no responde), devuelve null: el PDF sigue generándose,
+// solo que sin la imagen del mapa.
+async function fetchImageAsDataUrl(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    return null; // sin conexión, o el servicio de mapa estático no responde
   }
-  return urls;
 }
 
-async function downloadMapOffline(bounds) {
+/**
+ * Genera un PDF con el mapa de la pestaña actual (mismos puntos que
+ * se ven en el Leaflet interactivo, marcados) y debajo la lista de
+ * lugares con su fecha/hora y dirección — pensado para llevarlo sin
+ * conexión, ya que un PDF descargado no depende de teselas guardadas
+ * ni de que el Service Worker esté listo.
+ */
+async function exportMapPdf(trip, located, dayLabel) {
   if (!(await isPro())) {
-    toast("Guardar el mapa sin conexión es una función Pro");
+    toast("Guardar el mapa en PDF es una función Pro");
     return;
   }
-  if (!("serviceWorker" in navigator)) {
-    toast("Tu navegador no admite guardar el mapa sin conexión.");
+  if (!window.jspdf) {
+    toast("No se pudo generar el PDF (falta cargar una librería). Revisa tu conexión y vuelve a intentarlo.");
     return;
   }
-  // navigator.serviceWorker.controller puede seguir vacío un instante
-  // justo después de abrir la app (el Service Worker todavía se está
-  // activando), aunque sw.js ya llama a clients.claim() para tomar el
-  // control sin necesidad de recargar. En vez de rendirnos al momento,
-  // se espera a que esté listo antes de comprobarlo de verdad.
-  let controller = navigator.serviceWorker.controller;
-  if (!controller) {
-    await navigator.serviceWorker.ready;
-    controller = navigator.serviceWorker.controller;
-  }
-  if (!controller) {
-    toast("Recarga la app una vez (con conexión) antes de poder guardar el mapa");
+  if (!located.length) {
+    toast("No hay lugares localizados todavía para exportar.");
     return;
   }
-  const urls = tileUrlsForBounds(bounds);
-  if (urls.length > TILE_DOWNLOAD_LIMIT) {
-    toast(`Esta zona es muy grande para guardar de golpe (${urls.length} teselas). Acércate un poco más en el mapa e inténtalo de nuevo.`);
-    return;
+  toast("Generando PDF…");
+
+  const lats = located.map((p) => p.lat);
+  const lngs = located.map((p) => p.lng);
+  const bounds = {
+    north: Math.max(...lats),
+    south: Math.min(...lats),
+    east: Math.max(...lngs),
+    west: Math.min(...lngs),
+  };
+  const centerLat = (bounds.north + bounds.south) / 2;
+  const centerLng = (bounds.east + bounds.west) / 2;
+
+  const MAP_W = 760;
+  const MAP_H = 420;
+  const zoom = zoomForBounds(bounds, MAP_W, MAP_H);
+  const markers = located
+    .slice(0, 60) // límite de cortesía con el servicio gratuito de mapas estáticos
+    .map((p) => `${p.lat},${p.lng},lightblue1`)
+    .join("|");
+  const staticMapUrl =
+    `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLng}` +
+    `&zoom=${zoom}&size=${MAP_W}x${MAP_H}&maptype=mapnik&markers=${encodeURIComponent(markers)}`;
+
+  const mapImage = await fetchImageAsDataUrl(staticMapUrl);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  let y = margin;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(`Mapa — ${trip.destination || "Viaje"}`, margin, y);
+  y += 20;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(110);
+  doc.text(dayLabel, margin, y);
+  doc.setTextColor(0);
+  y += 18;
+
+  if (mapImage) {
+    const imgW = pageW - margin * 2;
+    const imgH = (imgW / MAP_W) * MAP_H;
+    doc.addImage(mapImage, "PNG", margin, y, imgW, imgH);
+    y += imgH + 24;
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(150);
+    doc.text("(No se pudo cargar la imagen del mapa sin conexión — la lista de abajo sigue siendo válida.)", margin, y);
+    doc.setTextColor(0);
+    y += 20;
   }
-  toast(`Descargando ${urls.length} teselas del mapa…`);
-  controller.postMessage({ type: "CACHE_TILES", urls });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Lugares", margin, y);
+  y += 18;
+
+  const pageH = doc.internal.pageSize.getHeight();
+  located.forEach((p, i) => {
+    if (y > pageH - margin - 40) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`${i + 1}. ${p.title || "Sin título"}`, margin, y);
+    y += 15;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(90);
+    const meta = [KIND_LABEL[p.kind] || "Lugar", p.date ? formatDatePretty(p.date) : "", p.time || ""].filter(Boolean).join(" · ");
+    doc.text(meta, margin, y);
+    y += 14;
+    doc.text(p.text || "", margin, y);
+    doc.setTextColor(0);
+    y += 22;
+  });
+
+  doc.save(`mapa-${(trip.destination || "viaje").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
+  toast("PDF descargado");
 }
 
 async function renderMap(trip) {
@@ -1461,7 +1550,7 @@ async function renderMap(trip) {
     <div class="pill-row">${chips}</div>
     <p id="map-status" style="color:var(--muted); font-size:13px; margin:0 0 10px;">Localizando lugares…</p>
     <div id="leaflet-map" style="height:46vh; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-card);"></div>
-    <button class="btn btn-secondary" id="map-download-offline" style="width:100%; margin-top:10px;">📥 Guardar este mapa para sin conexión (Pro)</button>
+    <button class="btn btn-secondary" id="map-download-offline" style="width:100%; margin-top:10px;">${icon("download")} Guardar en PDF para sin conexión (Pro)</button>
     <div id="map-list" style="margin-top:14px;"></div>
   `);
   setFab("");
@@ -1532,7 +1621,8 @@ async function renderMap(trip) {
 
   const downloadBtn = document.getElementById("map-download-offline");
   if (downloadBtn) {
-    downloadBtn.addEventListener("click", () => downloadMapOffline(map.getBounds()));
+    const dayLabel = mapDayFilter === "all" ? "Todos los días" : formatDatePretty(mapDayFilter);
+    downloadBtn.addEventListener("click", () => exportMapPdf(trip, located, dayLabel));
   }
 
   if (mapDayFilter !== "all" && located.length >= 2) {
