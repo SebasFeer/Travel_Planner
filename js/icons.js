@@ -69,6 +69,14 @@ const PATHS = {
   upload: `<path d="M12 14.5V4"/><path d="M8 8l4-4 4 4"/><path d="M5 18.5h14"/>`,
   // Papelera — eliminar viaje.
   trash: `<path d="M5 7h14"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M7 7l1 13a1.5 1.5 0 0 0 1.5 1.4h5a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10 11v6M14 11v6"/>`,
+  // Vagón de tren — trayecto en tren.
+  train: `<rect x="5" y="4" width="14" height="13" rx="5"/><path d="M5 11h14"/><circle cx="9" cy="17.5" r="1.4"/><circle cx="15" cy="17.5" r="1.4"/><path d="M9.5 20.5 8 22.5M14.5 20.5 16 22.5"/>`,
+  // Autobús — trayecto en bus/autocar.
+  bus: `<rect x="3" y="6" width="18" height="10.5" rx="2.5"/><path d="M3 11.5h18"/><path d="M7.5 6v5.5M12 6v5.5M16.5 6v5.5"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>`,
+  // Coche — trayecto en coche.
+  car: `<path d="M4 16.5v-3.2l2.1-5A2 2 0 0 1 8 7h8a2 2 0 0 1 1.9 1.3l2.1 5v3.2"/><path d="M4 16.5h16"/><circle cx="8" cy="16.5" r="1.6"/><circle cx="16" cy="16.5" r="1.6"/><path d="M6.3 12h11.4"/>`,
+  // Barco — trayecto en ferry/barco.
+  boat: `<path d="M4.5 15h15l-1.8 3.6a2 2 0 0 1-1.8 1.1H8.1a2 2 0 0 1-1.8-1.1Z"/><path d="M7 15V9a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v6"/><path d="M12 8V4M12 4l3.5 3"/>`,
 };
 
 /**

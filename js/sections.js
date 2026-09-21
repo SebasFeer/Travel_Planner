@@ -44,10 +44,10 @@ const TRANSPORT_ICONS = {
 // elegido en la lista, no según el texto libre de compañía/nombre).
 const TRANSPORT_STUB_ICONS = {
   Avión: "plane",
-  Tren: "transport",
-  Bus: "transport",
-  Coche: "transport",
-  Barco: "transport",
+  Tren: "train",
+  Bus: "bus",
+  Coche: "car",
+  Barco: "boat",
   Otro: "transport",
 };
 const TRANSPORT_COLORS = {
@@ -1415,7 +1415,21 @@ async function downloadMapOffline(bounds) {
     toast("Guardar el mapa sin conexión es una función Pro");
     return;
   }
-  if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) {
+  if (!("serviceWorker" in navigator)) {
+    toast("Tu navegador no admite guardar el mapa sin conexión.");
+    return;
+  }
+  // navigator.serviceWorker.controller puede seguir vacío un instante
+  // justo después de abrir la app (el Service Worker todavía se está
+  // activando), aunque sw.js ya llama a clients.claim() para tomar el
+  // control sin necesidad de recargar. En vez de rendirnos al momento,
+  // se espera a que esté listo antes de comprobarlo de verdad.
+  let controller = navigator.serviceWorker.controller;
+  if (!controller) {
+    await navigator.serviceWorker.ready;
+    controller = navigator.serviceWorker.controller;
+  }
+  if (!controller) {
     toast("Recarga la app una vez (con conexión) antes de poder guardar el mapa");
     return;
   }
@@ -1425,7 +1439,7 @@ async function downloadMapOffline(bounds) {
     return;
   }
   toast(`Descargando ${urls.length} teselas del mapa…`);
-  navigator.serviceWorker.controller.postMessage({ type: "CACHE_TILES", urls });
+  controller.postMessage({ type: "CACHE_TILES", urls });
 }
 
 async function renderMap(trip) {

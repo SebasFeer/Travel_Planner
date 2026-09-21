@@ -97,8 +97,16 @@ async function nearbyAttractions(lat, lng, { radiusM = 3000, limit = 10 } = {}) 
     });
     if (!res.ok) return [];
     const data = await res.json();
+    // No hay ninguna métrica de popularidad gratuita en OpenStreetMap,
+    // pero tener artículo propio en Wikipedia es una señal razonable
+    // de que es un sitio realmente conocido (no un banco o una farola
+    // etiquetados como "atracción"): se ordenan primero antes de
+    // recortar a `limit`, así lo más probable es que salgan los
+    // monumentos/museos de verdad famosos en vez de lo primero que
+    // devuelva Overpass en su orden interno (arbitrario).
     const elements = (data.elements || [])
       .filter((el) => el.tags && el.tags.name)
+      .sort((a, b) => (b.tags.wikipedia ? 1 : 0) - (a.tags.wikipedia ? 1 : 0))
       .slice(0, limit);
 
     return await Promise.all(
@@ -171,4 +179,52 @@ async function nearbyLodging(lat, lng, { radiusM = 2000, limit = 10 } = {}) {
   }
 }
 
-export { nearbyAttractions, nearbyLodging };
+const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+
+// Traduce los tipos de Nominatim más comunes a una etiqueta legible.
+// No hace falta que sea exhaustivo: si no está aquí, se usa tal cual
+// venga de OpenStreetMap (con los guiones bajos cambiados a espacios).
+const PLACE_TYPE_LABELS = {
+  ...CATEGORY_LABELS,
+  hotel: "Hotel",
+  restaurant: "Restaurante",
+  cafe: "Cafetería",
+  bar: "Bar",
+  park: "Parque",
+  beach: "Playa",
+  place_of_worship: "Lugar de culto",
+  supermarket: "Supermercado",
+  mall: "Centro comercial",
+};
+
+/**
+ * Busca un sitio concreto por nombre (pestaña "Buscar" de Descubre),
+ * en vez de listar sugerencias automáticas alrededor de un punto.
+ * `near` (p. ej. el destino del viaje) se añade a la consulta para
+ * priorizar resultados de esa zona sin restringirlos del todo, por
+ * si el usuario busca algo que está un poco fuera del centro.
+ */
+async function searchPlaces(query, near, { limit = 6 } = {}) {
+  if (!query) return [];
+  try {
+    const q = near ? `${query}, ${near}` : query;
+    const url =
+      `${NOMINATIM_URL}?format=jsonv2&namedetails=1&limit=${limit}` +
+      `&q=${encodeURIComponent(q)}`;
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return [];
+    const results = await res.json();
+    return results
+      .filter((r) => r.namedetails && r.namedetails.name)
+      .map((r) => ({
+        name: r.namedetails.name,
+        category: PLACE_TYPE_LABELS[r.type] || (r.type ? r.type.replace(/_/g, " ") : "Lugar"),
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+      }));
+  } catch (err) {
+    return []; // sin conexión, o Nominatim no responde
+  }
+}
+
+export { nearbyAttractions, nearbyLodging, searchPlaces };
