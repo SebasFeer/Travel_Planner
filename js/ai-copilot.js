@@ -241,7 +241,7 @@ function resultPreviewHtml(result) {
 
 function openAiPlannerSheet(trip, onApplied) {
   if (!isAiCopilotConfigured()) {
-    toast("El Copiloto IA todavía no está desplegado en esta app (ver DEPLOY_AI_COPILOT.md)");
+    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
     return;
   }
 
@@ -325,7 +325,7 @@ function openAiPlannerSheet(trip, onApplied) {
 
 function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
   if (!isAiCopilotConfigured()) {
-    toast("El Copiloto IA todavía no está desplegado en esta app (ver DEPLOY_AI_COPILOT.md)");
+    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
     return;
   }
 
@@ -404,7 +404,7 @@ function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
 
 function openAiNewTripSheet() {
   if (!isAiCopilotConfigured()) {
-    toast("El Copiloto IA todavía no está desplegado en esta app (ver DEPLOY_AI_COPILOT.md)");
+    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
     return;
   }
 

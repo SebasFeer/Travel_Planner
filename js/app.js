@@ -1760,7 +1760,7 @@ async function openDevModeSheet() {
       <p style="color:var(--muted); font-size:12.5px; line-height:1.6; margin-top:14px;">
         🤖 <b>Copiloto IA — mock local (TEMPORAL):</b> con esto activado,
         "Generar con IA" usa un servidor de ejemplo
-        (mock-ai-copilot-server.js) en vez de tu Cloud Function real,
+        (js/mock-ai-copilot-server.js) en vez de tu Cloud Function real,
         para probar la interfaz sin gastar créditos de la API.
         ${aiMock ? `URL actual: <code>${escapeHtmlDev(getAiCopilotMockUrl())}</code>.` : ""}
         Si vas a probar desde el móvil contra la app publicada,

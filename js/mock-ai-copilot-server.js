@@ -11,10 +11,10 @@
 //
 // CÓMO USARLO
 // -----------
-// 1) Ejecuta:   node mock-ai-copilot-server.js
+// 1) Ejecuta:   node js/mock-ai-copilot-server.js
 //    (arranca en http://localhost:8787)
 //
-// 2) En ai-copilot-config.js, pon TEMPORALMENTE:
+// 2) En js/ai-copilot-config.js, pon TEMPORALMENTE:
 //      const AI_COPILOT_ENDPOINT = "http://localhost:8787/generateItinerary";
 //
 // 3) Abre la app, entra a un viaje con fechas puestas, pulsa
@@ -22,8 +22,8 @@
 //    vería con la IA real.
 //
 // 4) Cuando quieras probar con Claude de verdad, vuelve a poner
-//    en ai-copilot-config.js la URL real de tu Cloud Function
-//    desplegada (ver DEPLOY_AI_COPILOT.md) y borra esta línea.
+//    en js/ai-copilot-config.js la URL real de tu Cloud Function
+//    desplegada (ver docs/DEPLOY_AI_COPILOT.md) y borra esta línea.
 //    ¡No subas este mock ni la URL de localhost a producción!
 // ============================================================
 

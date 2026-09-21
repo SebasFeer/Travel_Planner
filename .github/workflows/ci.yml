@@ -14,7 +14,7 @@ jobs:
 
       - name: Comprobar sintaxis de los .js de la app (sin build step, PWA vanilla)
         run: |
-          for f in $(find . -maxdepth 1 -name "*.js"); do
+          for f in sw.js js/*.js; do
             echo "node --check $f"
             node --check "$f"
           done
@@ -31,6 +31,7 @@ jobs:
 
       - name: Comprobar que los módulos importados con "import ... from './x.js'" existen
         run: |
+          cd js
           for f in $(grep -ohE 'from ["'"'"']\.[^"'"'"']+["'"'"']' *.js | sed -E "s/from [\"']//;s/[\"']$//" | sort -u); do
-            test -f "$f" || { echo "Falta $f (referenciado con import)"; exit 1; }
+            test -f "$f" || { echo "Falta js/$f (referenciado con import)"; exit 1; }
           done
