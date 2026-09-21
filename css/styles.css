@@ -85,19 +85,17 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 
-  /* Fondo "horizonte" (atardecer con montañas en capas, estático) */
-  --horizon-sky: linear-gradient(180deg, #cfe0fb 0%, #e7d3ef 45%, #fbd9c4 78%, #fce8d6 100%);
-  --horizon-sun: radial-gradient(circle, rgba(255,214,153,0.95) 0%, rgba(255,167,116,0.35) 55%, rgba(255,167,116,0) 100%);
-  --horizon-1: rgba(151, 143, 214, 0.35);
-  --horizon-2: rgba(120, 108, 191, 0.55);
-  --horizon-3: rgba(88, 76, 158, 0.78);
-  --horizon-4: #33306a;
-  /* Halo detrás del texto que va directo sobre el fondo "horizonte"
-     (sin tarjeta debajo, p. ej. "Mis viajes"): en tema claro el
-     degradado se oscurece hacia las montañas, y sin esto el texto
-     oscuro pierde contraste ahí. En tema oscuro no hace falta (el
-     fondo se mantiene oscuro en todo el recorrido), así que va vacío. */
-  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.75), 0 2px 18px rgba(255, 255, 255, 0.55);
+  /* Fondo "atmósfera": manchas de color grandes y muy difuminadas
+     (mesh gradient), discretas sobre --bg. */
+  --atmos-1: rgba(63, 142, 247, 0.18);
+  --atmos-2: rgba(20, 184, 166, 0.16);
+  --atmos-3: rgba(255, 152, 93, 0.20);
+  --atmos-4: rgba(108, 92, 231, 0.18);
+  /* Halo sutil detrás del texto que va directo sobre el fondo
+     "atmósfera" (sin tarjeta debajo, p. ej. "Mis viajes"): en tema
+     claro las manchas de color pueden restar contraste al texto
+     oscuro ahí. En tema oscuro no hace falta, así que va vacío. */
+  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.65), 0 2px 18px rgba(255, 255, 255, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -111,12 +109,10 @@
     --muted-dark: #8785b3;
     --overlay-bg: #0d0c22;
 
-    --horizon-sky: linear-gradient(180deg, #0b0c22 0%, #241c47 42%, #5a2f56 72%, #a34a4f 100%);
-    --horizon-sun: radial-gradient(circle, rgba(255,197,138,0.9) 0%, rgba(255,138,102,0.4) 55%, rgba(255,138,102,0) 100%);
-    --horizon-1: rgba(120, 108, 191, 0.28);
-    --horizon-2: rgba(90, 78, 163, 0.5);
-    --horizon-3: rgba(58, 48, 110, 0.78);
-    --horizon-4: #14132b;
+    --atmos-1: rgba(108, 92, 231, 0.32);
+    --atmos-2: rgba(20, 184, 166, 0.22);
+    --atmos-3: rgba(249, 115, 22, 0.20);
+    --atmos-4: rgba(63, 142, 247, 0.26);
     --text-halo: none;
   }
 }
@@ -135,12 +131,10 @@
   --overlay-bg: #0b0d1f;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --horizon-sky: linear-gradient(180deg, #090a1e 0%, #221b45 42%, #582d54 72%, #a1494e 100%);
-  --horizon-sun: radial-gradient(circle, rgba(255,197,138,0.9) 0%, rgba(255,138,102,0.4) 55%, rgba(255,138,102,0) 100%);
-  --horizon-1: rgba(120, 108, 191, 0.28);
-  --horizon-2: rgba(90, 78, 163, 0.5);
-  --horizon-3: rgba(58, 48, 110, 0.78);
-  --horizon-4: #10122a;
+  --atmos-1: rgba(108, 92, 231, 0.32);
+  --atmos-2: rgba(20, 184, 166, 0.22);
+  --atmos-3: rgba(249, 115, 22, 0.20);
+  --atmos-4: rgba(63, 142, 247, 0.26);
   --text-halo: none;
 }
 
@@ -155,13 +149,11 @@
   --overlay-bg: #151733;
   --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
 
-  --horizon-sky: linear-gradient(180deg, #cfe0fb 0%, #e7d3ef 45%, #fbd9c4 78%, #fce8d6 100%);
-  --horizon-sun: radial-gradient(circle, rgba(255,214,153,0.95) 0%, rgba(255,167,116,0.35) 55%, rgba(255,167,116,0) 100%);
-  --horizon-1: rgba(151, 143, 214, 0.35);
-  --horizon-2: rgba(120, 108, 191, 0.55);
-  --horizon-3: rgba(88, 76, 158, 0.78);
-  --horizon-4: #33306a;
-  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.75), 0 2px 18px rgba(255, 255, 255, 0.55);
+  --atmos-1: rgba(63, 142, 247, 0.18);
+  --atmos-2: rgba(20, 184, 166, 0.16);
+  --atmos-3: rgba(255, 152, 93, 0.20);
+  --atmos-4: rgba(108, 92, 231, 0.18);
+  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.65), 0 2px 18px rgba(255, 255, 255, 0.45);
 }
 
 * {
@@ -179,56 +171,40 @@ html, body {
 }
 
 /* ============================================================
-   FONDO "VIAJE + ESPACIO"
-   Capa fija detrás de #app: cielo con degradado, nebulosas suaves,
-   estrellas (algunas titilan), un planeta/luna flotando y una ruta
-   de vuelo punteada con un avioncito recorriéndola en bucle.
-   Puramente decorativo — no captura clics ni afecta el layout.
+   FONDO "ATMÓSFERA"
+   Capa fija detrás de #app: manchas de color grandes y muy
+   difuminadas (mesh gradient) sobre --bg, más una textura de grano
+   fotográfico casi imperceptible encima (vía SVG feTurbulence,
+   renderizada una sola vez — no es una animación). Deliberadamente
+   abstracto en vez de ilustrar una escena (nada de sol/montañas/
+   planetas): así no puede leerse como "dibujo". Sin animación ni
+   coste de rendimiento relevante. No captura clics ni afecta el
+   layout.
    ============================================================ */
 
-/* ============================================================
-   FONDO "HORIZONTE" — atardecer con montañas en capas, estático.
-   Capa fija detrás de #app: cielo con degradado (más cálido hacia
-   el horizonte), un sol con halo suave, y 4 capas de montañas con
-   perspectiva atmosférica (más claras y difusas cuanto más lejos,
-   la más cercana se funde con el color de fondo de la app). Sin
-   animación ni filtros SVG pesados a propósito: es decorativo, pero
-   no debe costar nada de rendimiento. No captura clics ni afecta
-   el layout.
-   ============================================================ */
-
-.horizon-bg {
+.atmos-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: var(--horizon-sky);
-  transition: background 0.4s ease;
+  background:
+    radial-gradient(ellipse 55% 42% at 10% 6%, var(--atmos-1), transparent 62%),
+    radial-gradient(ellipse 50% 40% at 90% 4%, var(--atmos-2), transparent 60%),
+    radial-gradient(ellipse 60% 48% at 6% 98%, var(--atmos-3), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 94% 94%, var(--atmos-4), transparent 62%),
+    var(--bg);
+  transition: background-color 0.4s ease;
 }
 
-.horizon-bg__sun {
-  position: absolute;
-  left: 50%;
-  bottom: 30%;
-  width: 280px;
-  height: 280px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: var(--horizon-sun);
-}
-
-.horizon-bg__mountains {
+.atmos-bg__grain {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
 }
-
-.horizon-bg__layer-1 { fill: var(--horizon-1); }
-.horizon-bg__layer-2 { fill: var(--horizon-2); }
-.horizon-bg__layer-3 { fill: var(--horizon-3); }
-.horizon-bg__layer-4 { fill: var(--horizon-4); }
 
 body {
   overscroll-behavior-y: none;
@@ -237,7 +213,7 @@ body {
 }
 
 /* Las manchas de color decorativas de antes fueron reemplazadas por el
-   fondo "horizonte" (.horizon-bg, más abajo), que cumple el mismo
+   fondo "atmósfera" (.atmos-bg, más abajo), que cumple el mismo
    papel de dar vida a las pantallas anchas sin interferir con el
    contenido. */
 
@@ -1612,7 +1588,7 @@ html.tp-skip-splash #splash-screen {
   margin: 24px 0 12px;
   /* Halo invisible sobre superficies blancas/de tarjeta (el color
      casi coincide con ellas); solo se nota donde este título va
-     directo sobre el fondo "horizonte" sin tarjeta debajo (p. ej.
+     directo sobre el fondo "atmósfera" sin tarjeta debajo (p. ej.
      "Mis viajes" en el inicio), que es justo donde hace falta. */
   text-shadow: var(--text-halo);
 }
