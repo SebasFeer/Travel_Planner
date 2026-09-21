@@ -50,7 +50,7 @@ firebase functions:secrets:set AERODATABOX_KEY
 ```
 
 Te pedirá que pegues el valor — pega tu clave de RapidAPI (la misma que
-tenías en `flight-status-config.js`, `8f0bbd1a91mshf...`). Con esto, la
+tenías en `js/flight-status-config.js`, `8f0bbd1a91mshf...`). Con esto, la
 clave queda guardada de forma cifrada en Firebase, no en ningún archivo.
 
 ## 5. Despliega la función
@@ -67,7 +67,7 @@ https://us-central1-travel-planner-e16e1.cloudfunctions.net/flightStatus
 
 ## 6. Pega esa URL en tu app
 
-Abre `flight-status-config.js` y pon esa URL en `FLIGHT_STATUS_ENDPOINT`.
+Abre `js/flight-status-config.js` y pon esa URL en `FLIGHT_STATUS_ENDPOINT`.
 Sube ese archivo (y solo ese, de la app web) a tu repositorio como siempre.
 
 ## Para actualizar la función más adelante

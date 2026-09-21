@@ -10,7 +10,7 @@
 //
 //   https://us-central1-travel-planner-e16e1.cloudfunctions.net/flightStatus
 //
-// Instrucciones de despliegue: ver DEPLOY_FLIGHT_STATUS.md
+// Instrucciones de despliegue: ver docs/DEPLOY_FLIGHT_STATUS.md
 //
 // Mientras esto esté vacío, los avisos de vuelo simplemente no hacen
 // nada — no rompen el resto de la app.

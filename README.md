@@ -45,6 +45,24 @@ Cada vez que subas cambios a la rama `main`, GitHub Pages los publica solos en
 1-2 minutos. Si la tienes añadida a la pantalla de inicio, el icono se actualiza
 solo (el Service Worker refresca el contenido en segundo plano).
 
+**Cómo subir esos cambios:** aunque "Add file → Upload files" en la web de
+GitHub funciona, no deja ver un diff antes de publicar ni corre ninguna
+comprobación. Se recomienda clonar el repo y trabajar en local (o en un
+Codespace):
+
+```bash
+git clone https://github.com/<tu-usuario>/travel-planner.git
+cd travel-planner
+# ...editas los archivos...
+git add <archivos-cambiados>
+git commit -m "Describe el cambio"
+git push
+```
+
+Así cada cambio pasa primero por el workflow de CI (`.github/workflows/ci.yml`,
+comprueba sintaxis JS y JSON antes de fusionar) y queda un historial de commits
+legible en vez de una sucesión de "Add files via upload".
+
 ## Limitaciones a tener en cuenta
 
 - Los datos se guardan **solo en ese navegador/dispositivo**. Si borras datos de

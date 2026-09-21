@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v19";
+const CACHE_NAME = "travelplanner-v21";
 
 // Caché de teselas del mapa: va SEPARADA a propósito y con nombre
 // fijo (sin número de versión de la app), para que sobreviva a las
@@ -15,29 +15,29 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./styles.css",
-  "./main.js",
-  "./app.js",
-  "./sections.js",
-  "./db.js",
-  "./utils.js",
-  "./geocode.js",
-  "./discover.js",
-  "./currency.js",
-  "./ai-copilot.js",
-  "./ai-copilot-config.js",
-  "./cloud.js",
-  "./firebase-config.js",
-  "./pro.js",
-  "./flightstatus.js",
-  "./flight-status-config.js",
-  "./icons.js",
-  "./photo.js",
-  "./lock.js",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./apple-touch-icon.png",
-  "./logo-splash.png",
+  "./css/styles.css",
+  "./js/main.js",
+  "./js/app.js",
+  "./js/sections.js",
+  "./js/db.js",
+  "./js/utils.js",
+  "./js/geocode.js",
+  "./js/discover.js",
+  "./js/currency.js",
+  "./js/ai-copilot.js",
+  "./js/ai-copilot-config.js",
+  "./js/cloud.js",
+  "./js/firebase-config.js",
+  "./js/pro.js",
+  "./js/flightstatus.js",
+  "./js/flight-status-config.js",
+  "./js/icons.js",
+  "./js/photo.js",
+  "./js/lock.js",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png",
+  "./icons/logo-splash.png",
 ];
 
 // CDNs externos (mapa y arrastrar/soltar): se precargan aparte porque

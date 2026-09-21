@@ -10,7 +10,7 @@
 //
 //   https://us-central1-travel-planner-e16e1.cloudfunctions.net/generateItinerary
 //
-// Instrucciones de despliegue: ver DEPLOY_AI_COPILOT.md
+// Instrucciones de despliegue: ver docs/DEPLOY_AI_COPILOT.md
 //
 // Mientras esto esté vacío, el botón "✨ Generar con IA" simplemente
 // no aparece — no rompe el resto de la app. (El interruptor de

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar sintaxis de los .js de la app (sin build step, PWA vanilla)
+        run: |
+          for f in sw.js js/*.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Comprobar sintaxis de las Cloud Functions
+        run: node --check functions/index.js
+
+      - name: Validar JSON (manifest, firebase.json, .firebaserc, functions/package.json)
+        run: |
+          for f in manifest.json firebase.json .firebaserc functions/package.json; do
+            echo "node -e JSON.parse -> $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f', 'utf8'))"
+          done
+
+      - name: Comprobar que los módulos importados con "import ... from './x.js'" existen
+        run: |
+          cd js
+          for f in $(grep -ohE 'from ["'"'"']\.[^"'"'"']+["'"'"']' *.js | sed -E "s/from [\"']//;s/[\"']$//" | sort -u); do
+            test -f "$f" || { echo "Falta js/$f (referenciado con import)"; exit 1; }
+          done

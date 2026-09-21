@@ -1788,17 +1788,19 @@ html.tp-skip-splash #splash-screen {
 
 .hero-greeting {
   font-family: var(--font-display);
-  font-size: 27px;
+  font-size: 20px;
   font-weight: 800;
-  margin: 26px 0 4px;
-  line-height: 1.2;
+  margin: 16px 0 14px;
+  line-height: 1.35;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
-.hero-sub {
+.hero-greeting-q {
+  display: block;
+  margin-top: 2px;
   font-size: 13.5px;
-  margin: 0 0 16px;
-  opacity: 0.9;
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 .hero-search {
@@ -2454,13 +2456,13 @@ html.tp-skip-splash #splash-screen {
 .event-chevron { color: var(--muted); flex-shrink: 0; }
 .event-chevron .icon-svg { width: 16px; height: 16px; }
 
-/* ---------- Logo del hero (avión de papel) ---------- */
+/* ---------- Logo del hero (avión + ruta hasta el destino) ---------- */
 
 .hero-logo {
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  background: linear-gradient(135deg, #2fd4c4, #1fa9e0);
+  background: var(--grad-brand);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2468,7 +2470,7 @@ html.tp-skip-splash #splash-screen {
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
   flex-shrink: 0;
 }
-.hero-logo .icon-svg { width: 18px; height: 18px; }
+.hero-logo .icon-svg { width: 21px; height: 21px; }
 
 .hero-avatar { font-size: 18px; }
 
@@ -2769,38 +2771,9 @@ html.tp-skip-splash #splash-screen {
   border: 2px solid #fff;
 }
 
-/* ---------- Tabs rápidas + resumen del viaje (dashboard) ---------- */
+/* ---------- Resumen del viaje (dashboard) ---------- */
 
-.quick-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
-  margin: 18px 0 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.quick-tabs::-webkit-scrollbar { display: none; }
-.quick-tabs button {
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13.5px;
-  font-weight: 700;
-  padding: 10px 14px 12px;
-  position: relative;
-}
-.quick-tabs button.active { color: var(--brand); }
-.quick-tabs button.active::after {
-  content: "";
-  position: absolute;
-  left: 14px; right: 14px; bottom: -1px;
-  height: 2px;
-  background: var(--grad-brand);
-  border-radius: 2px;
-}
-
-.summary-panel { margin-top: 14px; }
+.summary-panel { margin-top: 18px; }
 
 .photo-strip {
   display: flex;

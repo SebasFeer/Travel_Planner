@@ -68,7 +68,7 @@ https://us-central1-travel-planner-e16e1.cloudfunctions.net/generateItinerary
 
 ## 6. Pega esa URL en tu app
 
-Abre `ai-copilot-config.js` y pon esa URL en `AI_COPILOT_ENDPOINT`. Sube ese
+Abre `js/ai-copilot-config.js` y pon esa URL en `AI_COPILOT_ENDPOINT`. Sube ese
 archivo a tu repositorio como siempre. En cuanto tenga un valor, el botón
 "✨ Generar con IA" aparecerá en la pestaña "Plan" de cada viaje; mientras
 esté vacío, el botón simplemente no se muestra.
