@@ -197,6 +197,14 @@ html, body {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  /* Fuerza su propia capa de composición: los filtros SVG
+     (feTurbulence de las nebulosas/estrellas) son caros de calcular,
+     y sin esto Safari en iOS puede volver a rasterizarlos en cada
+     frame de scroll en vez de tratarlos como una capa fija estática,
+     lo que se nota como tirones al desplazarse por la app. */
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .space-bg__wash {
