@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v23";
+const CACHE_NAME = "travelplanner-v24";
 
 // Caché de teselas del mapa: va SEPARADA a propósito y con nombre
 // fijo (sin número de versión de la app), para que sobreviva a las
@@ -103,6 +103,24 @@ self.addEventListener("fetch", (event) => {
         })
       )
     );
+    return;
+  }
+
+  // Solo se GUARDA en caché lo propio de la app (mismo origen) y las
+  // librerías externas fijas (EXTERNAL_SHELL) — esas ya se cachean al
+  // instalar, esto solo las mantiene al día. Todo lo demás (fotos de
+  // destinos/hoteles/actividades vía Wikipedia/Openverse/OSM,
+  // resultados de Nominatim/Overpass, el mapa estático del PDF...) se
+  // sirve de la red tal cual, sin acumularse aquí para siempre: antes
+  // cualquier petición con éxito se guardaba sin límite ni caducidad,
+  // y con muchos viajes/fotos eso podía crecer bastante. El propio
+  // caché HTTP del navegador sigue dando algo de reaprovechamiento a
+  // corto plazo para esas peticiones, sin que nosotros lo gestionemos.
+  const isSameOrigin = event.request.url.startsWith(self.location.origin);
+  const isPinnedExternal = EXTERNAL_SHELL.includes(event.request.url);
+
+  if (!isSameOrigin && !isPinnedExternal) {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
 
