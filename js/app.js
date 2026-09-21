@@ -1701,15 +1701,15 @@ function openSettingsSheet() {
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <h2 class="modal-title">Ajustes</h2>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-account">👤 ${currentUser() ? "Mi cuenta" : "Iniciar sesión"}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">☁️ Copiar / restaurar datos</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">🔗 Unirme a un viaje compartido</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">🧳 Mi perfil</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">🌗 Tema</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">🔔 Notificaciones</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-security">🔒 Seguridad (PIN)</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">🧪 Modo desarrollador</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">📄 Política de privacidad</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-account">${icon("user")} ${currentUser() ? "Mi cuenta" : "Iniciar sesión"}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">${icon("cloud")} Copiar / restaurar datos</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">${icon("link")} Unirme a un viaje compartido</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">${icon("luggage")} Mi perfil</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">${icon("theme")} Tema</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">${icon("bell")} Notificaciones</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-security">${icon("lock")} Seguridad (PIN)</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} Modo desarrollador</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">${icon("shield")} Política de privacidad</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="st-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);

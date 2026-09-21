@@ -43,6 +43,22 @@ const PATHS = {
   leaf: `<path d="M5 19c0-8 5-14.5 14-14.5C19 13.5 12.5 19 5 19Z"/><path d="M5 19c2-3 4.5-5.5 8-8"/>`,
   // Bolsa de la compra — mercados, tiendas, compras.
   bag: `<path d="M6 8h12l1 12.5a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 20.5L6 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>`,
+  // Cabeza + hombros — cuenta / iniciar sesión / perfil.
+  user: `<circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6"/>`,
+  // Nube — copia de seguridad / restaurar datos.
+  cloud: `<path d="M7.5 18a4.5 4.5 0 0 1-.4-9 5.5 5.5 0 0 1 10.6-1.8A4 4 0 0 1 17 18H7.5Z"/>`,
+  // Eslabones encadenados — unirse a un viaje compartido por código/enlace.
+  link: `<path d="M7 17l-2.1-2.1a4 4 0 0 1 0-5.6l1.4-1.4a4 4 0 0 1 5.6 0L14 10"/><path d="M17 7l2.1 2.1a4 4 0 0 1 0 5.6l-1.4 1.4a4 4 0 0 1-5.6 0L10 14"/>`,
+  // Campana — notificaciones.
+  bell: `<path d="M6 16v-4.5a6 6 0 0 1 12 0V16l1.5 2.5h-15L6 16Z"/><path d="M10 19a2 2 0 0 0 4 0"/>`,
+  // Candado — seguridad / PIN.
+  lock: `<rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>`,
+  // Tubo de ensayo — modo desarrollador / pruebas.
+  flask: `<path d="M9 3h6"/><path d="M10 3v6.5L5.5 17a2.2 2.2 0 0 0 1.9 3.3h9.2a2.2 2.2 0 0 0 1.9-3.3L14 9.5V3"/><path d="M8 15h8"/>`,
+  // Escudo con check — política de privacidad.
+  shield: `<path d="M12 3l7 3v5.5c0 4.6-3 8.3-7 9.5-4-1.2-7-4.9-7-9.5V6l7-3Z"/><path d="M9 12l2 2 4-4.5"/>`,
+  // Círculo mitad relleno — selector de tema claro/oscuro/automático.
+  theme: `<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17Z" fill="currentColor" stroke="none"/>`,
 };
 
 /**
