@@ -39,7 +39,7 @@ import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon, brandMark } from "./icons.js";
 import { geocode } from "./geocode.js";
-import { nearbyAttractions, nearbyLodging } from "./discover.js";
+import { nearbyAttractions, nearbyLodging, searchPlaces } from "./discover.js";
 
 // ============================================================
 // ESTADO
@@ -782,29 +782,28 @@ async function openDiscoverSheet(trip) {
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <h2 class="modal-title">Descubre ${escapeHtml(trip.destination)}</h2>
-      <p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">
-        Lugares de interés cercanos, con datos abiertos de Wikipedia y
-        OpenStreetMap.
-      </p>
-      <div id="discover-body" class="discover-loading">
-        <span class="discover-spinner">${icon("compass")}</span>
-        <p>Buscando destinos de interés cerca de ${escapeHtml(trip.destination)}…</p>
-        <p class="discover-loading-sub">Por favor espera un momento</p>
+      <div class="pill-row" style="margin-top:2px;">
+        <button data-tab="popular" class="active">Populares</button>
+        <button data-tab="search">Buscar</button>
+      </div>
+      <div id="discover-panel-popular">
+        <div id="discover-body" class="discover-loading">
+          <span class="discover-spinner">${icon("compass")}</span>
+          <p>Buscando sitios de interés en ${escapeHtml(trip.destination)}…</p>
+        </div>
+      </div>
+      <div id="discover-panel-search" hidden>
+        <div class="field" style="margin-top:2px;">
+          <input type="text" id="discover-search-input" placeholder="Nombre del sitio (p. ej. &quot;Torre Eiffel&quot;)" />
+        </div>
+        <button class="btn btn-primary" id="discover-search-btn" style="width:100%;">Buscar</button>
+        <div id="discover-search-results" style="margin-top:12px;"></div>
       </div>
       <div class="modal-actions"><button class="btn btn-ghost" id="discover-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
   overlay.querySelector("#discover-close").addEventListener("click", () => overlay.remove());
-
-  const coords = await geocode(trip.destination);
-  if (!overlay.isConnected) return; // el usuario ya cerró el modal
-  const body = overlay.querySelector("#discover-body");
-
-  if (!coords) {
-    body.innerHTML = `<p>No se pudo localizar "${escapeHtml(trip.destination)}". Prueba a poner un destino más concreto (p. ej. "Roma, Italia").</p>`;
-    return;
-  }
 
   function cardHtml({ name, subtitle, photoUrl }) {
     return h`
@@ -837,6 +836,63 @@ async function openDiscoverSheet(trip) {
         btn.textContent = "✅";
       });
     });
+  }
+
+  // --- Pestaña "Buscar": un sitio concreto por nombre, para
+  // añadirlo directo al itinerario aunque no sea una sugerencia
+  // automática de la pestaña "Populares". ---
+  const searchInput = overlay.querySelector("#discover-search-input");
+  const searchResults = overlay.querySelector("#discover-search-results");
+
+  async function runPlaceSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    searchResults.innerHTML = `
+      <div class="discover-loading" style="min-height:90px;">
+        <span class="discover-spinner">${icon("compass")}</span>
+        <p>Buscando "${escapeHtml(q)}"…</p>
+      </div>`;
+    const results = await searchPlaces(q, trip.destination);
+    if (!overlay.isConnected) return;
+    searchResults.innerHTML = results.length
+      ? results.map((r) => cardHtml({ name: r.name, subtitle: r.category })).join("")
+      : `<p style="color:var(--muted); font-size:12.5px; text-align:center; padding:14px 0;">No encontramos "${escapeHtml(q)}". Prueba con un nombre más concreto.</p>`;
+    wireAddButtons(searchResults);
+  }
+
+  overlay.querySelector("#discover-search-btn").addEventListener("click", runPlaceSearch);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runPlaceSearch();
+    }
+  });
+
+  // --- Cambiar entre "Populares" y "Buscar" ---
+  const tabButtons = [...overlay.querySelectorAll(".pill-row button")];
+  const panelPopular = overlay.querySelector("#discover-panel-popular");
+  const panelSearch = overlay.querySelector("#discover-panel-search");
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+      const isSearch = btn.dataset.tab === "search";
+      panelPopular.hidden = isSearch;
+      panelSearch.hidden = !isSearch;
+      if (isSearch) searchInput.focus();
+    });
+  });
+
+  // --- Pestaña "Populares": sugerencias automáticas alrededor del
+  // destino del viaje, priorizando sitios con artículo en Wikipedia
+  // (la señal gratuita más cercana a "sitio realmente conocido" que
+  // hay sin depender de una API de pago). ---
+  const coords = await geocode(trip.destination);
+  if (!overlay.isConnected) return; // el usuario ya cerró el modal
+  const body = overlay.querySelector("#discover-body");
+
+  if (!coords) {
+    body.innerHTML = `<p>No se pudo localizar "${escapeHtml(trip.destination)}". Prueba a poner un destino más concreto (p. ej. "Roma, Italia"), o busca un sitio concreto en la pestaña "Buscar".</p>`;
+    return;
   }
 
   // Cada "cargar más" amplía el radio y el límite de búsqueda, y
@@ -873,16 +929,16 @@ async function openDiscoverSheet(trip) {
     const footer = overlay.querySelector("#discover-footer");
     if (footer) {
       footer.innerHTML = fresh.length
-        ? `<button class="btn btn-ghost" id="discover-load-more">Cargar más destinos</button>`
-        : `<p style="color:var(--muted); font-size:12.5px; text-align:center; margin:6px 0 0;">No encontramos más destinos cercanos.</p>`;
+        ? `<button class="btn btn-ghost" id="discover-load-more">Cargar más sitios</button>`
+        : `<p style="color:var(--muted); font-size:12.5px; text-align:center; margin:6px 0 0;">No encontramos más sitios cercanos.</p>`;
       const nextBtn = footer.querySelector("#discover-load-more");
       if (nextBtn) nextBtn.addEventListener("click", loadMore);
     }
   }
 
   body.outerHTML = `
-    <div id="discover-body" style="max-height:56vh; overflow-y:auto;">
-      <p class="section-title">📍 Lugares de interés</p>
+    <div id="discover-body" style="max-height:48vh; overflow-y:auto;">
+      <p class="section-title">Sitios más visitados</p>
       <div id="discover-list"></div>
       <div id="discover-footer" style="padding:10px 0 0;"></div>
     </div>`;
@@ -890,7 +946,7 @@ async function openDiscoverSheet(trip) {
   await loadMore();
 
   if (!overlay.querySelector("#discover-list").children.length) {
-    overlay.querySelector("#discover-body").innerHTML = `<p>No encontramos sugerencias para esta zona ahora mismo (puede que no haya conexión, o que el área tenga poca cobertura en estas fuentes).</p>`;
+    overlay.querySelector("#discover-body").innerHTML = `<p>No encontramos sugerencias para esta zona ahora mismo (puede que no haya conexión, o que el área tenga poca cobertura en estas fuentes). Prueba a buscar un sitio concreto en la pestaña "Buscar".</p>`;
   }
 }
 
