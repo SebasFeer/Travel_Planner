@@ -79,4 +79,3 @@ Cuando quieras, adaptamos el código PySide6 original para Android usando
 con GitHub Actions en un runner `ubuntu-latest` — sin necesidad de Mac ni de
 pagar ninguna cuenta de desarrollador, y conservando ReportLab para el PDF si
 lo prefieres frente a la versión de impresión del navegador.
-
