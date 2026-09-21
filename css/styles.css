@@ -884,7 +884,12 @@ a { color: inherit; }
   justify-content: center;
   line-height: 1;
 }
-.stat-card-discover .stat-label {
+/* .stat-card.stat-card-discover (dos clases en el mismo elemento, no
+   un descendiente) para que esto gane con seguridad frente a la regla
+   genérica .stat-card .stat-label de más abajo — antes empataban en
+   especificidad y ganaba esa por venir después en el archivo, dejando
+   "Descubre" en gris apagado (casi invisible sobre la foto oscura). */
+.stat-card.stat-card-discover .stat-label {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
@@ -905,7 +910,7 @@ a { color: inherit; }
   /* ya hay una foto real de fondo: se oculta la ilustración de relleno */
   display: none;
 }
-.stat-card-discover-photo .stat-label {
+.stat-card.stat-card-discover-photo .stat-label {
   position: relative;
   z-index: 1;
   color: #fff;
