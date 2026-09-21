@@ -85,16 +85,13 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 
-  /* Fondo "atmósfera": manchas de color grandes y muy difuminadas
-     (mesh gradient), discretas sobre --bg. */
-  --atmos-1: rgba(63, 142, 247, 0.18);
-  --atmos-2: rgba(20, 184, 166, 0.16);
-  --atmos-3: rgba(255, 152, 93, 0.20);
-  --atmos-4: rgba(108, 92, 231, 0.18);
+  /* Fondo "atmósfera": foto de cielo con nubes (generada, con grano
+     fotográfico incluido en la propia imagen — ver img/bg-sky-*.webp). */
+  --atmos-bg-image: url("../img/bg-sky-light.webp");
   /* Halo sutil detrás del texto que va directo sobre el fondo
      "atmósfera" (sin tarjeta debajo, p. ej. "Mis viajes"): en tema
-     claro las manchas de color pueden restar contraste al texto
-     oscuro ahí. En tema oscuro no hace falta, así que va vacío. */
+     claro el cielo es claro y el texto oscuro puede perder contraste
+     ahí. En tema oscuro no hace falta, así que va vacío. */
   --text-halo: 0 1px 3px rgba(255, 255, 255, 0.65), 0 2px 18px rgba(255, 255, 255, 0.45);
 }
 
@@ -109,10 +106,7 @@
     --muted-dark: #8785b3;
     --overlay-bg: #0d0c22;
 
-    --atmos-1: rgba(108, 92, 231, 0.32);
-    --atmos-2: rgba(20, 184, 166, 0.22);
-    --atmos-3: rgba(249, 115, 22, 0.20);
-    --atmos-4: rgba(63, 142, 247, 0.26);
+    --atmos-bg-image: url("../img/bg-sky-dark.webp");
     --text-halo: none;
   }
 }
@@ -131,10 +125,7 @@
   --overlay-bg: #0b0d1f;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --atmos-1: rgba(108, 92, 231, 0.32);
-  --atmos-2: rgba(20, 184, 166, 0.22);
-  --atmos-3: rgba(249, 115, 22, 0.20);
-  --atmos-4: rgba(63, 142, 247, 0.26);
+  --atmos-bg-image: url("../img/bg-sky-dark.webp");
   --text-halo: none;
 }
 
@@ -149,10 +140,7 @@
   --overlay-bg: #151733;
   --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
 
-  --atmos-1: rgba(63, 142, 247, 0.18);
-  --atmos-2: rgba(20, 184, 166, 0.16);
-  --atmos-3: rgba(255, 152, 93, 0.20);
-  --atmos-4: rgba(108, 92, 231, 0.18);
+  --atmos-bg-image: url("../img/bg-sky-light.webp");
   --text-halo: 0 1px 3px rgba(255, 255, 255, 0.65), 0 2px 18px rgba(255, 255, 255, 0.45);
 }
 
@@ -172,14 +160,12 @@ html, body {
 
 /* ============================================================
    FONDO "ATMÓSFERA"
-   Capa fija detrás de #app: manchas de color grandes y muy
-   difuminadas (mesh gradient) sobre --bg, más una textura de grano
-   fotográfico casi imperceptible encima (vía SVG feTurbulence,
-   renderizada una sola vez — no es una animación). Deliberadamente
-   abstracto en vez de ilustrar una escena (nada de sol/montañas/
-   planetas): así no puede leerse como "dibujo". Sin animación ni
-   coste de rendimiento relevante. No captura clics ni afecta el
-   layout.
+   Capa fija detrás de #app: una foto de cielo con nubes (generada por
+   ruido fractal suavizado, no dibujada a mano) con grano fotográfico
+   ya integrado en la propia imagen — img/bg-sky-light.webp (tema
+   claro, atardecer) / img/bg-sky-dark.webp (tema oscuro, noche).
+   Estática a propósito (sin animación), pesa unos pocos KB cada una.
+   No captura clics ni afecta el layout.
    ============================================================ */
 
 .atmos-bg {
@@ -188,22 +174,10 @@ html, body {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse 55% 42% at 10% 6%, var(--atmos-1), transparent 62%),
-    radial-gradient(ellipse 50% 40% at 90% 4%, var(--atmos-2), transparent 60%),
-    radial-gradient(ellipse 60% 48% at 6% 98%, var(--atmos-3), transparent 65%),
-    radial-gradient(ellipse 55% 45% at 94% 94%, var(--atmos-4), transparent 62%),
-    var(--bg);
-  transition: background-color 0.4s ease;
-}
-
-.atmos-bg__grain {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
+  background-image: var(--atmos-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg);
 }
 
 body {
