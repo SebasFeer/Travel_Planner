@@ -2454,13 +2454,13 @@ html.tp-skip-splash #splash-screen {
 .event-chevron { color: var(--muted); flex-shrink: 0; }
 .event-chevron .icon-svg { width: 16px; height: 16px; }
 
-/* ---------- Logo del hero (avión de papel) ---------- */
+/* ---------- Logo del hero (avión + ruta hasta el destino) ---------- */
 
 .hero-logo {
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  background: linear-gradient(135deg, #2fd4c4, #1fa9e0);
+  background: var(--grad-brand);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2468,7 +2468,7 @@ html.tp-skip-splash #splash-screen {
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
   flex-shrink: 0;
 }
-.hero-logo .icon-svg { width: 18px; height: 18px; }
+.hero-logo .icon-svg { width: 21px; height: 21px; }
 
 .hero-avatar { font-size: 18px; }
 

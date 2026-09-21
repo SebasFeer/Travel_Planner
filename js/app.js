@@ -37,7 +37,7 @@ import {
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
-import { icon } from "./icons.js";
+import { icon, brandMark } from "./icons.js";
 import { geocode } from "./geocode.js";
 import { nearbyAttractions, nearbyLodging } from "./discover.js";
 
@@ -1084,7 +1084,7 @@ async function renderHome() {
       ${heroTrip ? `<img class="hero-photo" src="${escapeHtml(heroTrip.photo_url)}" alt="" />` : ""}
       <div class="hero-top">
         <div class="hero-brand">
-          <span class="hero-logo">${icon("plane")}</span>
+          <span class="hero-logo">${brandMark()}</span>
           <div>
             <p class="hero-brand-name">Travel Planner</p>
             <p class="hero-brand-tag">Tus viajes, en un solo lugar</p>
