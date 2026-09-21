@@ -57,6 +57,23 @@
   --teal: #14b8a6;
   --rose: #ef4444;
 
+  /* Categorías de gastos — paleta propia y deliberada (no reutiliza
+     --cat-*/--tag-* de otras secciones) para que las 6 se distingan
+     claramente entre sí en el donut de "Por categoría"; antes Comida
+     y Transporte compartían prácticamente el mismo naranja. */
+  --exp-transporte: #f97316;
+  --exp-transporte-soft: #fed7aa;
+  --exp-comida: #ec4899;
+  --exp-comida-soft: #fbcfe8;
+  --exp-alojamiento: #14b8a6;
+  --exp-alojamiento-soft: #99f6e4;
+  --exp-ocio: #6c5ce7;
+  --exp-ocio-soft: #ddd6fe;
+  --exp-compras: #ef4444;
+  --exp-compras-soft: #fecaca;
+  --exp-otros: #64748b;
+  --exp-otros-soft: #e2e8f0;
+
   --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-body: "Inter", -apple-system, system-ui, sans-serif;
@@ -68,18 +85,17 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 
-  /* Fondo "viaje + espacio" */
-  --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
-  --space-wash-solid: #eef2fd;
-  --space-star-color: #6c5ce7;
-  --space-nebula-1: #7cb0fb;
-  --space-nebula-2: #a79bff;
-  --space-nebula-3: #f5a9c9;
-  --space-route-color: rgba(76, 63, 214, 0.28);
-  --space-waypoint-color: rgba(76, 63, 214, 0.55);
-  --space-plane-color: rgba(76, 63, 214, 0.7);
-  --space-planet-opacity: 0.55;
-  --space-moon-opacity: 0.55;
+  /* Fondo "atmósfera": manchas de color grandes y muy difuminadas
+     (mesh gradient), discretas sobre --bg. */
+  --atmos-1: rgba(63, 142, 247, 0.18);
+  --atmos-2: rgba(20, 184, 166, 0.16);
+  --atmos-3: rgba(255, 152, 93, 0.20);
+  --atmos-4: rgba(108, 92, 231, 0.18);
+  /* Halo sutil detrás del texto que va directo sobre el fondo
+     "atmósfera" (sin tarjeta debajo, p. ej. "Mis viajes"): en tema
+     claro las manchas de color pueden restar contraste al texto
+     oscuro ahí. En tema oscuro no hace falta, así que va vacío. */
+  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.65), 0 2px 18px rgba(255, 255, 255, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -93,17 +109,11 @@
     --muted-dark: #8785b3;
     --overlay-bg: #0d0c22;
 
-    --space-wash: linear-gradient(180deg, #0b0c22 0%, #14132b 45%, #14132b 100%);
-    --space-wash-solid: #14132b;
-    --space-star-color: #ffffff;
-    --space-nebula-1: #4c3fd6;
-    --space-nebula-2: #3f8ef7;
-    --space-nebula-3: #b4508f;
-    --space-route-color: rgba(139, 123, 255, 0.35);
-    --space-waypoint-color: rgba(167, 155, 255, 0.75);
-    --space-plane-color: rgba(210, 200, 255, 0.85);
-    --space-planet-opacity: 0.85;
-    --space-moon-opacity: 0.85;
+    --atmos-1: rgba(108, 92, 231, 0.32);
+    --atmos-2: rgba(20, 184, 166, 0.22);
+    --atmos-3: rgba(249, 115, 22, 0.20);
+    --atmos-4: rgba(63, 142, 247, 0.26);
+    --text-halo: none;
   }
 }
 
@@ -121,17 +131,11 @@
   --overlay-bg: #0b0d1f;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --space-wash: linear-gradient(180deg, #090a1e 0%, #10122a 45%, #10122a 100%);
-  --space-wash-solid: #10122a;
-  --space-star-color: #ffffff;
-  --space-nebula-1: #4c3fd6;
-  --space-nebula-2: #3f8ef7;
-  --space-nebula-3: #b4508f;
-  --space-route-color: rgba(139, 123, 255, 0.35);
-  --space-waypoint-color: rgba(167, 155, 255, 0.75);
-  --space-plane-color: rgba(210, 200, 255, 0.85);
-  --space-planet-opacity: 0.85;
-  --space-moon-opacity: 0.85;
+  --atmos-1: rgba(108, 92, 231, 0.32);
+  --atmos-2: rgba(20, 184, 166, 0.22);
+  --atmos-3: rgba(249, 115, 22, 0.20);
+  --atmos-4: rgba(63, 142, 247, 0.26);
+  --text-halo: none;
 }
 
 :root[data-theme="light"] {
@@ -145,17 +149,11 @@
   --overlay-bg: #151733;
   --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
 
-  --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
-  --space-wash-solid: #eef2fd;
-  --space-star-color: #6c5ce7;
-  --space-nebula-1: #7cb0fb;
-  --space-nebula-2: #a79bff;
-  --space-nebula-3: #f5a9c9;
-  --space-route-color: rgba(76, 63, 214, 0.28);
-  --space-waypoint-color: rgba(76, 63, 214, 0.55);
-  --space-plane-color: rgba(76, 63, 214, 0.7);
-  --space-planet-opacity: 0.55;
-  --space-moon-opacity: 0.55;
+  --atmos-1: rgba(63, 142, 247, 0.18);
+  --atmos-2: rgba(20, 184, 166, 0.16);
+  --atmos-3: rgba(255, 152, 93, 0.20);
+  --atmos-4: rgba(108, 92, 231, 0.18);
+  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.65), 0 2px 18px rgba(255, 255, 255, 0.45);
 }
 
 * {
@@ -173,194 +171,39 @@ html, body {
 }
 
 /* ============================================================
-   FONDO "VIAJE + ESPACIO"
-   Capa fija detrás de #app: cielo con degradado, nebulosas suaves,
-   estrellas (algunas titilan), un planeta/luna flotando y una ruta
-   de vuelo punteada con un avioncito recorriéndola en bucle.
-   Puramente decorativo — no captura clics ni afecta el layout.
+   FONDO "ATMÓSFERA"
+   Capa fija detrás de #app: manchas de color grandes y muy
+   difuminadas (mesh gradient) sobre --bg, más una textura de grano
+   fotográfico casi imperceptible encima (vía SVG feTurbulence,
+   renderizada una sola vez — no es una animación). Deliberadamente
+   abstracto en vez de ilustrar una escena (nada de sol/montañas/
+   planetas): así no puede leerse como "dibujo". Sin animación ni
+   coste de rendimiento relevante. No captura clics ni afecta el
+   layout.
    ============================================================ */
 
-/* ============================================================
-   FONDO "VIAJE + ESPACIO" (versión realista)
-   Capa fija detrás de #app: cielo con degradado, banda de vía
-   láctea con textura de ruido, nebulosas con textura real
-   (feTurbulence), estrellas de colores con halo, una Tierra con
-   continentes/nubes/atmósfera, una luna con cráteres, una ruta de
-   vuelo tipo mapa aéreo con pines y avión, y estrellas fugaces
-   ocasionales. Puramente decorativo — no captura clics ni afecta
-   el layout.
-   ============================================================ */
-
-.space-bg {
+.atmos-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Fuerza su propia capa de composición: los filtros SVG
-     (feTurbulence de las nebulosas/estrellas) son caros de calcular,
-     y sin esto Safari en iOS puede volver a rasterizarlos en cada
-     frame de scroll en vez de tratarlos como una capa fija estática,
-     lo que se nota como tirones al desplazarse por la app. */
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
+  background:
+    radial-gradient(ellipse 55% 42% at 10% 6%, var(--atmos-1), transparent 62%),
+    radial-gradient(ellipse 50% 40% at 90% 4%, var(--atmos-2), transparent 60%),
+    radial-gradient(ellipse 60% 48% at 6% 98%, var(--atmos-3), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 94% 94%, var(--atmos-4), transparent 62%),
+    var(--bg);
+  transition: background-color 0.4s ease;
 }
 
-.space-bg__wash {
-  position: absolute;
-  inset: 0;
-  background: var(--space-wash);
-  transition: background 0.4s ease;
-}
-
-.space-bg__milkyway,
-.space-bg__stars,
-.space-bg__route {
+.atmos-bg__grain {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-}
-
-.space-bg__milkyway rect { fill: #ffffff; }
-
-.tp-star-tw {
-  animation: tp-twinkle 4.5s ease-in-out infinite;
-}
-.tp-star-tw2 {
-  animation-duration: 6.5s;
-}
-.tp-star-tw:nth-of-type(3n) { animation-delay: -1.4s; }
-.tp-star-tw:nth-of-type(5n) { animation-delay: -2.8s; }
-.tp-star-tw:nth-of-type(7n) { animation-delay: -3.6s; }
-
-@keyframes tp-twinkle {
-  0%, 100% { opacity: 0.3; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-/* Tierra: esfera con océano, continentes, nubes en movimiento suave
-   y un halo de atmósfera. */
-.space-bg__earth {
-  position: absolute;
-  top: -68px;
-  right: -58px;
-  width: 220px;
-  height: 220px;
-  opacity: var(--space-planet-opacity);
-  animation: tp-float 11s ease-in-out infinite;
-}
-.space-bg__earth svg { width: 100%; height: 100%; display: block; }
-.space-bg__earth g[filter="url(#tp-earth-clouds)"],
-.space-bg__earth ellipse {
-  animation: tp-clouds-drift 60s linear infinite;
-  transform-origin: 110px 110px;
-}
-
-@keyframes tp-clouds-drift {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Luna: esfera gris con cráteres y sombra de fase. */
-.space-bg__moon {
-  position: absolute;
-  bottom: 10%;
-  left: -46px;
-  width: 120px;
-  height: 120px;
-  opacity: var(--space-moon-opacity);
-  animation: tp-float 13s ease-in-out infinite;
-  animation-delay: -5s;
-}
-.space-bg__moon svg { width: 100%; height: 100%; display: block; }
-
-@keyframes tp-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(16px); }
-}
-
-/* Ruta de vuelo tipo mapa aéreo: línea punteada, pines de origen/
-   destino y avión que la recorre en bucle con sombra propia. */
-.space-bg__route-line {
-  fill: none;
-  stroke: var(--space-route-color);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-dasharray: 2 13;
-}
-
-.space-bg__waypoint {
-  fill: var(--space-waypoint-color);
-}
-
-.space-bg__waypoint-pin path {
-  fill: var(--space-waypoint-color);
-}
-
-.space-bg__plane {
-  fill: var(--space-plane-color);
-  offset-path: path("M70,1500 C260,1360 120,1120 320,980 C480,870 360,700 560,560 C680,478 620,340 760,220");
-  offset-rotate: auto;
-  animation: tp-fly 24s linear infinite;
-}
-
-@keyframes tp-fly {
-  0% { offset-distance: 0%; opacity: 0; }
-  4% { opacity: 1; }
-  96% { opacity: 1; }
-  100% { offset-distance: 100%; opacity: 0; }
-}
-
-/* Estrellas fugaces: cruzan el cielo de vez en cuando y desaparecen. */
-.space-bg__shooting-star {
-  position: absolute;
-  top: 18%;
-  left: 12%;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
-  opacity: 0;
-  animation: tp-shoot 9s ease-in infinite;
-  animation-delay: 2s;
-}
-.space-bg__shooting-star::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: 90px;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), #ffffff);
-  transform: translateY(-50%);
-}
-.space-bg__shooting-star--2 {
-  top: 62%;
-  left: 68%;
-  animation-duration: 13s;
-  animation-delay: 7s;
-}
-
-@keyframes tp-shoot {
-  0%, 92%, 100% { opacity: 0; transform: translate(0, 0); }
-  93% { opacity: 1; }
-  97% { opacity: 0.9; transform: translate(-160px, 130px); }
-  98% { opacity: 0; transform: translate(-160px, 130px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tp-star-tw,
-  .space-bg__plane,
-  .space-bg__earth,
-  .space-bg__earth ellipse,
-  .space-bg__moon,
-  .space-bg__shooting-star {
-    animation: none !important;
-  }
-  .space-bg__shooting-star { display: none; }
+  opacity: 0.05;
+  mix-blend-mode: overlay;
 }
 
 body {
@@ -370,7 +213,7 @@ body {
 }
 
 /* Las manchas de color decorativas de antes fueron reemplazadas por el
-   fondo "viaje + espacio" (.space-bg, más abajo), que cumple el mismo
+   fondo "atmósfera" (.atmos-bg, más abajo), que cumple el mismo
    papel de dar vida a las pantallas anchas sin interferir con el
    contenido. */
 
@@ -1256,6 +1099,7 @@ a { color: inherit; }
   text-align: center;
   padding: 60px 20px;
   color: var(--muted);
+  text-shadow: var(--text-halo);
 }
 
 .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
@@ -1742,6 +1586,11 @@ html.tp-skip-splash #splash-screen {
   align-items: center;
   justify-content: space-between;
   margin: 24px 0 12px;
+  /* Halo invisible sobre superficies blancas/de tarjeta (el color
+     casi coincide con ellas); solo se nota donde este título va
+     directo sobre el fondo "atmósfera" sin tarjeta debajo (p. ej.
+     "Mis viajes" en el inicio), que es justo donde hace falta. */
+  text-shadow: var(--text-halo);
 }
 
 /* ---------- HERO (cabecera con foto) ---------- */

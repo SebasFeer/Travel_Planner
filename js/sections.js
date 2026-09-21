@@ -945,12 +945,12 @@ function openReservationForm(trip, r) {
 const EXPENSE_CATEGORIES = ["Transporte", "Alojamiento", "Comida", "Ocio", "Compras", "Otros"];
 
 const EXPENSE_CATEGORY_META = {
-  Alojamiento: { color: "var(--cat-hotels)", soft: "var(--tag-lodging-soft)", icon: "hotels" },
-  Comida: { color: "var(--tag-food)", soft: "var(--tag-food-soft)", icon: "reservations" },
-  Transporte: { color: "var(--cat-transport)", soft: "var(--cat-transport-a)", icon: "transport" },
-  Ocio: { color: "var(--cat-itinerary)", soft: "var(--tag-monument-soft)", icon: "itinerary" },
-  Compras: { color: "var(--cat-reservations)", soft: "#fde2e2", icon: "wallet" },
-  Otros: { color: "var(--cat-calendar)", soft: "var(--tag-other-soft)", icon: "notes" },
+  Alojamiento: { color: "var(--exp-alojamiento)", soft: "var(--exp-alojamiento-soft)", icon: "hotels" },
+  Comida: { color: "var(--exp-comida)", soft: "var(--exp-comida-soft)", icon: "reservations" },
+  Transporte: { color: "var(--exp-transporte)", soft: "var(--exp-transporte-soft)", icon: "transport" },
+  Ocio: { color: "var(--exp-ocio)", soft: "var(--exp-ocio-soft)", icon: "itinerary" },
+  Compras: { color: "var(--exp-compras)", soft: "var(--exp-compras-soft)", icon: "wallet" },
+  Otros: { color: "var(--exp-otros)", soft: "var(--exp-otros-soft)", icon: "notes" },
 };
 
 let expenseTab = "resumen"; // "resumen" | "categoria"

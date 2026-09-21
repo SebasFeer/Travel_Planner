@@ -1125,7 +1125,7 @@ async function renderHome() {
         </div>`
         )
         .join("")
-    : `<p style="color:var(--muted); font-size:13px; padding:4px 2px;">No hay próximos eventos.</p>`;
+    : `<p style="color:var(--muted); font-size:13px; padding:4px 2px; text-shadow:var(--text-halo);">No hay próximos eventos.</p>`;
 
   const hour = new Date().getHours();
   const greetWord = hour < 6 ? "Buenas noches" : hour < 13 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches";
@@ -1411,8 +1411,8 @@ function openTripForm(trip, prefill) {
     fields: [
       { name: "name", label: "Nombre del viaje", required: true, placeholder: "Ej. Escapada de verano" },
       { name: "destination", label: "Destino", required: true, placeholder: "Ej. Lisboa, Portugal" },
-      { name: "start_date", label: "Fecha de inicio", type: "date", half: true, required: true },
-      { name: "end_date", label: "Fecha de fin", type: "date", half: true, required: true },
+      { name: "start_date", label: "Fecha de inicio", type: "date", required: true },
+      { name: "end_date", label: "Fecha de fin", type: "date", required: true },
       { name: "budget", label: "Presupuesto (€)", type: "number", step: "0.01" },
       { name: "notes", label: "Notas", type: "textarea" },
     ],
@@ -1777,6 +1777,7 @@ function openSettingsSheet() {
       <div class="modal-actions"><button class="btn btn-secondary" id="st-security">${icon("lock")} Seguridad (PIN)</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} Modo desarrollador</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">${icon("shield")} Política de privacidad</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-cache">${icon("cloud")} Uso de caché</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="st-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1796,6 +1797,71 @@ function openSettingsSheet() {
   go("#st-security", openSecuritySheet);
   go("#st-dev", openDevModeSheet);
   go("#st-privacy", openPrivacyPolicySheet);
+  go("#st-cache", openCacheUsageSheet);
+}
+
+// ------------------------------------------------------------
+// USO DE CACHÉ — cuánto espacio ocupa la app en este dispositivo
+// (app shell + teselas de mapa vistas) y botón para vaciarlo.
+// ------------------------------------------------------------
+
+async function openCacheUsageSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Uso de caché</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+        Para poder abrir sin conexión, la app guarda en este dispositivo una
+        copia de sus propios archivos y de las teselas del mapa que ya has
+        visto. Tus viajes NO están aquí — viven aparte, en la base de datos
+        local (y en la nube si tienes cuenta), así que vaciar esto nunca
+        borra ningún dato tuyo.
+      </p>
+      <div id="cache-usage-value" style="text-align:center; margin:18px 0;">
+        <p style="font-size:28px; font-weight:800; margin:0;">Calculando…</p>
+        <p style="color:var(--muted); font-size:12.5px; margin:2px 0 0;">espacio usado en este dispositivo</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="cache-clear">${icon("trash")} Vaciar caché ahora</button>
+      </div>
+      <p style="color:var(--muted); font-size:11.5px; line-height:1.5;">
+        Después de vaciarla, la app sigue funcionando igual — solo tendrá
+        que volver a descargar sus archivos y las teselas de mapa la
+        próxima vez que las necesite (hace falta conexión ese primer momento).
+      </p>
+      <div class="modal-actions"><button class="btn btn-ghost" id="cache-close">Cerrar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#cache-close").addEventListener("click", () => overlay.remove());
+
+  const valueEl = overlay.querySelector("#cache-usage-value");
+  if (navigator.storage && navigator.storage.estimate) {
+    try {
+      const { usage } = await navigator.storage.estimate();
+      const mb = (usage || 0) / (1024 * 1024);
+      const label = mb < 1 ? `${Math.round(usage / 1024)} KB` : `${mb.toFixed(1)} MB`;
+      valueEl.querySelector("p").textContent = label;
+    } catch (err) {
+      valueEl.querySelector("p").textContent = "—";
+    }
+  } else {
+    valueEl.querySelector("p").textContent = "—";
+  }
+
+  overlay.querySelector("#cache-clear").addEventListener("click", async () => {
+    if (!(await confirmAction("Se borrará el app shell guardado y el mapa descargado para sin conexión (tus viajes no se tocan). ¿Continuar?"))) return;
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      toast("Caché vaciada");
+      overlay.remove();
+    } catch (err) {
+      toast("No se pudo vaciar la caché");
+    }
+  });
 }
 
 // ------------------------------------------------------------
