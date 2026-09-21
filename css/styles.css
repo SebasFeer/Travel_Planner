@@ -2771,38 +2771,9 @@ html.tp-skip-splash #splash-screen {
   border: 2px solid #fff;
 }
 
-/* ---------- Tabs rápidas + resumen del viaje (dashboard) ---------- */
+/* ---------- Resumen del viaje (dashboard) ---------- */
 
-.quick-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
-  margin: 18px 0 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.quick-tabs::-webkit-scrollbar { display: none; }
-.quick-tabs button {
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13.5px;
-  font-weight: 700;
-  padding: 10px 14px 12px;
-  position: relative;
-}
-.quick-tabs button.active { color: var(--brand); }
-.quick-tabs button.active::after {
-  content: "";
-  position: absolute;
-  left: 14px; right: 14px; bottom: -1px;
-  height: 2px;
-  background: var(--grad-brand);
-  border-radius: 2px;
-}
-
-.summary-panel { margin-top: 14px; }
+.summary-panel { margin-top: 18px; }
 
 .photo-strip {
   display: flex;

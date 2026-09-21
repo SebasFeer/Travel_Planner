@@ -370,14 +370,6 @@ async function renderDashboard(trip) {
     .filter(Boolean)
     .slice(0, 6);
 
-  const quickTabsHtml = h`
-    <div class="quick-tabs">
-      <button data-nav="itinerary" class="${state.section === "itinerary" ? "active" : ""}">Itinerario</button>
-      <button data-nav="hotels">Hoteles</button>
-      <button data-nav="expenses">Gastos</button>
-      <button data-nav="map">Mapa</button>
-    </div>`;
-
   const summaryPanelHtml = h`
     <div class="panel summary-panel">
       <h3>${icon("heart", "panel-icon")} Resumen del viaje</h3>
@@ -407,7 +399,6 @@ async function renderDashboard(trip) {
   section(h`
     ${heroStatsHtml}
     ${bannerHtml}
-    ${quickTabsHtml}
     ${summaryPanelHtml}
     <div class="stat-grid">
       <div class="stat-card" data-nav="flights"><div class="stat-label">${icon("flights","stat-icon")} Vuelos</div><div class="stat-value">${flights.length}</div></div>
