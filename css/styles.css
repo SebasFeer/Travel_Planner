@@ -57,6 +57,23 @@
   --teal: #14b8a6;
   --rose: #ef4444;
 
+  /* Categorías de gastos — paleta propia y deliberada (no reutiliza
+     --cat-*/--tag-* de otras secciones) para que las 6 se distingan
+     claramente entre sí en el donut de "Por categoría"; antes Comida
+     y Transporte compartían prácticamente el mismo naranja. */
+  --exp-transporte: #f97316;
+  --exp-transporte-soft: #fed7aa;
+  --exp-comida: #ec4899;
+  --exp-comida-soft: #fbcfe8;
+  --exp-alojamiento: #14b8a6;
+  --exp-alojamiento-soft: #99f6e4;
+  --exp-ocio: #6c5ce7;
+  --exp-ocio-soft: #ddd6fe;
+  --exp-compras: #ef4444;
+  --exp-compras-soft: #fecaca;
+  --exp-otros: #64748b;
+  --exp-otros-soft: #e2e8f0;
+
   --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-body: "Inter", -apple-system, system-ui, sans-serif;
@@ -68,18 +85,19 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 
-  /* Fondo "viaje + espacio" */
-  --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
-  --space-wash-solid: #eef2fd;
-  --space-star-color: #6c5ce7;
-  --space-nebula-1: #7cb0fb;
-  --space-nebula-2: #a79bff;
-  --space-nebula-3: #f5a9c9;
-  --space-route-color: rgba(76, 63, 214, 0.28);
-  --space-waypoint-color: rgba(76, 63, 214, 0.55);
-  --space-plane-color: rgba(76, 63, 214, 0.7);
-  --space-planet-opacity: 0.55;
-  --space-moon-opacity: 0.55;
+  /* Fondo "horizonte" (atardecer con montañas en capas, estático) */
+  --horizon-sky: linear-gradient(180deg, #cfe0fb 0%, #e7d3ef 45%, #fbd9c4 78%, #fce8d6 100%);
+  --horizon-sun: radial-gradient(circle, rgba(255,214,153,0.95) 0%, rgba(255,167,116,0.35) 55%, rgba(255,167,116,0) 100%);
+  --horizon-1: rgba(151, 143, 214, 0.35);
+  --horizon-2: rgba(120, 108, 191, 0.55);
+  --horizon-3: rgba(88, 76, 158, 0.78);
+  --horizon-4: #33306a;
+  /* Halo detrás del texto que va directo sobre el fondo "horizonte"
+     (sin tarjeta debajo, p. ej. "Mis viajes"): en tema claro el
+     degradado se oscurece hacia las montañas, y sin esto el texto
+     oscuro pierde contraste ahí. En tema oscuro no hace falta (el
+     fondo se mantiene oscuro en todo el recorrido), así que va vacío. */
+  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.75), 0 2px 18px rgba(255, 255, 255, 0.55);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -93,17 +111,13 @@
     --muted-dark: #8785b3;
     --overlay-bg: #0d0c22;
 
-    --space-wash: linear-gradient(180deg, #0b0c22 0%, #14132b 45%, #14132b 100%);
-    --space-wash-solid: #14132b;
-    --space-star-color: #ffffff;
-    --space-nebula-1: #4c3fd6;
-    --space-nebula-2: #3f8ef7;
-    --space-nebula-3: #b4508f;
-    --space-route-color: rgba(139, 123, 255, 0.35);
-    --space-waypoint-color: rgba(167, 155, 255, 0.75);
-    --space-plane-color: rgba(210, 200, 255, 0.85);
-    --space-planet-opacity: 0.85;
-    --space-moon-opacity: 0.85;
+    --horizon-sky: linear-gradient(180deg, #0b0c22 0%, #241c47 42%, #5a2f56 72%, #a34a4f 100%);
+    --horizon-sun: radial-gradient(circle, rgba(255,197,138,0.9) 0%, rgba(255,138,102,0.4) 55%, rgba(255,138,102,0) 100%);
+    --horizon-1: rgba(120, 108, 191, 0.28);
+    --horizon-2: rgba(90, 78, 163, 0.5);
+    --horizon-3: rgba(58, 48, 110, 0.78);
+    --horizon-4: #14132b;
+    --text-halo: none;
   }
 }
 
@@ -121,17 +135,13 @@
   --overlay-bg: #0b0d1f;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --space-wash: linear-gradient(180deg, #090a1e 0%, #10122a 45%, #10122a 100%);
-  --space-wash-solid: #10122a;
-  --space-star-color: #ffffff;
-  --space-nebula-1: #4c3fd6;
-  --space-nebula-2: #3f8ef7;
-  --space-nebula-3: #b4508f;
-  --space-route-color: rgba(139, 123, 255, 0.35);
-  --space-waypoint-color: rgba(167, 155, 255, 0.75);
-  --space-plane-color: rgba(210, 200, 255, 0.85);
-  --space-planet-opacity: 0.85;
-  --space-moon-opacity: 0.85;
+  --horizon-sky: linear-gradient(180deg, #090a1e 0%, #221b45 42%, #582d54 72%, #a1494e 100%);
+  --horizon-sun: radial-gradient(circle, rgba(255,197,138,0.9) 0%, rgba(255,138,102,0.4) 55%, rgba(255,138,102,0) 100%);
+  --horizon-1: rgba(120, 108, 191, 0.28);
+  --horizon-2: rgba(90, 78, 163, 0.5);
+  --horizon-3: rgba(58, 48, 110, 0.78);
+  --horizon-4: #10122a;
+  --text-halo: none;
 }
 
 :root[data-theme="light"] {
@@ -145,17 +155,13 @@
   --overlay-bg: #151733;
   --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
 
-  --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
-  --space-wash-solid: #eef2fd;
-  --space-star-color: #6c5ce7;
-  --space-nebula-1: #7cb0fb;
-  --space-nebula-2: #a79bff;
-  --space-nebula-3: #f5a9c9;
-  --space-route-color: rgba(76, 63, 214, 0.28);
-  --space-waypoint-color: rgba(76, 63, 214, 0.55);
-  --space-plane-color: rgba(76, 63, 214, 0.7);
-  --space-planet-opacity: 0.55;
-  --space-moon-opacity: 0.55;
+  --horizon-sky: linear-gradient(180deg, #cfe0fb 0%, #e7d3ef 45%, #fbd9c4 78%, #fce8d6 100%);
+  --horizon-sun: radial-gradient(circle, rgba(255,214,153,0.95) 0%, rgba(255,167,116,0.35) 55%, rgba(255,167,116,0) 100%);
+  --horizon-1: rgba(151, 143, 214, 0.35);
+  --horizon-2: rgba(120, 108, 191, 0.55);
+  --horizon-3: rgba(88, 76, 158, 0.78);
+  --horizon-4: #33306a;
+  --text-halo: 0 1px 3px rgba(255, 255, 255, 0.75), 0 2px 18px rgba(255, 255, 255, 0.55);
 }
 
 * {
@@ -181,187 +187,48 @@ html, body {
    ============================================================ */
 
 /* ============================================================
-   FONDO "VIAJE + ESPACIO" (versión realista)
-   Capa fija detrás de #app: cielo con degradado, banda de vía
-   láctea con textura de ruido, nebulosas con textura real
-   (feTurbulence), estrellas de colores con halo, una Tierra con
-   continentes/nubes/atmósfera, una luna con cráteres, una ruta de
-   vuelo tipo mapa aéreo con pines y avión, y estrellas fugaces
-   ocasionales. Puramente decorativo — no captura clics ni afecta
+   FONDO "HORIZONTE" — atardecer con montañas en capas, estático.
+   Capa fija detrás de #app: cielo con degradado (más cálido hacia
+   el horizonte), un sol con halo suave, y 4 capas de montañas con
+   perspectiva atmosférica (más claras y difusas cuanto más lejos,
+   la más cercana se funde con el color de fondo de la app). Sin
+   animación ni filtros SVG pesados a propósito: es decorativo, pero
+   no debe costar nada de rendimiento. No captura clics ni afecta
    el layout.
    ============================================================ */
 
-.space-bg {
+.horizon-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Fuerza su propia capa de composición: los filtros SVG
-     (feTurbulence de las nebulosas/estrellas) son caros de calcular,
-     y sin esto Safari en iOS puede volver a rasterizarlos en cada
-     frame de scroll en vez de tratarlos como una capa fija estática,
-     lo que se nota como tirones al desplazarse por la app. */
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-.space-bg__wash {
-  position: absolute;
-  inset: 0;
-  background: var(--space-wash);
+  background: var(--horizon-sky);
   transition: background 0.4s ease;
 }
 
-.space-bg__milkyway,
-.space-bg__stars,
-.space-bg__route {
+.horizon-bg__sun {
+  position: absolute;
+  left: 50%;
+  bottom: 30%;
+  width: 280px;
+  height: 280px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--horizon-sun);
+}
+
+.horizon-bg__mountains {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-.space-bg__milkyway rect { fill: #ffffff; }
-
-.tp-star-tw {
-  animation: tp-twinkle 4.5s ease-in-out infinite;
-}
-.tp-star-tw2 {
-  animation-duration: 6.5s;
-}
-.tp-star-tw:nth-of-type(3n) { animation-delay: -1.4s; }
-.tp-star-tw:nth-of-type(5n) { animation-delay: -2.8s; }
-.tp-star-tw:nth-of-type(7n) { animation-delay: -3.6s; }
-
-@keyframes tp-twinkle {
-  0%, 100% { opacity: 0.3; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-/* Tierra: esfera con océano, continentes, nubes en movimiento suave
-   y un halo de atmósfera. */
-.space-bg__earth {
-  position: absolute;
-  top: -68px;
-  right: -58px;
-  width: 220px;
-  height: 220px;
-  opacity: var(--space-planet-opacity);
-  animation: tp-float 11s ease-in-out infinite;
-}
-.space-bg__earth svg { width: 100%; height: 100%; display: block; }
-.space-bg__earth g[filter="url(#tp-earth-clouds)"],
-.space-bg__earth ellipse {
-  animation: tp-clouds-drift 60s linear infinite;
-  transform-origin: 110px 110px;
-}
-
-@keyframes tp-clouds-drift {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Luna: esfera gris con cráteres y sombra de fase. */
-.space-bg__moon {
-  position: absolute;
-  bottom: 10%;
-  left: -46px;
-  width: 120px;
-  height: 120px;
-  opacity: var(--space-moon-opacity);
-  animation: tp-float 13s ease-in-out infinite;
-  animation-delay: -5s;
-}
-.space-bg__moon svg { width: 100%; height: 100%; display: block; }
-
-@keyframes tp-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(16px); }
-}
-
-/* Ruta de vuelo tipo mapa aéreo: línea punteada, pines de origen/
-   destino y avión que la recorre en bucle con sombra propia. */
-.space-bg__route-line {
-  fill: none;
-  stroke: var(--space-route-color);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-dasharray: 2 13;
-}
-
-.space-bg__waypoint {
-  fill: var(--space-waypoint-color);
-}
-
-.space-bg__waypoint-pin path {
-  fill: var(--space-waypoint-color);
-}
-
-.space-bg__plane {
-  fill: var(--space-plane-color);
-  offset-path: path("M70,1500 C260,1360 120,1120 320,980 C480,870 360,700 560,560 C680,478 620,340 760,220");
-  offset-rotate: auto;
-  animation: tp-fly 24s linear infinite;
-}
-
-@keyframes tp-fly {
-  0% { offset-distance: 0%; opacity: 0; }
-  4% { opacity: 1; }
-  96% { opacity: 1; }
-  100% { offset-distance: 100%; opacity: 0; }
-}
-
-/* Estrellas fugaces: cruzan el cielo de vez en cuando y desaparecen. */
-.space-bg__shooting-star {
-  position: absolute;
-  top: 18%;
-  left: 12%;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
-  opacity: 0;
-  animation: tp-shoot 9s ease-in infinite;
-  animation-delay: 2s;
-}
-.space-bg__shooting-star::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: 90px;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), #ffffff);
-  transform: translateY(-50%);
-}
-.space-bg__shooting-star--2 {
-  top: 62%;
-  left: 68%;
-  animation-duration: 13s;
-  animation-delay: 7s;
-}
-
-@keyframes tp-shoot {
-  0%, 92%, 100% { opacity: 0; transform: translate(0, 0); }
-  93% { opacity: 1; }
-  97% { opacity: 0.9; transform: translate(-160px, 130px); }
-  98% { opacity: 0; transform: translate(-160px, 130px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tp-star-tw,
-  .space-bg__plane,
-  .space-bg__earth,
-  .space-bg__earth ellipse,
-  .space-bg__moon,
-  .space-bg__shooting-star {
-    animation: none !important;
-  }
-  .space-bg__shooting-star { display: none; }
-}
+.horizon-bg__layer-1 { fill: var(--horizon-1); }
+.horizon-bg__layer-2 { fill: var(--horizon-2); }
+.horizon-bg__layer-3 { fill: var(--horizon-3); }
+.horizon-bg__layer-4 { fill: var(--horizon-4); }
 
 body {
   overscroll-behavior-y: none;
@@ -370,7 +237,7 @@ body {
 }
 
 /* Las manchas de color decorativas de antes fueron reemplazadas por el
-   fondo "viaje + espacio" (.space-bg, más abajo), que cumple el mismo
+   fondo "horizonte" (.horizon-bg, más abajo), que cumple el mismo
    papel de dar vida a las pantallas anchas sin interferir con el
    contenido. */
 
@@ -1256,6 +1123,7 @@ a { color: inherit; }
   text-align: center;
   padding: 60px 20px;
   color: var(--muted);
+  text-shadow: var(--text-halo);
 }
 
 .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
@@ -1742,6 +1610,11 @@ html.tp-skip-splash #splash-screen {
   align-items: center;
   justify-content: space-between;
   margin: 24px 0 12px;
+  /* Halo invisible sobre superficies blancas/de tarjeta (el color
+     casi coincide con ellas); solo se nota donde este título va
+     directo sobre el fondo "horizonte" sin tarjeta debajo (p. ej.
+     "Mis viajes" en el inicio), que es justo donde hace falta. */
+  text-shadow: var(--text-halo);
 }
 
 /* ---------- HERO (cabecera con foto) ---------- */
