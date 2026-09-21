@@ -44,10 +44,10 @@ const TRANSPORT_ICONS = {
 // elegido en la lista, no según el texto libre de compañía/nombre).
 const TRANSPORT_STUB_ICONS = {
   Avión: "plane",
-  Tren: "transport",
-  Bus: "transport",
-  Coche: "transport",
-  Barco: "transport",
+  Tren: "train",
+  Bus: "bus",
+  Coche: "car",
+  Barco: "boat",
   Otro: "transport",
 };
 const TRANSPORT_COLORS = {
