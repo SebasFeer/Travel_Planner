@@ -1788,17 +1788,19 @@ html.tp-skip-splash #splash-screen {
 
 .hero-greeting {
   font-family: var(--font-display);
-  font-size: 27px;
+  font-size: 20px;
   font-weight: 800;
-  margin: 26px 0 4px;
-  line-height: 1.2;
+  margin: 16px 0 14px;
+  line-height: 1.35;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
-.hero-sub {
+.hero-greeting-q {
+  display: block;
+  margin-top: 2px;
   font-size: 13.5px;
-  margin: 0 0 16px;
-  opacity: 0.9;
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 .hero-search {

@@ -1092,8 +1092,7 @@ async function renderHome() {
         </div>
         <button class="icon-btn hero-avatar ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">🙂</button>
       </div>
-      <h1 class="hero-greeting">${greetWord} 👋</h1>
-      <p class="hero-sub">¿A dónde te llevamos hoy?</p>
+      <h1 class="hero-greeting">${greetWord} 👋 <span class="hero-greeting-q">¿A dónde te llevamos hoy?</span></h1>
       <div class="hero-search">
         ${icon("search")}
         <input type="search" id="trip-search" placeholder="Busca un destino: hoteles y lugares al momento…" autocomplete="off" />
