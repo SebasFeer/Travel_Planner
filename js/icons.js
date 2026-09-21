@@ -59,6 +59,16 @@ const PATHS = {
   shield: `<path d="M12 3l7 3v5.5c0 4.6-3 8.3-7 9.5-4-1.2-7-4.9-7-9.5V6l7-3Z"/><path d="M9 12l2 2 4-4.5"/>`,
   // Círculo mitad relleno — selector de tema claro/oscuro/automático.
   theme: `<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17Z" fill="currentColor" stroke="none"/>`,
+  // Dos flechas en círculo — actualizar / sincronizar desde la nube.
+  refresh: `<path d="M4 12a8 8 0 0 1 14.5-4.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-14.5 4.5"/><path d="M4 20v-4.5h4.5"/>`,
+  // Impresora — exportar / imprimir el viaje.
+  printer: `<rect x="5" y="8.5" width="14" height="7" rx="1.5"/><path d="M7 8.5V4.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4"/><rect x="7.5" y="14" width="9" height="6" rx="1"/>`,
+  // Flecha hacia una bandeja — exportar copia / descargar.
+  download: `<path d="M12 4v10.5"/><path d="M8 11l4 4 4-4"/><path d="M5 18.5h14"/>`,
+  // Flecha desde una bandeja — subir datos a la nube.
+  upload: `<path d="M12 14.5V4"/><path d="M8 8l4-4 4 4"/><path d="M5 18.5h14"/>`,
+  // Papelera — eliminar viaje.
+  trash: `<path d="M5 7h14"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M7 7l1 13a1.5 1.5 0 0 0 1.5 1.4h5a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10 11v6M14 11v6"/>`,
 };
 
 /**

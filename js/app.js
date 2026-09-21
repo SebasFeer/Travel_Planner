@@ -683,7 +683,7 @@ function openSectionsSheet(trip) {
           .join("")}
       </div>
       <div class="modal-actions" style="margin-top:14px;">
-        <button class="btn btn-secondary" id="sheet-discover">✨ Descubre</button>
+        <button class="btn btn-secondary" id="sheet-discover">${icon("compass")} Descubre</button>
         <button class="btn btn-ghost" id="sheet-close">Cerrar</button>
       </div>
     </div>`;
@@ -715,18 +715,18 @@ function openTripMenu(trip) {
       <h2 class="modal-title">${escapeHtml(trip.destination)}</h2>
       ${
         trip.share_code
-          ? `<p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">🔗 Viaje compartido · código ${escapeHtml(trip.share_code)}</p>`
+          ? `<p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">${icon("link", "stat-icon")} Viaje compartido · código ${escapeHtml(trip.share_code)}</p>`
           : ""
       }
-      <div class="modal-actions"><button class="btn btn-secondary" id="mn-edit">✏️ Editar viaje</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="mn-share">🔗 ${trip.share_code ? "Compartir de nuevo" : "Compartir viaje (Pro)"}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-edit">${icon("edit")} Editar viaje</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-share">${icon("link")} ${trip.share_code ? "Compartir de nuevo" : "Compartir viaje (Pro)"}</button></div>
       ${
         trip.share_code
-          ? `<div class="modal-actions"><button class="btn btn-secondary" id="mn-refresh-share">🔄 Actualizar desde la nube</button></div>`
+          ? `<div class="modal-actions"><button class="btn btn-secondary" id="mn-refresh-share">${icon("refresh")} Actualizar desde la nube</button></div>`
           : ""
       }
-      <div class="modal-actions"><button class="btn btn-secondary" id="mn-print">🖨️ Exportar / Imprimir</button></div>
-      <div class="modal-actions"><button class="btn btn-danger" id="mn-delete">🗑️ Eliminar viaje</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-print">${icon("printer")} Exportar / Imprimir</button></div>
+      <div class="modal-actions"><button class="btn btn-danger" id="mn-delete">${icon("trash")} Eliminar viaje</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="mn-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1403,11 +1403,11 @@ function openBackupSheet() {
         de vez en cuando para no perderlos si borras datos de Safari o cambias de móvil.
       </p>
       <div class="modal-actions" style="margin-top:16px;">
-        <button class="btn btn-secondary" id="btn-export">⬇️ Exportar copia (.json)</button>
+        <button class="btn btn-secondary" id="btn-export">${icon("download")} Exportar copia (.json)</button>
       </div>
       <div class="modal-actions">
         <label class="btn btn-secondary" style="display:flex;">
-          ⬆️ Importar copia
+          ${icon("upload")} Importar copia
           <input type="file" accept="application/json" id="btn-import" style="display:none;" />
         </label>
       </div>
@@ -1544,15 +1544,15 @@ async function openAccountSheet() {
       <h2 class="modal-title">Tu cuenta</h2>
       <p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">${escapeHtml(user.email)}</p>
       <p style="color:var(--muted); font-size:12.5px; line-height:1.5;">
-        🔄 Sincronización automática activada: tus cambios se guardan solos
+        ${icon("refresh", "stat-icon")} Sincronización automática activada: tus cambios se guardan solos
         en la nube unos segundos después de hacerlos, y se descargan solos
         al abrir la app en otro dispositivo con esta misma cuenta.
       </p>
       <div class="modal-actions" style="margin-top:10px;">
-        <button class="btn btn-primary" id="acc-push">⬆️ Forzar subida ahora</button>
+        <button class="btn btn-primary" id="acc-push">${icon("upload")} Forzar subida ahora</button>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="acc-pull">⬇️ Forzar descarga ahora</button>
+        <button class="btn btn-secondary" id="acc-pull">${icon("download")} Forzar descarga ahora</button>
       </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="acc-logout">Cerrar sesión</button>
@@ -1667,10 +1667,10 @@ async function afterLogin(user) {
         Hay datos guardados de antes en tu cuenta. ¿Qué quieres hacer?
       </p>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="merge-pull">⬇️ Usar los datos de la nube (sustituye los de este móvil)</button>
+        <button class="btn btn-primary" id="merge-pull">${icon("download")} Usar los datos de la nube (sustituye los de este móvil)</button>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="merge-push">⬆️ Usar los datos de este móvil (sustituye los de la nube)</button>
+        <button class="btn btn-secondary" id="merge-push">${icon("upload")} Usar los datos de este móvil (sustituye los de la nube)</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1771,7 +1771,7 @@ async function openDevModeSheet() {
           ${aiMock ? "🤖 Desactivar mock del Copiloto IA" : "🤖 Activar mock del Copiloto IA (dev)"}
         </button>
       </div>
-      ${aiMock ? `<div class="modal-actions"><button class="btn btn-secondary" id="dev-ai-mock-url">🔗 Cambiar URL del mock</button></div>` : ""}
+      ${aiMock ? `<div class="modal-actions"><button class="btn btn-secondary" id="dev-ai-mock-url">${icon("link")} Cambiar URL del mock</button></div>` : ""}
       <div class="modal-actions"><button class="btn btn-ghost" id="dev-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
