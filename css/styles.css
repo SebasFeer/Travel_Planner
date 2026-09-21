@@ -1087,6 +1087,13 @@ a { color: inherit; }
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+/* Sin esto, un <input type="date"> (con su propio ancho mínimo de
+   contenido para "dd/mm/aaaa" + icono de calendario) puede forzar a
+   su columna a crecer más allá de su 1fr, rompiendo la simetría de
+   la fila y empujando la otra columna a otra línea. */
+.field-row > .field {
+  min-width: 0;
+}
 
 .field-check {
   display: flex;
