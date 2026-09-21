@@ -67,6 +67,18 @@
   --shadow-brand: 0 10px 24px rgba(92, 79, 220, 0.32);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+
+  /* Fondo "viaje + espacio" */
+  --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
+  --space-star-color: #6c5ce7;
+  --space-nebula-1: #7cb0fb;
+  --space-nebula-2: #a79bff;
+  --space-route-color: rgba(76, 63, 214, 0.28);
+  --space-waypoint-color: rgba(76, 63, 214, 0.55);
+  --space-planet-grad: linear-gradient(135deg, #7367f5, #3f8ef7);
+  --space-planet-opacity: 0.14;
+  --space-moon-grad: linear-gradient(135deg, #ffd43b, #fab005);
+  --space-moon-opacity: 0.16;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,6 +91,15 @@
     --muted: #a5a3c9;
     --muted-dark: #8785b3;
     --overlay-bg: #0d0c22;
+
+    --space-wash: linear-gradient(180deg, #0b0c22 0%, #14132b 45%, #14132b 100%);
+    --space-star-color: #ffffff;
+    --space-nebula-1: #4c3fd6;
+    --space-nebula-2: #3f8ef7;
+    --space-route-color: rgba(139, 123, 255, 0.35);
+    --space-waypoint-color: rgba(167, 155, 255, 0.75);
+    --space-planet-opacity: 0.35;
+    --space-moon-opacity: 0.4;
   }
 }
 
@@ -95,6 +116,15 @@
   --muted-dark: #8b90bb;
   --overlay-bg: #0b0d1f;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --space-wash: linear-gradient(180deg, #090a1e 0%, #10122a 45%, #10122a 100%);
+  --space-star-color: #ffffff;
+  --space-nebula-1: #4c3fd6;
+  --space-nebula-2: #3f8ef7;
+  --space-route-color: rgba(139, 123, 255, 0.35);
+  --space-waypoint-color: rgba(167, 155, 255, 0.75);
+  --space-planet-opacity: 0.35;
+  --space-moon-opacity: 0.4;
 }
 
 :root[data-theme="light"] {
@@ -107,6 +137,15 @@
   --muted-dark: #565c80;
   --overlay-bg: #151733;
   --shadow-card: 0 10px 30px rgba(23, 26, 51, 0.07);
+
+  --space-wash: linear-gradient(180deg, #dfe7fb 0%, #eef2fd 38%, #eef2fd 100%);
+  --space-star-color: #6c5ce7;
+  --space-nebula-1: #7cb0fb;
+  --space-nebula-2: #a79bff;
+  --space-route-color: rgba(76, 63, 214, 0.28);
+  --space-waypoint-color: rgba(76, 63, 214, 0.55);
+  --space-planet-opacity: 0.14;
+  --space-moon-opacity: 0.16;
 }
 
 * {
@@ -123,43 +162,131 @@ html, body {
   height: 100%;
 }
 
+/* ============================================================
+   FONDO "VIAJE + ESPACIO"
+   Capa fija detrás de #app: cielo con degradado, nebulosas suaves,
+   estrellas (algunas titilan), un planeta/luna flotando y una ruta
+   de vuelo punteada con un avioncito recorriéndola en bucle.
+   Puramente decorativo — no captura clics ni afecta el layout.
+   ============================================================ */
+
+.space-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.space-bg__wash {
+  position: absolute;
+  inset: 0;
+  background: var(--space-wash);
+  transition: background 0.4s ease;
+}
+
+.space-bg__stars,
+.space-bg__route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.space-bg__stars circle {
+  fill: var(--space-star-color);
+}
+
+.tp-star-tw {
+  animation: tp-twinkle 4.5s ease-in-out infinite;
+}
+.tp-star-tw2 {
+  animation-duration: 6.5s;
+}
+.tp-star-tw:nth-of-type(3n) { animation-delay: -1.4s; }
+.tp-star-tw:nth-of-type(5n) { animation-delay: -2.8s; }
+.tp-star-tw:nth-of-type(7n) { animation-delay: -3.6s; }
+
+@keyframes tp-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.space-bg__route-line {
+  fill: none;
+  stroke: var(--space-route-color);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 2 14;
+}
+
+.space-bg__waypoint {
+  fill: var(--space-waypoint-color);
+}
+
+.space-bg__plane {
+  fill: var(--space-waypoint-color);
+  offset-path: path("M70,1500 C260,1360 120,1120 320,980 C480,870 360,700 560,560 C680,478 620,340 760,220");
+  offset-rotate: auto;
+  animation: tp-fly 22s linear infinite;
+}
+
+@keyframes tp-fly {
+  0% { offset-distance: 0%; opacity: 0; }
+  4% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+.space-bg__planet {
+  position: absolute;
+  top: -70px;
+  right: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: var(--space-planet-grad);
+  opacity: var(--space-planet-opacity);
+  filter: blur(1px);
+  animation: tp-float 9s ease-in-out infinite;
+}
+
+.space-bg__planet--moon {
+  top: auto;
+  right: auto;
+  bottom: 12%;
+  left: -50px;
+  width: 130px;
+  height: 130px;
+  background: var(--space-moon-grad);
+  opacity: var(--space-moon-opacity);
+  animation-duration: 12s;
+  animation-delay: -4s;
+}
+
+@keyframes tp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-star-tw,
+  .space-bg__plane,
+  .space-bg__planet {
+    animation: none !important;
+  }
+}
+
 body {
   overscroll-behavior-y: none;
   position: relative;
   overflow-x: hidden;
 }
 
-/* Manchas de color decorativas de fondo — dan vida en pantallas anchas
-   y no interfieren con el contenido (z-index detrás de #app). */
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(6px);
-  opacity: 0.16;
-  z-index: 0;
-  pointer-events: none;
-}
-body::before {
-  top: -120px;
-  left: -110px;
-  width: 340px;
-  height: 340px;
-  background: radial-gradient(circle, var(--cat-flights) 0%, transparent 70%);
-  view-transition-name: tp-blob-a;
-}
-body::after {
-  bottom: -150px;
-  right: -120px;
-  width: 380px;
-  height: 380px;
-  background: radial-gradient(circle, var(--cat-itinerary) 0%, transparent 70%);
-  view-transition-name: tp-blob-b;
-}
-@media (prefers-color-scheme: dark) {
-  body::before, body::after { opacity: 0.26; }
-}
+/* Las manchas de color decorativas de antes fueron reemplazadas por el
+   fondo "viaje + espacio" (.space-bg, más abajo), que cumple el mismo
+   papel de dar vida a las pantallas anchas sin interferir con el
+   contenido. */
 
 #app {
   max-width: 560px;
