@@ -68,7 +68,10 @@ function toast(message) {
   el.className = "toast";
   el.textContent = message;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2200);
+  setTimeout(() => {
+    el.classList.add("toast-leaving");
+    el.addEventListener("animationend", () => el.remove(), { once: true });
+  }, 2200);
 }
 
 async function refresh() {

@@ -1,6 +1,7 @@
 import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange, enableAutoSync, syncOnLaunch } from "./cloud.js";
+import { shouldShowOnboarding, renderOnboarding } from "./onboarding.js";
 
 // ⚠️ SOLO MIENTRAS SE DESARROLLA: con esto en `true` la app arranca
 // sin pedir el PIN, para no tener que desbloquearla en cada prueba.
@@ -14,17 +15,29 @@ loadTheme();
 // Deslizar hacia abajo desde arriba del todo recarga la app.
 installPullToRefresh();
 
-if (DEV_DISABLE_PIN) {
-  renderApp();
-  installSwipeBack();
-  installAndroidBackHandling();
-} else {
-  guardOnLaunch(() => {
+// Primer arranque real (nunca abrió la app antes en este
+// dispositivo): antes de pintar la app se muestra una bienvenida de
+// 3 pantallas. El resto del arranque (candado, gestos, back de
+// Android...) espera a que se cierre, igual que ya esperaba a que
+// se resolviera el PIN.
+async function bootApp(withLock) {
+  const start = () => {
     renderApp();
-    installBackgroundLock();
+    if (withLock) installBackgroundLock();
     installSwipeBack();
     installAndroidBackHandling();
-  });
+  };
+  if (await shouldShowOnboarding()) {
+    renderOnboarding(start);
+  } else {
+    start();
+  }
+}
+
+if (DEV_DISABLE_PIN) {
+  bootApp(false);
+} else {
+  guardOnLaunch(() => bootApp(true));
 }
 
 // Refresca la pantalla cuando Firebase confirma la sesión (al cargar,
