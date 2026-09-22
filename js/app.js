@@ -39,6 +39,7 @@ import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon, brandMark } from "./icons.js";
 import { geocode, searchPlaces as searchPlaceSuggestions } from "./geocode.js";
+import { LANGUAGES, getLanguage, setLanguage, t } from "./i18n.js";
 import { nearbyAttractions, nearbyLodging, searchPlaces } from "./discover.js";
 
 // ============================================================
@@ -172,13 +173,13 @@ function showFormModal({ title, fields, initial, onSave, onDelete, deleteLabel }
       <form id="modal-form">
         ${renderFieldsGrouped(fields, initial)}
         <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" id="modal-cancel">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-ghost" id="modal-cancel">${t("common_cancel")}</button>
+          <button type="submit" class="btn btn-primary">${t("common_save")}</button>
         </div>
         ${
           onDelete
             ? `<div class="modal-actions"><button type="button" class="btn btn-danger" id="modal-delete">${escapeHtml(
-                deleteLabel || "Eliminar"
+                deleteLabel || t("common_delete")
               )}</button></div>`
             : ""
         }
@@ -243,8 +244,8 @@ function promptModal({ title, message, inputType = "text", inputMode }) {
           <input type="${inputType}" id="prompt-input" ${inputMode ? `inputmode="${inputMode}"` : ""} autocomplete="off" />
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" id="prompt-cancel">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="prompt-ok">Aceptar</button>
+          <button type="button" class="btn btn-ghost" id="prompt-cancel">${t("common_cancel")}</button>
+          <button type="button" class="btn btn-primary" id="prompt-ok">${t("common_accept")}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -275,8 +276,8 @@ function confirmAction(message) {
         <div class="modal-handle"></div>
         <p style="font-size:15px; line-height:1.6; margin:8px 0 20px;">${escapeHtml(message)}</p>
         <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" id="confirm-cancel">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="confirm-ok">Confirmar</button>
+          <button type="button" class="btn btn-ghost" id="confirm-cancel">${t("common_cancel")}</button>
+          <button type="button" class="btn btn-primary" id="confirm-ok">${t("common_confirm")}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -601,10 +602,11 @@ async function renderTripShell() {
     const days = daysUntil(trip.start_date);
     let status = "";
     if (days === null) status = "";
-    else if (days > 0) status = `Faltan ${days} día${days === 1 ? "" : "s"}`;
-    else if (days === 0) status = "¡Empieza hoy!";
-    else if (trip.end_date && daysUntil(trip.end_date) >= 0) status = "En curso";
-    else status = "Finalizado";
+    else if (days > 1) status = t("countdown_days", { n: days });
+    else if (days === 1) status = t("countdown_day");
+    else if (days === 0) status = t("countdown_starts_today");
+    else if (trip.end_date && daysUntil(trip.end_date) >= 0) status = t("countdown_ongoing");
+    else status = t("countdown_finished");
 
     const totalDays = daysBetween(trip.start_date, trip.end_date);
 
@@ -614,29 +616,29 @@ async function renderTripShell() {
         <div class="hero-top">
           <button class="icon-btn" id="btn-back">←</button>
           <div class="hero-brand"></div>
-          <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
+          <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="${t("settings_tooltip")}">⚙️</button>
           <button class="icon-btn" id="btn-trip-menu">⋮</button>
         </div>
         ${status ? `<span class="hero-trip-status">${status}</span>` : ""}
         <h1 class="hero-trip-title">${escapeHtml(trip.destination)}</h1>
         <p class="hero-trip-meta">
           <span>🗓️ ${formatDatePretty(trip.start_date)} – ${formatDatePretty(trip.end_date)}</span>
-          ${totalDays ? `<span>· ${totalDays} día${totalDays === 1 ? "" : "s"}</span>` : ""}
+          ${totalDays ? `<span>· ${t("trip_days_count", { n: totalDays })}</span>` : ""}
           ${trip.name ? `<span>· ${escapeHtml(trip.name)}</span>` : ""}
         </p>
       </div>`;
   } else {
     const labels = {
-      flights: "Vuelos", hotels: "Hospedajes", itinerary: "Itinerario",
-      transport: "Transporte", reservations: "Reservas", expenses: "Gastos",
-      checklist: "Checklist", calendar: "Calendario", map: "Mapa",
+      flights: t("section_flights"), hotels: t("section_hotels"), itinerary: t("section_itinerary"),
+      transport: t("section_transport"), reservations: t("section_reservations"), expenses: t("section_expenses"),
+      checklist: t("section_checklist"), calendar: t("section_calendar"), map: t("section_map"),
     };
     headerHtml = h`
       <div class="topbar">
         <button class="icon-btn" id="btn-back">←</button>
         <div class="topbar-titles">
           <p class="topbar-eyebrow">${escapeHtml(trip.destination)}</p>
-          <h1 class="topbar-title">${labels[state.section] || "Viaje"}</h1>
+          <h1 class="topbar-title">${labels[state.section] || t("section_trip_fallback")}</h1>
         </div>
         <button class="icon-btn ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">⚙️</button>
         <button class="icon-btn" id="btn-trip-menu">⋮</button>
@@ -671,24 +673,31 @@ async function renderTripShell() {
 // diseño de referencia.
 // ============================================================
 
-const TABBAR_HOME = [
-  { id: "dashboard", icon: "home", label: "Inicio" },
-  { id: "__trips", icon: "luggage", label: "Viajes" },
-  { id: "__add", icon: null, label: "Añadir" },
-  { id: "__map", icon: "map", label: "Mapa" },
-  { id: "__more", icon: "more", label: "Más" },
-];
+// Funciones (no arrays fijos) para que las etiquetas se traduzcan al
+// idioma actual en cada render, no solo la primera vez que se carga
+// el módulo (que es antes de que loadLanguage() haya terminado).
+function tabbarHomeItems() {
+  return [
+    { id: "dashboard", icon: "home", label: t("nav_home") },
+    { id: "__trips", icon: "luggage", label: t("nav_trips") },
+    { id: "__add", icon: null, label: t("nav_add") },
+    { id: "__map", icon: "map", label: t("nav_map") },
+    { id: "__more", icon: "more", label: t("nav_more") },
+  ];
+}
 
-const TABBAR_TRIP = [
-  { id: "dashboard", icon: "home", label: "Inicio" },
-  { id: "itinerary", icon: "itinerary", label: "Itinerario" },
-  { id: "map", icon: "map", label: "Mapa" },
-  { id: "expenses", icon: "expenses", label: "Gastos" },
-  { id: "__more", icon: "more", label: "Más" },
-];
+function tabbarTripItems() {
+  return [
+    { id: "dashboard", icon: "home", label: t("nav_home") },
+    { id: "itinerary", icon: "itinerary", label: t("nav_itinerary") },
+    { id: "map", icon: "map", label: t("nav_map") },
+    { id: "expenses", icon: "expenses", label: t("nav_expenses") },
+    { id: "__more", icon: "more", label: t("nav_more") },
+  ];
+}
 
 function renderTabbarHtml(mode) {
-  const items = mode === "home" ? TABBAR_HOME : TABBAR_TRIP;
+  const items = mode === "home" ? tabbarHomeItems() : tabbarTripItems();
   const buttons = items
     .map((t) => {
       if (t.id === "__add") {
@@ -763,11 +772,11 @@ function bindTabbar(trip) {
  */
 function openSectionsSheet(trip) {
   const items = [
-    { id: "flights", icon: "flights", label: "Vuelos" },
-    { id: "hotels", icon: "hotels", label: "Hospedajes" },
-    { id: "transport", icon: "transport", label: "Transporte" },
-    { id: "checklist", icon: "checklist", label: "Checklist" },
-    { id: "calendar", icon: "calendar", label: "Calendario" },
+    { id: "flights", icon: "flights", label: t("section_flights") },
+    { id: "hotels", icon: "hotels", label: t("section_hotels") },
+    { id: "transport", icon: "transport", label: t("section_transport") },
+    { id: "checklist", icon: "checklist", label: t("section_checklist") },
+    { id: "calendar", icon: "calendar", label: t("section_calendar") },
   ];
 
   const overlay = document.createElement("div");
@@ -775,7 +784,7 @@ function openSectionsSheet(trip) {
   overlay.innerHTML = h`
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 class="modal-title">Secciones del viaje</h2>
+      <h2 class="modal-title">${t("sections_sheet_title")}</h2>
       <div class="stat-grid">
         ${items
           .map(
@@ -787,8 +796,8 @@ function openSectionsSheet(trip) {
           .join("")}
       </div>
       <div class="modal-actions" style="margin-top:14px;">
-        <button class="btn btn-secondary" id="sheet-discover">${icon("compass")} Descubre</button>
-        <button class="btn btn-ghost" id="sheet-close">Cerrar</button>
+        <button class="btn btn-secondary" id="sheet-discover">${icon("compass")} ${t("sections_sheet_discover")}</button>
+        <button class="btn btn-ghost" id="sheet-close">${t("common_close")}</button>
       </div>
     </div>`;
 
@@ -1170,11 +1179,12 @@ async function renderHome() {
           const days = daysUntil(trip.start_date);
           let countdown = "";
           if (days === null) countdown = "";
-          else if (days > 0) countdown = `Faltan ${days} día${days === 1 ? "" : "s"}`;
-          else if (days === 0) countdown = "¡Es hoy!";
+          else if (days > 1) countdown = t("countdown_days", { n: days });
+          else if (days === 1) countdown = t("countdown_day");
+          else if (days === 0) countdown = t("countdown_today");
           else if (trip.end_date && daysUntil(trip.end_date) >= 0)
-            countdown = "En curso";
-          else countdown = "Finalizado";
+            countdown = t("countdown_ongoing");
+          else countdown = t("countdown_finished");
 
           const tripLen = daysBetween(trip.start_date, trip.end_date);
           const stats = tripStats[trip.id] || { activities: 0, pct: 0 };
@@ -1196,8 +1206,8 @@ async function renderHome() {
               <p class="trip-dest"><span class="trip-pin">${icon("pin")}</span> ${escapeHtml(trip.destination)}</p>
               <p class="trip-name">${formatDatePretty(trip.start_date)} – ${formatDatePretty(trip.end_date)}</p>
               <div class="trip-meta-row">
-                <span>${icon("clock", "stat-icon")} ${tripLen || 0} día${tripLen === 1 ? "" : "s"}</span>
-                <span>${icon("checklist", "stat-icon")} ${stats.activities} actividad${stats.activities === 1 ? "" : "es"}</span>
+                <span>${icon("clock", "stat-icon")} ${t("trip_days_count", { n: tripLen || 0 })}</span>
+                <span>${icon("checklist", "stat-icon")} ${t("trip_activities_count", { n: stats.activities })}</span>
               </div>
               <div class="trip-progress-row">
                 <div class="progress-track"><div class="progress-fill" style="width:${stats.pct}%"></div></div>
@@ -1209,7 +1219,7 @@ async function renderHome() {
     : h`
         <div class="empty-state">
           <div class="emoji">🧳</div>
-          <p>Todavía no tienes ningún viaje.<br>Toca "Nuevo viaje" para crear el primero.</p>
+          <p>${t("empty_trips_line1")}<br>${t("empty_trips_line2")}</p>
         </div>`;
 
   // Próximos eventos: los vuelos y actividades más cercanos, de
@@ -1229,10 +1239,10 @@ async function renderHome() {
         </div>`
         )
         .join("")
-    : `<p style="color:var(--muted); font-size:13px; padding:4px 2px; text-shadow:var(--text-halo);">No hay próximos eventos.</p>`;
+    : `<p style="color:var(--muted); font-size:13px; padding:4px 2px; text-shadow:var(--text-halo);">${t("no_upcoming_events")}</p>`;
 
   const hour = new Date().getHours();
-  const greetWord = hour < 6 ? "Buenas noches" : hour < 13 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches";
+  const greetWord = hour < 6 ? t("greet_night") : hour < 13 ? t("greet_morning") : hour < 21 ? t("greet_afternoon") : t("greet_night");
 
   root.innerHTML = h`
     <div class="hero">
@@ -1246,36 +1256,36 @@ async function renderHome() {
           <span class="hero-logo">${brandMark()}</span>
           <div>
             <p class="hero-brand-name">Travel Planner</p>
-            <p class="hero-brand-tag">Tus viajes, en un solo lugar</p>
+            <p class="hero-brand-tag">${t("brand_tagline")}</p>
           </div>
         </div>
-        <button class="icon-btn hero-avatar ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="Ajustes">🙂</button>
+        <button class="icon-btn hero-avatar ${currentUser() ? "logged-in" : ""}" id="btn-settings" title="${t("settings_tooltip")}">🙂</button>
       </div>
-      <h1 class="hero-greeting">${greetWord} 👋 <span class="hero-greeting-q">¿A dónde te llevamos hoy?</span></h1>
+      <h1 class="hero-greeting">${greetWord} 👋 <span class="hero-greeting-q">${t("greet_question")}</span></h1>
       <div class="hero-search">
         ${icon("search")}
-        <input type="search" id="trip-search" placeholder="Busca un destino: hoteles y lugares al momento…" autocomplete="off" />
+        <input type="search" id="trip-search" placeholder="${t("search_placeholder")}" autocomplete="off" />
       </div>
       <div class="search-suggestions" id="trip-search-suggestions"></div>
       <button class="ai-plan-cta" id="btn-ai-plan-trip">
         <span class="ai-plan-cta-art">✨</span>
         <span class="ai-plan-cta-text">
-          <strong>Planificar viaje con IA</strong>
-          <span>Dinos el destino y tus gustos, y te armamos el itinerario</span>
+          <strong>${t("ai_plan_title")}</strong>
+          <span>${t("ai_plan_subtitle")}</span>
         </span>
         <span class="ai-plan-cta-arrow">${icon("chevron")}</span>
       </button>
     </div>
     <div class="view has-tabbar">
       <div id="destination-search"></div>
-      <button class="hero-cta" id="fab-new-trip">＋ Nuevo viaje</button>
+      <button class="hero-cta" id="fab-new-trip">${t("new_trip")}</button>
       <div class="section-title-row">
-        <p class="section-title">Mis viajes</p>
-        ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">Ver todos ${icon("chevron")}</button>` : ""}
+        <p class="section-title">${t("my_trips")}</p>
+        ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">${t("see_all")} ${icon("chevron")}</button>` : ""}
       </div>
       <div class="trip-carousel" id="trip-list">${cardsHtml}</div>
       <div class="section-title-row">
-        <p class="section-title">Próximos eventos</p>
+        <p class="section-title">${t("upcoming_events")}</p>
       </div>
       <div id="events-list">${eventsHtml}</div>
     </div>
@@ -1923,18 +1933,19 @@ function openSettingsSheet() {
   overlay.innerHTML = h`
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 class="modal-title">Ajustes</h2>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-account">${icon("user")} ${currentUser() ? "Mi cuenta" : "Iniciar sesión"}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">${icon("cloud")} Copiar / restaurar datos</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">${icon("link")} Unirme a un viaje compartido</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">${icon("luggage")} Mi perfil</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">${icon("theme")} Tema</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">${icon("bell")} Notificaciones</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-security">${icon("lock")} Seguridad (PIN)</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} Modo desarrollador</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">${icon("shield")} Política de privacidad</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-cache">${icon("cloud")} Uso de caché</button></div>
-      <div class="modal-actions"><button class="btn btn-ghost" id="st-close">Cerrar</button></div>
+      <h2 class="modal-title">${t("settings_title")}</h2>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-account">${icon("user")} ${currentUser() ? t("settings_account") : t("settings_login")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">${icon("cloud")} ${t("settings_backup")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">${icon("link")} ${t("settings_join_shared")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">${icon("luggage")} ${t("settings_profile")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">${icon("theme")} ${t("settings_theme")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-language">${icon("globe")} ${t("settings_language")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">${icon("bell")} ${t("settings_notifications")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-security">${icon("lock")} ${t("settings_security")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} ${t("settings_dev")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">${icon("shield")} ${t("settings_privacy")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-cache">${icon("cloud")} ${t("settings_cache")}</button></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="st-close">${t("common_close")}</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
@@ -1949,11 +1960,44 @@ function openSettingsSheet() {
   go("#st-join-shared", openJoinTripSheet);
   go("#st-profile", openProfileSheet);
   go("#st-theme", openThemeSheet);
+  go("#st-language", openLanguageSheet);
   go("#st-notifications", openNotificationsSheet);
   go("#st-security", openSecuritySheet);
   go("#st-dev", openDevModeSheet);
   go("#st-privacy", openPrivacyPolicySheet);
   go("#st-cache", openCacheUsageSheet);
+}
+
+async function openLanguageSheet() {
+  const current = await getLanguage();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const opt = (code) =>
+    `<button class="btn ${current === code ? "btn-primary" : "btn-secondary"}" data-lang-opt="${code}">${LANGUAGES[code].name}</button>`;
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">${icon("globe")} ${t("settings_language")}</h2>
+      <p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">${t("lang_system_note")}</p>
+      <div class="modal-actions">${opt("es")}</div>
+      <div class="modal-actions">${opt("en")}</div>
+      <div class="modal-actions">${opt("pt")}</div>
+      <div class="modal-actions">${opt("zh")}</div>
+      <div class="modal-actions">${opt("ar")}</div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="lang-close">${t("common_close")}</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#lang-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelectorAll("[data-lang-opt]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const value = btn.dataset.langOpt;
+      await setLanguage(value);
+      overlay.remove();
+      toast(t("lang_updated"));
+      await renderApp();
+    });
+  });
 }
 
 // ------------------------------------------------------------

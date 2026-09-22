@@ -3260,3 +3260,47 @@ html.tp-skip-splash #splash-screen {
   font-size: 12.5px;
   color: var(--muted-dark);
 }
+
+/* ============================================================
+   ÁRABE (RTL) — ajustes puntuales.
+   La mayoría del layout ya se espeja solo con dir="rtl" en <html>
+   (flexbox con "row" sigue la dirección de escritura, y el
+   text-align por defecto de cada elemento ya sigue el idioma). Esto
+   cubre lo que NO se espeja solo: texto con text-align:left fijado
+   a mano, la flecha "←" de volver (es un carácter literal, no un
+   icono direccional) y las flechitas ">" que indican "seguir
+   adelante" — en RTL, "adelante" visualmente es hacia la izquierda.
+   NO se tocan iconos no direccionales (avión, maleta, calendario...)
+   ni el valor interno de <input type="date"> (las fechas se leen
+   igual de izquierda a derecha en cualquier idioma).
+   ============================================================ */
+
+[dir="rtl"] .search-suggestion,
+[dir="rtl"] .currency-result,
+[dir="rtl"] .maps-app-option,
+[dir="rtl"] .ai-plan-cta {
+  text-align: right;
+}
+
+[dir="rtl"] #btn-back {
+  transform: scaleX(-1);
+}
+
+/* position:absolute con right/left fijo no se espeja solo (a
+   diferencia del flujo normal en flexbox, que sí sigue dir). */
+[dir="rtl"] .onboarding-skip {
+  right: auto;
+  left: 16px;
+}
+
+[dir="rtl"] .trip-countdown-badge {
+  right: auto;
+  left: 10px;
+}
+
+[dir="rtl"] .see-all .icon-svg,
+[dir="rtl"] .event-chevron .icon-svg,
+[dir="rtl"] .ai-plan-cta-arrow .icon-svg,
+[dir="rtl"] .maps-app-option .icon-svg:last-child {
+  transform: scaleX(-1);
+}

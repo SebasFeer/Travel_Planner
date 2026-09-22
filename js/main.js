@@ -2,6 +2,7 @@ import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, che
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange, enableAutoSync, syncOnLaunch } from "./cloud.js";
 import { shouldShowOnboarding, renderOnboarding } from "./onboarding.js";
+import { loadLanguage } from "./i18n.js";
 
 // ⚠️ SOLO MIENTRAS SE DESARROLLA: con esto en `true` la app arranca
 // sin pedir el PIN, para no tener que desbloquearla en cada prueba.
@@ -21,6 +22,12 @@ installPullToRefresh();
 // Android...) espera a que se cierre, igual que ya esperaba a que
 // se resolviera el PIN.
 async function bootApp(withLock) {
+  // Se espera aquí (no "fire and forget" como loadTheme) porque t()
+  // lee el idioma actual de forma síncrona durante el render — si
+  // renderApp() se disparara antes de que esto termine, el primer
+  // pintado saldría en español por defecto y luego "saltaría" al
+  // idioma real.
+  await loadLanguage();
   const start = () => {
     renderApp();
     if (withLock) installBackgroundLock();

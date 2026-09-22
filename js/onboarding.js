@@ -10,6 +10,7 @@
 
 import { Data } from "./db.js";
 import { icon, brandMark } from "./icons.js";
+import { t as tr } from "./i18n.js";
 
 const ONBOARDING_KEY = "onboarding_seen";
 const TRAVELER_TYPE_KEY = "traveler_type";
@@ -19,12 +20,14 @@ async function shouldShowOnboarding() {
   return !seen;
 }
 
-const TRAVELER_TYPES = [
-  { id: "solo", label: "Solo/a", icon: "user" },
-  { id: "pareja", label: "En pareja", icon: "heart" },
-  { id: "familia", label: "En familia", icon: "home" },
-  { id: "grupo", label: "Con amigos", icon: "luggage" },
-];
+function travelerTypes() {
+  return [
+    { id: "solo", label: tr("traveler_solo"), icon: "user" },
+    { id: "pareja", label: tr("traveler_couple"), icon: "heart" },
+    { id: "familia", label: tr("traveler_family"), icon: "home" },
+    { id: "grupo", label: tr("traveler_friends"), icon: "luggage" },
+  ];
+}
 
 const FEATURE_ICONS = ["itinerary", "flights", "expenses", "checklist", "map"];
 
@@ -34,30 +37,33 @@ const FEATURE_ICONS = ["itinerary", "flights", "expenses", "checklist", "map"];
  * caminos guardan el flag y desmontan el overlay).
  */
 function renderOnboarding(onDone) {
+  const types = travelerTypes();
   const overlay = document.createElement("div");
   overlay.className = "onboarding-overlay";
   overlay.innerHTML = `
-    <button type="button" class="onboarding-skip" id="ob-skip">Omitir</button>
+    <button type="button" class="onboarding-skip" id="ob-skip">${tr("ob_skip")}</button>
     <div class="onboarding-track" id="ob-track">
       <section class="onboarding-slide">
         <div class="onboarding-mark">${brandMark()}</div>
-        <h1>Organiza cada viaje en un solo lugar</h1>
-        <p>Itinerario, vuelos, gastos y mapa — todo junto, y funciona incluso sin conexión.</p>
+        <h1>${tr("ob1_title")}</h1>
+        <p>${tr("ob1_body")}</p>
       </section>
       <section class="onboarding-slide">
         <div class="onboarding-icons">
           ${FEATURE_ICONS.map((n) => `<span class="onboarding-icon-chip">${icon(n)}</span>`).join("")}
         </div>
-        <h1>Nada de capturas de pantalla sueltas</h1>
-        <p>Guarda reservas, actividades y presupuesto en su sitio, listos para consultar al instante.</p>
+        <h1>${tr("ob2_title")}</h1>
+        <p>${tr("ob2_body")}</p>
       </section>
       <section class="onboarding-slide">
-        <h1>¿Cómo sueles viajar?</h1>
-        <p>Nos ayuda a mostrarte lo más útil primero — puedes cambiarlo después.</p>
+        <h1>${tr("ob3_title")}</h1>
+        <p>${tr("ob3_body")}</p>
         <div class="onboarding-chips" id="ob-traveler-chips">
-          ${TRAVELER_TYPES.map(
-            (t) => `<button type="button" class="onboarding-chip" data-type="${t.id}">${icon(t.icon)}<span>${t.label}</span></button>`
-          ).join("")}
+          ${types
+            .map(
+              (tt) => `<button type="button" class="onboarding-chip" data-type="${tt.id}">${icon(tt.icon)}<span>${tt.label}</span></button>`
+            )
+            .join("")}
         </div>
       </section>
     </div>
@@ -65,7 +71,7 @@ function renderOnboarding(onDone) {
       <div class="onboarding-dots" id="ob-dots">
         <span class="onboarding-dot is-active"></span><span class="onboarding-dot"></span><span class="onboarding-dot"></span>
       </div>
-      <button type="button" class="btn btn-primary onboarding-next" id="ob-next">Siguiente</button>
+      <button type="button" class="btn btn-primary onboarding-next" id="ob-next">${tr("ob_next")}</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -81,7 +87,7 @@ function renderOnboarding(onDone) {
   function setActive(i) {
     current = i;
     dots.forEach((d, idx) => d.classList.toggle("is-active", idx === current));
-    nextBtn.textContent = current === slides.length - 1 ? "Empezar" : "Siguiente";
+    nextBtn.textContent = current === slides.length - 1 ? tr("ob_start") : tr("ob_next");
   }
 
   function goTo(i) {

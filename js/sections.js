@@ -13,6 +13,7 @@ import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
 import { isPro } from "./pro.js";
 import { TOP_CURRENCIES, ALL_CURRENCIES, isRateSupported, convertCurrency } from "./currency.js";
+import { t } from "./i18n.js";
 
 // ============================================================
 // CONFIGURACIÓN DE PESTAÑAS
@@ -328,22 +329,22 @@ async function renderDashboard(trip) {
     <div class="hero-stats">
       <div class="hero-stat" data-nav="expenses" style="--accent: var(--cat-expenses);">
         <span class="hs-icon">${icon("wallet")}</span>
-        <span class="hs-label">Presupuesto</span>
+        <span class="hs-label">${t("stat_budget")}</span>
         <span class="hs-value">${budget > 0 ? money(budget) : money(totalSpent)}</span>
       </div>
       <div class="hero-stat" data-nav="map" style="--accent: var(--cat-map);">
         <span class="hs-icon">${icon("itinerary")}</span>
-        <span class="hs-label">Lugares</span>
+        <span class="hs-label">${t("stat_places")}</span>
         <span class="hs-value">${hotels.length + itin.length}</span>
       </div>
       <div class="hero-stat" data-nav="itinerary" style="--accent: var(--cat-itinerary);">
         <span class="hs-icon">${icon("reservations")}</span>
-        <span class="hs-label">Reservas</span>
+        <span class="hs-label">${t("stat_reservations")}</span>
         <span class="hs-value">${reservationCount}</span>
       </div>
       <div class="hero-stat" data-nav="calendar" style="--accent: var(--cat-calendar);">
         <span class="hs-icon">${icon("calendar")}</span>
-        <span class="hs-label">Días</span>
+        <span class="hs-label">${t("stat_days")}</span>
         <span class="hs-value">${tripDays || "—"}</span>
       </div>
     </div>`;
@@ -353,11 +354,11 @@ async function renderDashboard(trip) {
   const structuredEvents = [];
   itin.forEach((i) => {
     if (!i.date) return;
-    structuredEvents.push({ key: `${i.date} ${i.time || ""}`, date: i.date, time: i.time, icon: "itinerary", title: i.title || "Actividad" });
+    structuredEvents.push({ key: `${i.date} ${i.time || ""}`, date: i.date, time: i.time, icon: "itinerary", title: i.title || t("activity_fallback") });
   });
   flights.forEach((f) => {
     if (!f.date) return;
-    structuredEvents.push({ key: `${f.date} ${f.time || ""}`, date: f.date, time: f.time, icon: "flights", title: `Vuelo a ${f.destination || trip.destination}` });
+    structuredEvents.push({ key: `${f.date} ${f.time || ""}`, date: f.date, time: f.time, icon: "flights", title: t("flight_to", { dest: f.destination || trip.destination }) });
   });
   structuredEvents.sort((a, b) => a.key.localeCompare(b.key));
   const nextEvent = structuredEvents.find((e) => e.key >= `${today} `) || structuredEvents[structuredEvents.length - 1];
@@ -370,9 +371,9 @@ async function renderDashboard(trip) {
 
   const summaryPanelHtml = h`
     <div class="panel summary-panel">
-      <h3>${icon("heart", "panel-icon")} Resumen del viaje</h3>
+      <h3>${icon("heart", "panel-icon")} ${t("summary_title")}</h3>
       <p style="font-size:13.5px; color:var(--muted); line-height:1.6; margin:0 0 12px;">
-        ${trip.notes ? escapeHtml(trip.notes) : "Añade una nota al viaje para verla aquí."}
+        ${trip.notes ? escapeHtml(trip.notes) : t("summary_placeholder")}
       </p>
       ${
         stripPhotos.length
@@ -384,7 +385,7 @@ async function renderDashboard(trip) {
           ? `<div class="event-row" data-nav="calendar" style="margin-top:14px; background:var(--brand-soft); box-shadow:none;">
                <span class="event-icon">${icon(nextEvent.icon)}</span>
                <div class="event-body">
-                 <p class="exp-sub" style="margin:0; color:var(--muted); font-size:11px;">Próximo evento</p>
+                 <p class="exp-sub" style="margin:0; color:var(--muted); font-size:11px;">${t("next_event")}</p>
                  <p class="event-title">${escapeHtml(nextEvent.title)}</p>
                  <p class="exp-sub" style="margin:2px 0 0;">${formatDatePretty(nextEvent.date)}${nextEvent.time ? ` · ${nextEvent.time}` : ""}</p>
                </div>
@@ -399,12 +400,12 @@ async function renderDashboard(trip) {
     ${bannerHtml}
     ${summaryPanelHtml}
     <div class="stat-grid">
-      <div class="stat-card" data-nav="flights"><div class="stat-label">${icon("flights","stat-icon")} Vuelos</div><div class="stat-value">${flights.length}</div></div>
-      <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} Transporte</div><div class="stat-value">${transport.length}</div></div>
-      <div class="stat-card" data-nav="hotels"><div class="stat-label">${icon("hotels","stat-icon")} Hospedajes</div><div class="stat-value">${hotels.length}</div></div>
-      <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} Actividades</div><div class="stat-value">${itin.length}</div></div>
+      <div class="stat-card" data-nav="flights"><div class="stat-label">${icon("flights","stat-icon")} ${t("stat_flights")}</div><div class="stat-value">${flights.length}</div></div>
+      <div class="stat-card" data-nav="transport"><div class="stat-label">${icon("transport","stat-icon")} ${t("stat_transport")}</div><div class="stat-value">${transport.length}</div></div>
+      <div class="stat-card" data-nav="hotels"><div class="stat-label">${icon("hotels","stat-icon")} ${t("stat_hotels")}</div><div class="stat-value">${hotels.length}</div></div>
+      <div class="stat-card" data-nav="itinerary"><div class="stat-label">${icon("itinerary","stat-icon")} ${t("stat_activities")}</div><div class="stat-value">${itin.length}</div></div>
       <div class="stat-card stat-card-expenses" data-nav="expenses">
-        <div class="stat-label">${icon("expenses","stat-icon")} Gastado</div>
+        <div class="stat-label">${icon("expenses","stat-icon")} ${t("stat_spent")}</div>
         <div class="stat-value" style="font-size:19px;">${money(totalSpent)}</div>
         ${
           expenses.length
@@ -434,7 +435,7 @@ async function renderDashboard(trip) {
             <rect x="8" y="45" width="48" height="4" rx="2" fill="#e9c46a"/>
           </svg>
         </div>
-        <div class="stat-label">Descubre</div>
+        <div class="stat-label">${t("sections_sheet_discover")}</div>
       </div>
     </div>
     <div class="panel" data-nav="checklist">
@@ -508,7 +509,7 @@ async function renderFlights(trip) {
         </div>`
         )
         .join("")
-    : emptyState("✈️", "No hay vuelos añadidos todavía.");
+    : emptyState("✈️", t("empty_flights"));
 
   section(list);
   setFab(fabBtn());
@@ -569,7 +570,7 @@ async function renderHotels(trip) {
         </div>`
         )
         .join("")
-    : emptyState("🏨", "No hay hoteles añadidos todavía.");
+    : emptyState("🏨", t("empty_hotels"));
 
   section(list);
   setFab(fabBtn());
@@ -623,7 +624,7 @@ async function renderItinerary(trip) {
     const aiRow = isAiCopilotConfigured()
       ? `<div class="ai-actions-row"><button class="btn btn-primary" id="ai-generate-empty">✨ Generar itinerario con IA</button></div>`
       : "";
-    section(aiRow + emptyState("📍", "Todavía no has planificado ninguna actividad."));
+    section(aiRow + emptyState("📍", t("empty_itinerary_general")));
     setFab(fabBtn());
     document.getElementById("fab-add").addEventListener("click", () => openItineraryForm(trip));
     document
@@ -738,7 +739,7 @@ async function renderItinerary(trip) {
     ? `<div class="timeline drag-list" data-date="${itinDayFilter === "__nodate" ? "" : itinDayFilter}">${activeItems
         .map((it, i) => timelineRow(it, i === activeItems.length - 1))
         .join("")}</div>`
-    : emptyState("📍", "No hay actividades este día todavía.");
+    : emptyState("📍", t("empty_itinerary_day"));
 
   section(chipsHtml + bannerHtml + aiActionsHtml + aiRecosHtml + listHtml);
   setFab(fabBtn());
@@ -842,7 +843,7 @@ async function renderTransport(trip) {
         </div>`;
         })
         .join("")
-    : emptyState("🚗", "No hay trayectos añadidos todavía.");
+    : emptyState("🚗", t("empty_transport"));
 
   section(list);
   setFab(fabBtn());
@@ -907,7 +908,7 @@ async function renderReservations(trip) {
         </div>`
         )
         .join("")
-    : emptyState("🎟️", "No hay reservas añadidas todavía.");
+    : emptyState("🎟️", t("empty_reservations"));
 
   section(list);
   setFab(fabBtn());
@@ -1023,7 +1024,7 @@ async function renderExpenses(trip) {
         </div>`;
         })
         .join("")
-    : emptyState("💶", "No hay gastos registrados todavía.");
+    : emptyState("💶", t("empty_expenses"));
 
   section(h`
     <div class="segmented">
@@ -1245,7 +1246,7 @@ async function renderChecklist(trip) {
         </div>`
         )
         .join("")}</div>`
-    : emptyState("☑️", "No hay tareas todavía.");
+    : emptyState("☑️", t("empty_checklist"));
 
   section(h`
     <div class="pill-row">
@@ -1670,7 +1671,7 @@ async function renderMap(trip) {
   const pins = await collectMapPins(trip);
 
   if (!pins.length) {
-    section(emptyState("🗺️", "Añade direcciones a tus hoteles, actividades o reservas para verlas en el mapa."));
+    section(emptyState("🗺️", t("empty_map")));
     setFab("");
     return;
   }
