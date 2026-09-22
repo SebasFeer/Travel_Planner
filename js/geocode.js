@@ -22,6 +22,34 @@ function normalize(text) {
 }
 
 /**
+ * Sugerencias de lugares mientras se escribe (autocompletar). A
+ * diferencia de geocode() -que se queda con el primer resultado y
+ * sirve para "convertir texto ya elegido en coordenadas"- esta
+ * función pide varios candidatos con su nombre completo, para que
+ * el usuario elija el correcto antes de buscar nada más. Sin caché
+ * (son sugerencias de paso, no direcciones que se vayan a reusar).
+ */
+async function searchPlaces(text, limit = 6) {
+  const query = (text || "").trim();
+  if (query.length < 2) return [];
+  try {
+    await throttle();
+    const url = `${NOMINATIM_URL}?format=json&addressdetails=1&limit=${limit}&accept-language=es&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return [];
+    const results = await res.json();
+    if (!Array.isArray(results)) return [];
+    return results.map((r) => ({
+      label: r.display_name,
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+    }));
+  } catch (err) {
+    return []; // sin conexión, o el servicio no responde
+  }
+}
+
+/**
  * Convierte un texto de lugar ("Coliseo, Roma") en {lat, lng}.
  * Devuelve null si no se encuentra o si falla la red (sin conexión).
  * Los resultados se cachean en IndexedDB para no repetir peticiones.
@@ -95,4 +123,4 @@ async function routeBetween(points) {
   }
 }
 
-export { geocode, geocodeAll, routeBetween };
+export { geocode, geocodeAll, routeBetween, searchPlaces };

@@ -5,16 +5,14 @@ import {
   escapeHtml,
   formatDatePretty,
   daysBetween,
-  openMaps,
-  openMapsMultiple,
 } from "./utils.js";
 import { geocodeAll, routeBetween } from "./geocode.js";
-import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet } from "./app.js";
+import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
 import { isPro } from "./pro.js";
-import { CURRENCIES, convertCurrency } from "./currency.js";
+import { TOP_CURRENCIES, ALL_CURRENCIES, isRateSupported, convertCurrency } from "./currency.js";
 
 // ============================================================
 // CONFIGURACIÓN DE PESTAÑAS
@@ -576,7 +574,7 @@ async function renderHotels(trip) {
   section(list);
   setFab(fabBtn());
 
-  wireTicketActions("hotels", hotels, (hotel) => openHotelForm(trip, hotel), (hotel) => openMaps(hotel.address));
+  wireTicketActions("hotels", hotels, (hotel) => openHotelForm(trip, hotel), (hotel) => openMapsAppPicker({ type: "point", location: hotel.address }));
   document.getElementById("fab-add").addEventListener("click", () => openHotelForm(trip));
   fetchStubPhotos("hotels", hotels, "name", "hotel");
 }
@@ -745,7 +743,7 @@ async function renderItinerary(trip) {
   section(chipsHtml + bannerHtml + aiActionsHtml + aiRecosHtml + listHtml);
   setFab(fabBtn());
 
-  wireTicketActions("itinerary", items, (item) => openItineraryForm(trip, item), (item) => openMaps(item.location));
+  wireTicketActions("itinerary", items, (item) => openItineraryForm(trip, item), (item) => openMapsAppPicker({ type: "point", location: item.location }));
   wireDragReorder("itinerary", items);
   root.querySelectorAll("[data-itin-day]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -853,7 +851,7 @@ async function renderTransport(trip) {
     "transport",
     items,
     (t) => openTransportForm(trip, t),
-    (t) => openMapsMultiple([t.origin, t.destination])
+    (t) => openMapsAppPicker({ type: "route", origin: t.origin, destination: t.destination })
   );
   document.getElementById("fab-add").addEventListener("click", () => openTransportForm(trip));
 }
@@ -914,7 +912,7 @@ async function renderReservations(trip) {
   section(list);
   setFab(fabBtn());
 
-  wireTicketActions("reservations", items, (r) => openReservationForm(trip, r), (r) => openMaps(r.location));
+  wireTicketActions("reservations", items, (r) => openReservationForm(trip, r), (r) => openMapsAppPicker({ type: "point", location: r.location }));
   document.getElementById("fab-add").addEventListener("click", () => openReservationForm(trip));
   fetchStubPhotos("reservations", items, "location");
 }
@@ -1075,8 +1073,12 @@ function openCurrencyConverterSheet(trip) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
 
-  const currencyOptions = CURRENCIES.filter((c) => c.code !== "EUR")
-    .map((c) => `<option value="${c.code}">${escapeHtml(c.label)}</option>`)
+  const byCode = (code) => ALL_CURRENCIES.find((c) => c.code === code);
+  const topChips = TOP_CURRENCIES.filter((code) => code !== "EUR");
+  let selected = byCode(topChips[0]); // USD por defecto
+
+  const chipsHtml = topChips
+    .map((code) => `<button type="button" class="currency-chip" data-code="${code}">${code}</button>`)
     .join("");
 
   overlay.innerHTML = h`
@@ -1094,7 +1096,10 @@ function openCurrencyConverterSheet(trip) {
       </div>
       <div class="field">
         <label>Moneda de origen</label>
-        <select id="conv-from">${currencyOptions}</select>
+        <div class="currency-chip-row">${chipsHtml}</div>
+        <input type="search" id="conv-search" placeholder="O busca cualquier otra moneda…" autocomplete="off" style="margin-top:8px;" />
+        <div class="currency-search-results" id="conv-search-results"></div>
+        <p class="currency-selected" id="conv-selected"></p>
       </div>
       <div id="conv-result" style="min-height:34px; font-size:20px; font-weight:700; color:var(--brand); margin:10px 0;"></div>
       <div class="modal-actions">
@@ -1107,10 +1112,53 @@ function openCurrencyConverterSheet(trip) {
   overlay.querySelector("#conv-close").addEventListener("click", () => overlay.remove());
 
   const amountEl = overlay.querySelector("#conv-amount");
-  const fromEl = overlay.querySelector("#conv-from");
+  const searchEl = overlay.querySelector("#conv-search");
+  const searchResultsEl = overlay.querySelector("#conv-search-results");
+  const selectedEl = overlay.querySelector("#conv-selected");
+  const chipEls = [...overlay.querySelectorAll(".currency-chip")];
   const resultEl = overlay.querySelector("#conv-result");
   const useBtn = overlay.querySelector("#conv-use");
   let lastConverted = null;
+
+  function updateSelectedLabel() {
+    chipEls.forEach((btn) => btn.classList.toggle("is-selected", btn.dataset.code === selected.code));
+    selectedEl.textContent = `Convirtiendo desde: ${selected.label} (${selected.code})`;
+  }
+
+  function selectCurrency(currency) {
+    selected = currency;
+    searchEl.value = "";
+    searchResultsEl.innerHTML = "";
+    updateSelectedLabel();
+    recalc();
+  }
+
+  chipEls.forEach((btn) => {
+    btn.addEventListener("click", () => selectCurrency(byCode(btn.dataset.code)));
+  });
+
+  searchEl.addEventListener("input", () => {
+    const q = searchEl.value.trim().toLowerCase();
+    if (q.length < 1) {
+      searchResultsEl.innerHTML = "";
+      return;
+    }
+    const matches = ALL_CURRENCIES.filter(
+      (c) => c.code !== "EUR" && (c.label.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
+    ).slice(0, 8);
+    searchResultsEl.innerHTML = matches.length
+      ? matches
+          .map(
+            (c) => `<button type="button" class="currency-result" data-code="${c.code}">
+              <span>${escapeHtml(c.label)}</span><span class="currency-result-code">${c.code}</span>
+            </button>`
+          )
+          .join("")
+      : `<p class="currency-result-empty">Sin resultados para "${escapeHtml(searchEl.value.trim())}"</p>`;
+    searchResultsEl.querySelectorAll(".currency-result").forEach((btn) => {
+      btn.addEventListener("click", () => selectCurrency(byCode(btn.dataset.code)));
+    });
+  });
 
   async function recalc() {
     const amount = parseFloat(amountEl.value || 0);
@@ -1120,8 +1168,14 @@ function openCurrencyConverterSheet(trip) {
       lastConverted = null;
       return;
     }
+    if (!isRateSupported(selected.code)) {
+      resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">Esta moneda no tiene tipo de cambio en vivo disponible todavía.</span>`;
+      useBtn.disabled = true;
+      lastConverted = null;
+      return;
+    }
     resultEl.textContent = "Calculando…";
-    const converted = await convertCurrency(amount, fromEl.value, "EUR");
+    const converted = await convertCurrency(amount, selected.code, "EUR");
     if (converted === null) {
       resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">No se pudo obtener el tipo de cambio (revisa tu conexión).</span>`;
       useBtn.disabled = true;
@@ -1133,8 +1187,8 @@ function openCurrencyConverterSheet(trip) {
     useBtn.disabled = false;
   }
 
+  updateSelectedLabel();
   amountEl.addEventListener("input", recalc);
-  fromEl.addEventListener("change", recalc);
 
   useBtn.addEventListener("click", () => {
     if (lastConverted === null) return;
@@ -1142,7 +1196,7 @@ function openCurrencyConverterSheet(trip) {
     openExpenseForm(trip, null, {
       amount: Math.round(lastConverted * 100) / 100,
       date: todayString(),
-      description: `Pago en ${fromEl.options[fromEl.selectedIndex].text}`,
+      description: `Pago en ${selected.label}`,
     });
   });
 }
@@ -1405,23 +1459,109 @@ function zoomForBounds(bounds, widthPx, heightPx) {
   return Math.max(2, Math.min(latZoom, lngZoom, 17) - 1); // -1 de margen para que no queden pines pegados al borde
 }
 
-// Convierte una imagen remota (el mapa estático) en un data: URL, que
-// es lo que jsPDF necesita para incrustarla. Si falla (sin conexión,
-// el servicio no responde), devuelve null: el PDF sigue generándose,
-// solo que sin la imagen del mapa.
-async function fetchImageAsDataUrl(url) {
+// ------------------------------------------------------------
+// Mapa estático para el PDF, compuesto a mano a partir de teselas
+// (en vez de un servicio de "mapa estático" de terceros de un solo
+// disparo, que en la práctica resultaba poco fiable — caídas,
+// límites de uso, a veces ni cargaba). Se dibujan las teselas una a
+// una en un <canvas> y se pintan encima los pines numerados, en el
+// mismo orden que la lista de abajo. CARTO Basemaps (gratis, sin
+// clave) en vez del tile server que usa el mapa interactivo: ese sí
+// envía cabeceras CORS, imprescindibles para poder leer el canvas
+// después con toDataURL() sin que el navegador lo bloquee por
+// "lienzo contaminado".
+// ------------------------------------------------------------
+
+const TILE_SIZE = 256;
+const staticTileUrl = (z, x, y) => `https://basemaps.cartocdn.com/light_all/${z}/${x}/${y}@2x.png`;
+
+function lngToWorldX(lng, zoom) {
+  return ((lng + 180) / 360) * TILE_SIZE * Math.pow(2, zoom);
+}
+function latToWorldY(lat, zoom) {
+  const rad = (lat * Math.PI) / 180;
+  const merc = Math.log(Math.tan(Math.PI / 4 + rad / 2));
+  return (0.5 - merc / (2 * Math.PI)) * TILE_SIZE * Math.pow(2, zoom);
+}
+
+function loadTileImage(z, x, y) {
+  return new Promise((resolve) => {
+    const tilesAcross = Math.pow(2, z);
+    if (y < 0 || y >= tilesAcross) { resolve(null); return; }
+    const wrappedX = ((x % tilesAcross) + tilesAcross) % tilesAcross; // el mapa da la vuelta en x
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = staticTileUrl(z, wrappedX, y);
+  });
+}
+
+function drawMapPin(ctx, x, y, number) {
+  const r = 11;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#6c5ce7";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 11px Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(number), x, y + 1);
+}
+
+/**
+ * Compone una imagen de mapa (data: URL PNG) de widthPx×heightPx
+ * centrada en centerLat/centerLng al zoom dado, con un pin numerado
+ * por cada punto de `points` (mismo orden que la lista del PDF).
+ * Si ninguna tesela llega a cargar (sin conexión y sin caché),
+ * devuelve null — el PDF sigue generándose, solo que sin la imagen.
+ */
+async function composeStaticMap(centerLat, centerLng, zoom, widthPx, heightPx, points) {
+  const canvas = document.createElement("canvas");
+  canvas.width = widthPx;
+  canvas.height = heightPx;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#e8ecf5";
+  ctx.fillRect(0, 0, widthPx, heightPx);
+
+  const originX = lngToWorldX(centerLng, zoom) - widthPx / 2;
+  const originY = latToWorldY(centerLat, zoom) - heightPx / 2;
+  const firstTileX = Math.floor(originX / TILE_SIZE);
+  const lastTileX = Math.floor((originX + widthPx) / TILE_SIZE);
+  const firstTileY = Math.floor(originY / TILE_SIZE);
+  const lastTileY = Math.floor((originY + heightPx) / TILE_SIZE);
+
+  let tilesLoaded = 0;
+  const loads = [];
+  for (let tx = firstTileX; tx <= lastTileX; tx++) {
+    for (let ty = firstTileY; ty <= lastTileY; ty++) {
+      loads.push(
+        loadTileImage(zoom, tx, ty).then((img) => {
+          if (!img) return;
+          tilesLoaded++;
+          ctx.drawImage(img, tx * TILE_SIZE - originX, ty * TILE_SIZE - originY, TILE_SIZE, TILE_SIZE);
+        })
+      );
+    }
+  }
+  await Promise.all(loads);
+  if (!tilesLoaded) return null; // sin conexión y sin nada en caché: mejor avisar que enseñar un mapa en blanco
+
+  points.forEach((p, i) => {
+    const x = lngToWorldX(p.lng, zoom) - originX;
+    const y = latToWorldY(p.lat, zoom) - originY;
+    if (x < -20 || x > widthPx + 20 || y < -20 || y > heightPx + 20) return; // fuera del recuadro visible
+    drawMapPin(ctx, x, y, i + 1);
+  });
+
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
+    return canvas.toDataURL("image/png");
   } catch (err) {
-    return null; // sin conexión, o el servicio de mapa estático no responde
+    return null; // por si algún navegador raro considera el lienzo "contaminado"
   }
 }
 
@@ -1461,15 +1601,10 @@ async function exportMapPdf(trip, located, dayLabel) {
   const MAP_W = 760;
   const MAP_H = 420;
   const zoom = zoomForBounds(bounds, MAP_W, MAP_H);
-  const markers = located
-    .slice(0, 60) // límite de cortesía con el servicio gratuito de mapas estáticos
-    .map((p) => `${p.lat},${p.lng},lightblue1`)
-    .join("|");
-  const staticMapUrl =
-    `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLng}` +
-    `&zoom=${zoom}&size=${MAP_W}x${MAP_H}&maptype=mapnik&markers=${encodeURIComponent(markers)}`;
-
-  const mapImage = await fetchImageAsDataUrl(staticMapUrl);
+  // Pines numerados en el mismo orden que la lista de abajo — con
+  // más de ~40 se amontonarían y dejarían de leerse, así que a
+  // partir de ahí solo se numeran en la lista, no en el mapa.
+  const mapImage = await composeStaticMap(centerLat, centerLng, zoom, MAP_W, MAP_H, located.slice(0, 40));
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });

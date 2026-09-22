@@ -53,19 +53,21 @@ function daysUntil(isoDate) {
   return Math.round((target - today) / (1000 * 60 * 60 * 24));
 }
 
-function openMaps(location) {
+// mapsQueryUrl()/mapsRouteUrl() solo CONSTRUYEN la URL de Google
+// Maps (sin abrir nada) — quien la abre es openMapsAppPicker() en
+// app.js, que primero deja elegir con qué app. Google Maps sigue
+// siendo la fuente de la query/ruta porque su formato de URL es el
+// más compatible (funciona igual como enlace web que como intent
+// hacia la app si está instalada), pero cada opción del selector la
+// reescribe a su propio esquema (Waze, Apple Maps...).
+
+function mapsQueryUrl(location) {
   const q = (location || "").trim();
-  if (!q) {
-    alert("Introduce primero un lugar.");
-    return;
-  }
-  const url =
-    "https://www.google.com/maps/search/?api=1&query=" +
-    encodeURIComponent(q);
-  window.open(url, "_blank", "noopener");
+  if (!q) return null;
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
 }
 
-function openMapsMultiple(locations) {
+function mapsRouteUrl(locations) {
   const clean = [];
   const seen = new Set();
   for (const loc of locations) {
@@ -74,14 +76,9 @@ function openMapsMultiple(locations) {
     seen.add(trimmed);
     clean.push(trimmed);
   }
-  if (clean.length === 0) {
-    alert("No hay lugares para mostrar.");
-    return;
-  }
-  if (clean.length === 1) {
-    openMaps(clean[0]);
-    return;
-  }
+  if (clean.length === 0) return null;
+  if (clean.length === 1) return mapsQueryUrl(clean[0]);
+
   // Ruta con varias paradas: origen / paradas intermedias / destino
   const origin = encodeURIComponent(clean[0]);
   const destination = encodeURIComponent(clean[clean.length - 1]);
@@ -93,7 +90,7 @@ function openMapsMultiple(locations) {
     `https://www.google.com/maps/dir/?api=1&origin=${origin}` +
     `&destination=${destination}`;
   if (waypoints) url += `&waypoints=${waypoints}`;
-  window.open(url, "_blank", "noopener");
+  return url;
 }
 
 function uid(prefix = "id") {
@@ -119,8 +116,8 @@ export {
   formatDatePretty,
   daysBetween,
   daysUntil,
-  openMaps,
-  openMapsMultiple,
+  mapsQueryUrl,
+  mapsRouteUrl,
   uid,
   download,
 };
