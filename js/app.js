@@ -6,8 +6,8 @@ import {
   formatDatePretty,
   daysBetween,
   daysUntil,
-  openMaps,
-  openMapsMultiple,
+  mapsQueryUrl,
+  mapsRouteUrl,
   download,
 } from "./utils.js";
 import { isPinSet, setPin, removePin, verifyPin } from "./lock.js";
@@ -38,7 +38,7 @@ import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon, brandMark } from "./icons.js";
-import { geocode } from "./geocode.js";
+import { geocode, searchPlaces as searchPlaceSuggestions } from "./geocode.js";
 import { nearbyAttractions, nearbyLodging, searchPlaces } from "./discover.js";
 
 // ============================================================
@@ -293,6 +293,82 @@ function confirmAction(message) {
 }
 
 // ============================================================
+// SELECTOR DE APP DE MAPAS ("¿con qué app abrirlo?")
+//
+// Un sitio web (ni siquiera una PWA instalada) puede consultar qué
+// apps hay instaladas en el dispositivo — el navegador no expone esa
+// información a propósito, por privacidad. Lo más parecido que se
+// puede hacer es justo esto: ofrecer las apps de mapas más usadas
+// como opciones, cada una con el enlace propio de esa app (no el de
+// Google Maps reescrito) — si está instalada, el sistema operativo
+// la abre a ella directamente; si no, abre la versión web de esa
+// misma app. Apple Maps solo se ofrece en iOS (en cualquier otro
+// sistema ni siquiera tiene versión web que abrir).
+// ============================================================
+
+function buildMapsOptions(spec) {
+  const isIOS = /iP(hone|ad|od)/i.test(navigator.userAgent);
+  const isRoute = spec.type === "route";
+  const destText = (isRoute ? spec.destination : spec.location) || "";
+  if (!destText.trim()) return [];
+  const destEncoded = encodeURIComponent(destText.trim());
+
+  const googleUrl = isRoute ? mapsRouteUrl([spec.origin, spec.destination]) : mapsQueryUrl(spec.location);
+  const options = [
+    { id: "google", label: "Google Maps", url: googleUrl },
+    // Waze/Apple Maps navegan desde la ubicación actual del
+    // dispositivo hasta el destino (así funcionan siempre estas
+    // apps) — solo Google Maps puede mostrar una ruta entre dos
+    // puntos cualquiera sin depender del GPS.
+    { id: "waze", label: "Waze", url: `https://waze.com/ul?q=${destEncoded}&navigate=yes` },
+  ];
+  if (isIOS) {
+    const appleUrl = isRoute
+      ? `https://maps.apple.com/?saddr=${encodeURIComponent(spec.origin || "")}&daddr=${destEncoded}`
+      : `https://maps.apple.com/?q=${destEncoded}`;
+    options.push({ id: "apple", label: "Mapas", url: appleUrl });
+  }
+  return options.filter((o) => o.url);
+}
+
+function openMapsAppPicker(spec) {
+  const options = buildMapsOptions(spec);
+  if (!options.length) {
+    toast(spec.type === "route" ? "Falta origen o destino para trazar la ruta." : "Introduce primero un lugar.");
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">¿Con qué app quieres abrirlo?</h2>
+      <div class="maps-app-list">
+        ${options
+          .map(
+            (o, i) => `<button type="button" class="maps-app-option" data-i="${i}">
+              <span class="maps-app-option-icon">${icon("map")}</span>
+              <span class="maps-app-option-label">${escapeHtml(o.label)}</span>
+              ${icon("chevron")}
+            </button>`
+          )
+          .join("")}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelectorAll(".maps-app-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const opt = options[parseInt(btn.dataset.i, 10)];
+      if (opt) window.open(opt.url, "_blank", "noopener");
+      overlay.remove();
+    });
+  });
+}
+
+// ============================================================
 // RENDER PRINCIPAL / ROUTER
 // ============================================================
 
@@ -302,6 +378,20 @@ async function renderApp() {
   } else {
     await renderTripShell();
   }
+}
+
+// Recuerda hasta dónde se había bajado en cada pantalla (una entrada
+// por viaje+sección, o "home" para el inicio), para restaurarlo al
+// volver con "atrás" en vez de recargar siempre desde arriba.
+// "lastRenderedKey" es justo lo que hay en pantalla ANTES de esta
+// navegación — no puede calcularse a partir de `state`, porque quien
+// llama a withTransition() ya lo cambió (p.ej. `state.section = tab`)
+// antes de invocarla.
+const scrollPositions = new Map();
+let lastRenderedKey = "home";
+
+function currentViewKey() {
+  return state.tripId === null ? "home" : `${state.tripId}::${state.section}`;
 }
 
 /**
@@ -315,10 +405,21 @@ async function renderApp() {
 function withTransition(renderFn, direction = "forward") {
   if (direction === "forward") pushNavState();
   document.documentElement.dataset.navDir = direction;
+  scrollPositions.set(lastRenderedKey, window.scrollY);
+
+  const run = async () => {
+    await renderFn();
+    const key = currentViewKey();
+    // Al avanzar, la sección es nueva para el usuario: empieza
+    // arriba. Al volver, se restaura donde se había quedado.
+    window.scrollTo(0, direction === "back" ? scrollPositions.get(key) || 0 : 0);
+    lastRenderedKey = key;
+  };
+
   if (document.startViewTransition) {
-    document.startViewTransition(() => renderFn());
+    document.startViewTransition(() => run());
   } else {
-    renderFn();
+    run();
   }
 }
 
@@ -1155,10 +1256,7 @@ async function renderHome() {
         ${icon("search")}
         <input type="search" id="trip-search" placeholder="Busca un destino: hoteles y lugares al momento…" autocomplete="off" />
       </div>
-      <button class="hero-cta" id="fab-new-trip">＋ Nuevo viaje</button>
-    </div>
-    <div class="view has-tabbar">
-      <div id="destination-search"></div>
+      <div class="search-suggestions" id="trip-search-suggestions"></div>
       <button class="ai-plan-cta" id="btn-ai-plan-trip">
         <span class="ai-plan-cta-art">✨</span>
         <span class="ai-plan-cta-text">
@@ -1167,6 +1265,10 @@ async function renderHome() {
         </span>
         <span class="ai-plan-cta-arrow">${icon("chevron")}</span>
       </button>
+    </div>
+    <div class="view has-tabbar">
+      <div id="destination-search"></div>
+      <button class="hero-cta" id="fab-new-trip">＋ Nuevo viaje</button>
       <div class="section-title-row">
         <p class="section-title">Mis viajes</p>
         ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">Ver todos ${icon("chevron")}</button>` : ""}
@@ -1183,25 +1285,73 @@ async function renderHome() {
 
   const searchEl = root.querySelector("#trip-search");
   const destResultsEl = root.querySelector("#destination-search");
+  const suggestEl = root.querySelector("#trip-search-suggestions");
+
+  function renderSuggestions(places) {
+    if (!suggestEl) return;
+    if (!places.length) {
+      suggestEl.innerHTML = "";
+      return;
+    }
+    suggestEl.innerHTML = places
+      .map(
+        (p, i) => `<button type="button" class="search-suggestion" data-i="${i}">${icon("pin", "stat-icon")}<span>${escapeHtml(p.label)}</span></button>`
+      )
+      .join("");
+    suggestEl.querySelectorAll(".search-suggestion").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const place = places[parseInt(btn.dataset.i, 10)];
+        if (!place) return;
+        searchEl.value = place.label;
+        suggestEl.innerHTML = "";
+        runDestinationSearch(place.label, destResultsEl, { lat: place.lat, lng: place.lng });
+      });
+    });
+  }
+
   if (searchEl) {
+    // Autocompletar: mientras se escribe, sugiere lugares reales
+    // (Nominatim) en vez de obligar a acertar el nombre exacto y
+    // pulsar Enter a ciegas — así aparecen sugerencias también para
+    // ciudades menos conocidas o escritas de forma distinta.
+    let suggestTimer = null;
+    let suggestToken = 0;
     searchEl.addEventListener("input", () => {
-      const q = searchEl.value.trim().toLowerCase();
+      const raw = searchEl.value.trim();
+      const q = raw.toLowerCase();
       root.querySelectorAll(".trip-card").forEach((card) => {
         const text = card.textContent.toLowerCase();
         card.style.display = !q || text.includes(q) ? "" : "none";
       });
       if (!q && destResultsEl) destResultsEl.innerHTML = "";
+
+      clearTimeout(suggestTimer);
+      if (raw.length < 2) {
+        if (suggestEl) suggestEl.innerHTML = "";
+        return;
+      }
+      suggestTimer = setTimeout(async () => {
+        const myToken = ++suggestToken;
+        const places = await searchPlaceSuggestions(raw);
+        if (myToken !== suggestToken) return; // el usuario ya siguió escribiendo
+        if (searchEl.value.trim() !== raw) return; // respuesta ya obsoleta
+        renderSuggestions(places);
+      }, 400);
     });
     searchEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         const q = searchEl.value.trim();
+        if (suggestEl) suggestEl.innerHTML = "";
         if (q) runDestinationSearch(q, destResultsEl);
       }
     });
     searchEl.addEventListener("search", () => {
       // El botón "×" nativo del input dispara este evento con value vacío.
-      if (!searchEl.value.trim() && destResultsEl) destResultsEl.innerHTML = "";
+      if (!searchEl.value.trim()) {
+        if (destResultsEl) destResultsEl.innerHTML = "";
+        if (suggestEl) suggestEl.innerHTML = "";
+      }
     });
   }
 
@@ -1270,7 +1420,7 @@ async function renderHome() {
  * sugerencias y ordenar la ruta de forma óptima quedan como mejora
  * de pago (Pro), igual que el resto de funciones Pro de la app.
  */
-async function runDestinationSearch(query, container) {
+async function runDestinationSearch(query, container, knownCoords) {
   if (!container) return;
   container.innerHTML = h`
     <div class="dest-search-panel discover-loading" style="margin:4px 0 18px;">
@@ -1279,7 +1429,10 @@ async function runDestinationSearch(query, container) {
       <p class="discover-loading-sub">Localizando hoteles y lugares de interés</p>
     </div>`;
 
-  const coords = await geocode(query);
+  // Si ya sabemos las coordenadas (p. ej. el usuario tocó una
+  // sugerencia del autocompletar), nos ahorramos una segunda
+  // vuelta a Nominatim — misma búsqueda, la mitad de peticiones.
+  const coords = knownCoords || (await geocode(query));
   if (container.innerHTML.indexOf(escapeHtml(query)) === -1) return; // el usuario ya cambió de búsqueda
 
   if (!coords) {
@@ -1414,8 +1567,8 @@ function openTripForm(trip, prefill) {
     fields: [
       { name: "name", label: "Nombre del viaje", required: true, placeholder: "Ej. Escapada de verano" },
       { name: "destination", label: "Destino", required: true, placeholder: "Ej. Lisboa, Portugal" },
-      { name: "start_date", label: "Fecha de inicio", type: "date", required: true },
-      { name: "end_date", label: "Fecha de fin", type: "date", required: true },
+      { name: "start_date", label: "Fecha de inicio", type: "date", half: true, required: true },
+      { name: "end_date", label: "Fecha de fin", type: "date", half: true, required: true },
       { name: "budget", label: "Presupuesto (€)", type: "number", step: "0.01" },
       { name: "notes", label: "Notas", type: "textarea" },
     ],
@@ -1504,7 +1657,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, openDiscoverSheet };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, openDiscoverSheet, openMapsAppPicker };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
