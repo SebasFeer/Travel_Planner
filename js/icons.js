@@ -103,7 +103,10 @@ function brandMark(extraClass = "") {
   return `<svg class="icon-svg ${extraClass}" viewBox="0 0 100 100" fill="none" aria-hidden="true">
     <path d="M20 74 Q 40 30, 78 24" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 14"/>
     <circle cx="78" cy="24" r="9" fill="#fff"/>
-    <g transform="translate(20 74) rotate(-38) scale(0.55)"><path d="M16 0 L-14 -9 L-4 0 L-14 9 Z" fill="#fff"/></g>
+    <g transform="translate(20 74) rotate(-38) scale(0.55)">
+      <path d="M16 0 L-14 -9 L-3 0 Z" fill="#fff" fill-opacity="0.72"/>
+      <path d="M16 0 L-3 0 L-14 9 Z" fill="#fff"/>
+    </g>
   </svg>`;
 }
 

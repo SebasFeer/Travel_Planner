@@ -1432,11 +1432,14 @@ html.tp-skip-splash #splash-screen {
 
 /* Logo del splash: el mismo motivo de marca que el logo del header
    (avión de papel trazando una ruta punteada hasta el destino), pero
-   aquí de verdad "vuela": recorre la curva de un extremo al otro sin
-   parar (no solo se bambolea en su sitio), el contenedor respira con
-   una pulsación visible, y el destino se ilumina justo cuando el
-   avión aterriza en cada vuelta — un solo ciclo de ~1.8s, calculado
-   para completarse justo antes de que el splash se desvanezca. */
+   aquí de verdad "vuela": recorre la curva de un extremo al otro de
+   forma continua (con offset-path, no a saltos entre posiciones
+   fijas), consumiendo cada punto de la ruta a su paso, hasta llegar
+   al destino, que se ilumina justo entonces — un ciclo de ~1.8s,
+   calculado para completarse justo antes de que el splash se
+   desvanezca. El avión mismo es un avioncito de papel de dos tonos
+   (como el icono de "enviar" de cualquier app de mensajería), no una
+   flecha de cursor. */
 .splash-mark {
   width: 116px;
   height: 116px;
@@ -1452,22 +1455,29 @@ html.tp-skip-splash #splash-screen {
 
 .splash-svg { width: 68px; height: 68px; overflow: visible; }
 
-.splash-route {
-  animation: splash-route-fade 0.3s ease both,
-    splash-route-flow 1.8s linear infinite;
-}
-
-/* Recorre la misma curva que dibuja .splash-route (aproximada en 5
-   puntos, con el ángulo recalculado en cada uno para que el avión
-   siempre apunte hacia donde va) en vez de quedarse quieto en un
-   punto — el efecto de "más animado" más notorio de los tres. */
-.splash-plane {
-  animation: splash-plane-fly 1.8s cubic-bezier(0.45, 0, 0.3, 1) 0.1s infinite backwards;
-}
-
 .splash-dest {
   transform-origin: 78px 24px;
   animation: splash-dest-cycle 1.8s ease-in-out 0.1s infinite;
+}
+
+/* Posición de reserva para navegadores sin soporte de offset-path
+   (motion path): el avión se queda quieto en el punto de partida en
+   vez de no tener transform en absoluto (mal posicionado). Con
+   soporte, el bloque @supports de más abajo la sustituye por el
+   vuelo real. */
+.splash-plane {
+  transform: translate(20px, 74px) rotate(-66deg) scale(0.55);
+  transform-origin: 0 0;
+}
+
+@supports (offset-path: path("M0 0")) {
+  .splash-plane {
+    offset-path: path("M20 74 Q 40 30, 78 24");
+    offset-rotate: auto;
+    offset-distance: 0%;
+    transform: scale(0.55);
+    animation: splash-plane-fly 1.8s linear 0.1s infinite backwards;
+  }
 }
 
 .splash-tag {
@@ -1490,52 +1500,92 @@ html.tp-skip-splash #splash-screen {
   50% { box-shadow: 0 22px 50px rgba(108, 92, 231, 0.55); transform: scale(1.035); }
 }
 
-@keyframes splash-route-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Desplaza la fase del patrón de puntos (stroke-dasharray "1 14") a lo
-   largo de la curva: no dibuja la ruta de una vez, la hace parecer un
-   caudal de puntitos viajando sin parar hacia el destino. */
-@keyframes splash-route-flow {
-  to { stroke-dashoffset: -90; }
-}
-
-/* Puntos muestreados de la curva M20 74 Q 40 30, 78 24 (misma que
-   .splash-route) en t=0/.25/.5/.75/1, con el ángulo de la tangente en
-   cada uno para que el avión vaya rotando a medida que avanza. */
+/* offset-distance recorre el 0%-100% de la curva de forma continua y
+   lineal en el tiempo (el navegador interpola sobre la curva real,
+   no entre paradas discretas) — de ahí que ya no haga falta ninguna
+   lista de posiciones/ángulos intermedios: offset-rotate:auto orienta
+   el avión solo, siguiendo la tangente en cada instante. */
 @keyframes splash-plane-fly {
-  0% { transform: translate(20px, 74px) rotate(-66deg) scale(0.55); opacity: 1; }
-  25% { transform: translate(31px, 54px) rotate(-55deg) scale(0.55); }
-  50% { transform: translate(44.5px, 39.5px) rotate(-41deg) scale(0.55); }
-  75% { transform: translate(60px, 29px) rotate(-25deg) scale(0.55); }
-  92% { transform: translate(78px, 24px) rotate(-9deg) scale(0.55); opacity: 1; }
-  100% { transform: translate(78px, 24px) rotate(-9deg) scale(0.32); opacity: 0; }
+  0% { offset-distance: 0%; opacity: 1; }
+  90% { offset-distance: 100%; opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
 }
 
-/* Sincronizado con splash-plane-fly (mismo delay y duración): el
-   destino "se ilumina" justo cuando el avión llega, en vez de brillar
-   todo el rato sin motivo. */
+/* Sincronizado con splash-plane-fly (mismo delay y duración, mismo
+   90% de llegada): el destino "se ilumina" justo cuando el avión
+   llega, en vez de brillar todo el rato sin motivo. */
 @keyframes splash-dest-cycle {
-  0%, 78% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
-  92% { transform: scale(1.4); filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95)); }
+  0%, 76% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  90% { transform: scale(1.4); filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95)); }
   100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+}
+
+/* Los 6 puntitos de la ruta: cada uno se "consume" (parpadea y
+   desaparece) justo cuando el avión pasa por su posición en la curva,
+   en vez de quedarse ahí todo el ciclo. Los porcentajes están
+   calculados a partir de la posición de cada punto a lo largo de la
+   misma curva que sigue el avión (offset-distance), multiplicada por
+   el 90% del ciclo que dura el vuelo. */
+.splash-dot {
+  animation-duration: 1.8s;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  animation-delay: 0.1s;
+}
+.splash-dot-1 { transform-origin: 24.18px 65.58px; animation-name: splash-dot-1; }
+.splash-dot-2 { transform-origin: 31.13px 54.38px; animation-name: splash-dot-2; }
+.splash-dot-3 { transform-origin: 38.88px 44.88px; animation-name: splash-dot-3; }
+.splash-dot-4 { transform-origin: 47.45px 37.1px; animation-name: splash-dot-4; }
+.splash-dot-5 { transform-origin: 55.53px 31.73px; animation-name: splash-dot-5; }
+.splash-dot-6 { transform-origin: 63.52px 27.92px; animation-name: splash-dot-6; }
+
+@keyframes splash-dot-1 {
+  0%, 5% { opacity: 1; transform: scale(1); }
+  9% { opacity: 1; transform: scale(1.7); }
+  13%, 100% { opacity: 0; transform: scale(0); }
+}
+@keyframes splash-dot-2 {
+  0%, 18% { opacity: 1; transform: scale(1); }
+  22% { opacity: 1; transform: scale(1.7); }
+  26%, 100% { opacity: 0; transform: scale(0); }
+}
+@keyframes splash-dot-3 {
+  0%, 31% { opacity: 1; transform: scale(1); }
+  36% { opacity: 1; transform: scale(1.7); }
+  40%, 100% { opacity: 0; transform: scale(0); }
+}
+@keyframes splash-dot-4 {
+  0%, 45% { opacity: 1; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.7); }
+  54%, 100% { opacity: 0; transform: scale(0); }
+}
+@keyframes splash-dot-5 {
+  0%, 57% { opacity: 1; transform: scale(1); }
+  61% { opacity: 1; transform: scale(1.7); }
+  65%, 100% { opacity: 0; transform: scale(0); }
+}
+@keyframes splash-dot-6 {
+  0%, 68% { opacity: 1; transform: scale(1); }
+  72% { opacity: 1; transform: scale(1.7); }
+  76%, 100% { opacity: 0; transform: scale(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .splash-mark,
-  .splash-route,
   .splash-plane,
   .splash-dest,
+  .splash-dot,
   .splash-tag {
     animation: none;
   }
-  /* Sin la animación de vuelo, el avión necesita una posición fija de
-     nuevo (antes vivía en .splash-plane; ahora solo existe dentro de
-     los fotogramas de splash-plane-fly, que aquí quedan desactivados). */
+  /* Sin la animación de vuelo (ni el soporte de offset-path aplicado
+     por el @supports de más arriba), el avión usa su posición de
+     reserva de siempre. Los puntos, al no tener animación, se quedan
+     en su opacidad normal (1) — vuelven a verse todos como la ruta
+     completa estática de antes. */
   .splash-plane {
-    transform: translate(20px, 74px) rotate(-38deg) scale(0.55);
+    offset-path: none;
+    transform: translate(20px, 74px) rotate(-66deg) scale(0.55);
   }
 }
 
