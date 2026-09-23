@@ -1934,14 +1934,10 @@ function openSettingsSheet() {
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <h2 class="modal-title">${t("settings_title")}</h2>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-account">${icon("user")} ${currentUser() ? t("settings_account") : t("settings_login")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">${icon("luggage")} ${t("settings_profile")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">${icon("cloud")} ${t("settings_backup")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">${icon("link")} ${t("settings_join_shared")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">${icon("luggage")} ${t("settings_profile")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-theme">${icon("theme")} ${t("settings_theme")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-language">${icon("globe")} ${t("settings_language")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-notifications">${icon("bell")} ${t("settings_notifications")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-security">${icon("lock")} ${t("settings_security")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="st-config">${icon("settings")} ${t("settings_config")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} ${t("settings_dev")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-privacy">${icon("shield")} ${t("settings_privacy")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-cache">${icon("cloud")} ${t("settings_cache")}</button></div>
@@ -1955,17 +1951,45 @@ function openSettingsSheet() {
     overlay.querySelector(id).addEventListener("click", () => {
       openSubSheet(overlay, fn);
     });
-  go("#st-account", openAccountSheet);
+  go("#st-profile", openProfileSheet);
   go("#st-backup", openBackupSheet);
   go("#st-join-shared", openJoinTripSheet);
-  go("#st-profile", openProfileSheet);
-  go("#st-theme", openThemeSheet);
-  go("#st-language", openLanguageSheet);
-  go("#st-notifications", openNotificationsSheet);
-  go("#st-security", openSecuritySheet);
+  go("#st-config", openConfigSheet);
   go("#st-dev", openDevModeSheet);
   go("#st-privacy", openPrivacyPolicySheet);
   go("#st-cache", openCacheUsageSheet);
+}
+
+// ------------------------------------------------------------
+// CONFIGURACIÓN — submenú con tema, idioma, notificaciones y
+// seguridad, agrupados aparte del menú principal de ajustes.
+// ------------------------------------------------------------
+
+function openConfigSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">${t("settings_config")}</h2>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cfg-theme">${icon("theme")} ${t("settings_theme")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cfg-language">${icon("globe")} ${t("settings_language")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cfg-notifications">${icon("bell")} ${t("settings_notifications")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cfg-security">${icon("lock")} ${t("settings_security")}</button></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="cfg-close">${t("common_close")}</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#cfg-close").addEventListener("click", () => overlay.remove());
+
+  const go = (id, fn) =>
+    overlay.querySelector(id).addEventListener("click", () => {
+      openSubSheet(overlay, fn);
+    });
+  go("#cfg-theme", openThemeSheet);
+  go("#cfg-language", openLanguageSheet);
+  go("#cfg-notifications", openNotificationsSheet);
+  go("#cfg-security", openSecuritySheet);
 }
 
 async function openLanguageSheet() {
@@ -2157,14 +2181,22 @@ function escapeHtmlDev(str) {
  * fondo.
  */
 function openSubSheet(parentOverlay, openFn) {
+  // Con más de un nivel de anidado (p. ej. Ajustes → Perfil → Sesión) hay
+  // varios de estos observers activos a la vez sobre el mismo document.body,
+  // y el orden en que el navegador dispara sus callbacks no está garantizado.
+  // Por eso cada llamada recuerda qué overlays existían ANTES de abrir la
+  // suya (incluido cualquier abuelo ya oculto) y solo se fija en si LOS
+  // SUYOS propios siguen abiertos, sin depender de si otro observer ya
+  // restauró o no un antepasado.
+  const before = new Set(document.querySelectorAll(".modal-overlay"));
   parentOverlay.style.display = "none";
   openFn();
 
   const observer = new MutationObserver(() => {
-    const others = Array.from(document.querySelectorAll(".modal-overlay")).filter(
-      (el) => el !== parentOverlay
+    const stillOpen = Array.from(document.querySelectorAll(".modal-overlay")).some(
+      (el) => el !== parentOverlay && !before.has(el)
     );
-    if (others.length === 0) {
+    if (!stillOpen) {
       observer.disconnect();
       if (document.body.contains(parentOverlay)) {
         parentOverlay.style.display = "";
@@ -2580,6 +2612,9 @@ async function openProfileSheet() {
           ? `<p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">${escapeHtml(user.email)}</p>`
           : `<p style="color:var(--muted); font-size:13.5px; margin-top:-10px;">Sin cuenta (datos solo en este dispositivo)</p>`
       }
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="btn btn-secondary" id="profile-account">${icon("user")} ${user ? t("settings_account") : t("settings_login")}</button>
+      </div>
       <div class="stat-grid" style="margin-top:14px;">
         <div class="stat-card"><div class="stat-label">🧳 Viajes</div><div class="stat-value">${trips.length}</div></div>
         <div class="stat-card"><div class="stat-label">🌍 Países</div><div class="stat-value">${countries.size}</div></div>
@@ -2623,6 +2658,9 @@ async function openProfileSheet() {
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
   overlay.querySelector("#profile-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#profile-account").addEventListener("click", () => {
+    openSubSheet(overlay, openAccountSheet);
+  });
 }
 
 export { openSettingsSheet, loadTheme, checkAndNotifyToday, installPullToRefresh };
