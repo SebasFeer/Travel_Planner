@@ -580,6 +580,100 @@ function installAndroidBackHandling() {
   });
 }
 
+/**
+ * Deslizar hacia abajo para cerrar cualquier ventana modal (el asa
+ * .modal-handle de arriba ya insinuaba esto, pero no hacía nada).
+ * Funciona desde el asa siempre, y desde el resto de la ventana solo
+ * si su contenido ya está desplazado hasta arriba del todo — así no
+ * le roba el scroll a una lista larga (Mi perfil, Ajustes...) ni al
+ * texto de un campo. Al soltar, si se arrastró lo bastante (o con
+ * suficiente velocidad aunque no haya llegado al umbral), se cierra
+ * exactamente igual que con el botón "Cerrar" (overlay.remove()):
+ * toda la lógica que ya depende de esa desaparición del DOM — el
+ * subsheet que vuelve a mostrar su padre (openSubSheet), la
+ * sincronía con el botón atrás de Android — sigue funcionando sola,
+ * sin que este gesto tenga que saber nada de eso.
+ */
+function installModalSwipeToClose() {
+  const DRAG_THRESHOLD = 90; // px arrastrados para cerrar
+  const VELOCITY_THRESHOLD = 0.5; // px/ms: un tirón rápido cierra aunque no llegue al umbral
+
+  let sheet = null;
+  let startY = 0;
+  let lastY = 0;
+  let lastT = 0;
+  let dy = 0;
+  let dragging = false;
+
+  function onStart(e) {
+    const handle = e.target.closest(".modal-handle");
+    if (handle) {
+      sheet = handle.closest(".modal-sheet");
+    } else {
+      // Los controles propios (botones, campos...) manejan su propio
+      // toque; el gesto de cerrar solo arranca sobre el resto del
+      // contenido, y solo si ya no queda nada por desplazar arriba.
+      if (e.target.closest("input, textarea, select, button, a, [contenteditable]")) return;
+      const sheetEl = e.target.closest(".modal-sheet");
+      if (!sheetEl || sheetEl.scrollTop > 0) return;
+      sheet = sheetEl;
+    }
+    if (!sheet) return;
+
+    const t = e.touches[0];
+    startY = t.clientY;
+    lastY = startY;
+    lastT = Date.now();
+    dy = 0;
+    dragging = true;
+    sheet.style.transition = "none";
+  }
+
+  function onMove(e) {
+    if (!dragging || !sheet) return;
+    const t = e.touches[0];
+    const rawDy = t.clientY - startY;
+    if (rawDy <= 0) {
+      // Hacia arriba no hace nada especial: se deja pasar (permite
+      // seguir con el scroll normal del contenido).
+      dy = 0;
+      sheet.style.transform = "";
+      return;
+    }
+    dy = rawDy;
+    lastY = t.clientY;
+    lastT = Date.now();
+    sheet.style.transform = `translateY(${dy}px)`;
+    e.preventDefault();
+  }
+
+  function onEnd() {
+    if (!dragging || !sheet) return;
+    dragging = false;
+    const s = sheet;
+    sheet = null;
+    const elapsed = Math.max(1, Date.now() - lastT);
+    const velocity = dy / elapsed;
+    const shouldClose = dy > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD;
+
+    s.style.transition = "transform 0.22s cubic-bezier(0.32, 0.72, 0, 1)";
+    if (shouldClose) {
+      const overlay = s.closest(".modal-overlay");
+      s.style.transform = "translateY(100%)";
+      setTimeout(() => {
+        if (overlay) overlay.remove();
+      }, 220);
+    } else {
+      s.style.transform = "";
+    }
+  }
+
+  document.addEventListener("touchstart", onStart, { passive: true });
+  document.addEventListener("touchmove", onMove, { passive: false });
+  document.addEventListener("touchend", onEnd, { passive: true });
+  document.addEventListener("touchcancel", onEnd, { passive: true });
+}
+
 // ============================================================
 // ESTRUCTURA DE UN VIAJE (topbar + contenido)
 // La navegación entre secciones (vuelos, hoteles, transporte...)
@@ -1668,7 +1762,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, openDiscoverSheet, openMapsAppPicker };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, openDiscoverSheet, openMapsAppPicker };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local

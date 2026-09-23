@@ -12,7 +12,7 @@ import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
 import { isPro } from "./pro.js";
-import { TOP_CURRENCIES, ALL_CURRENCIES, isRateSupported, convertCurrency } from "./currency.js";
+import { TOP_CURRENCIES, ALL_CURRENCIES, convertCurrency } from "./currency.js";
 import { t } from "./i18n.js";
 
 // ============================================================
@@ -1169,16 +1169,10 @@ function openCurrencyConverterSheet(trip) {
       lastConverted = null;
       return;
     }
-    if (!isRateSupported(selected.code)) {
-      resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">Esta moneda no tiene tipo de cambio en vivo disponible todavía.</span>`;
-      useBtn.disabled = true;
-      lastConverted = null;
-      return;
-    }
     resultEl.textContent = "Calculando…";
     const converted = await convertCurrency(amount, selected.code, "EUR");
     if (converted === null) {
-      resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">No se pudo obtener el tipo de cambio (revisa tu conexión).</span>`;
+      resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">No se pudo obtener el tipo de cambio para esta moneda (revisa tu conexión e inténtalo de nuevo).</span>`;
       useBtn.disabled = true;
       lastConverted = null;
       return;
