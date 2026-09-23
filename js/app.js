@@ -16,6 +16,7 @@ import {
   onAuthChange,
   signUp,
   signIn,
+  signInWithGoogle,
   signOutUser,
   pushToCloud,
   pullFromCloud,
@@ -37,7 +38,7 @@ import {
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
 import { renderSection, renderPrintArea } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
-import { icon, brandMark } from "./icons.js";
+import { icon, brandMark, googleIcon } from "./icons.js";
 import { geocode, searchPlaces as searchPlaceSuggestions } from "./geocode.js";
 import { LANGUAGES, getLanguage, setLanguage, t } from "./i18n.js";
 import { nearbyAttractions, nearbyLodging, searchPlaces } from "./discover.js";
@@ -1824,7 +1825,11 @@ function renderAuthForm() {
         Crea una cuenta para tener una copia de tus viajes en la nube, además de en
         este dispositivo. Es opcional — la app sigue funcionando sin cuenta.
       </p>
-      <div class="field" style="margin-top:14px;">
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="btn btn-secondary" id="auth-google">${googleIcon()} Continuar con Google</button>
+      </div>
+      <div class="auth-divider"><span>o con tu email</span></div>
+      <div class="field">
         <label>Email</label>
         <input type="email" id="auth-email" autocomplete="email" />
       </div>
@@ -1848,6 +1853,19 @@ function renderAuthForm() {
   const errorEl = overlay.querySelector("#auth-error");
   const emailEl = overlay.querySelector("#auth-email");
   const passEl = overlay.querySelector("#auth-password");
+
+  overlay.querySelector("#auth-google").addEventListener("click", async (e) => {
+    errorEl.textContent = "";
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const { user, error, cancelled, redirecting } = await signInWithGoogle();
+    if (redirecting) return; // la página está navegando a Google, no hay más que hacer aquí
+    btn.disabled = false;
+    if (cancelled) return;
+    if (error) { errorEl.textContent = error; return; }
+    overlay.remove();
+    await afterLogin(user);
+  });
 
   overlay.querySelector("#auth-login").addEventListener("click", async () => {
     errorEl.textContent = "";
@@ -2663,7 +2681,7 @@ async function openProfileSheet() {
   });
 }
 
-export { openSettingsSheet, loadTheme, checkAndNotifyToday, installPullToRefresh };
+export { openSettingsSheet, loadTheme, checkAndNotifyToday, installPullToRefresh, afterLogin };
 
 // ============================================================
 // DESLIZAR PARA RECARGAR (pull-to-refresh)

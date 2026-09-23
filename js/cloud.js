@@ -189,6 +189,13 @@ function friendlyAuthError(err) {
     "auth/invalid-credential": "Email o contraseña incorrectos.",
     "auth/too-many-requests": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "auth/network-request-failed": "Sin conexión a internet.",
+    "auth/account-exists-with-different-credential":
+      "Ya existe una cuenta con ese email usando otro método de acceso (por ejemplo, con contraseña).",
+    "auth/unauthorized-domain":
+      "Este sitio no está autorizado todavía para iniciar sesión con Google (falta configurarlo en Firebase).",
+    "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Inténtalo de nuevo.",
+    "auth/operation-not-allowed":
+      "El acceso con Google no está activado todavía para esta app (falta activarlo en Firebase).",
   };
   return map[code] || NO_CONNECTION_MSG;
 }
@@ -210,6 +217,62 @@ async function signIn(email, password) {
     return { user: cred.user, error: null };
   } catch (err) {
     return { user: null, error: friendlyAuthError(err) };
+  }
+}
+
+/**
+ * Inicia sesión con una cuenta de Google. Primero intenta una ventana
+ * emergente (signInWithPopup) — es lo que mejor encaja con el resto
+ * de la app (todo son overlays, sin recargar la página). Si el
+ * navegador la bloquea o no la soporta (pasa en algunas apps
+ * instaladas como PWA, sobre todo en iOS), cae a signInWithRedirect:
+ * la página navega a Google y vuelve sola — ese regreso lo recoge
+ * completeGoogleRedirect() al arrancar la app.
+ */
+async function signInWithGoogle() {
+  let s;
+  try {
+    s = await ensureFirebase();
+  } catch (err) {
+    return { user: null, error: NO_CONNECTION_MSG };
+  }
+
+  const provider = new s.authMod.GoogleAuthProvider();
+  try {
+    const cred = await s.authMod.signInWithPopup(s.auth, provider);
+    return { user: cred.user, error: null };
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+      // El usuario cerró la ventana sin terminar: no es un error real.
+      return { user: null, error: null, cancelled: true };
+    }
+    if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+      try {
+        await s.authMod.signInWithRedirect(s.auth, provider);
+        return { user: null, error: null, redirecting: true };
+      } catch (redirectErr) {
+        return { user: null, error: friendlyAuthError(redirectErr) };
+      }
+    }
+    return { user: null, error: friendlyAuthError(err) };
+  }
+}
+
+/**
+ * Se llama una vez al arrancar la app: si el usuario acaba de volver
+ * de un signInWithRedirect a Google, completa el inicio de sesión y
+ * devuelve el usuario (para que quien llame ejecute el mismo "qué
+ * hacer con los datos" que tras un login normal). Si no había ningún
+ * regreso pendiente, devuelve null sin hacer nada.
+ */
+async function completeGoogleRedirect() {
+  try {
+    const s = await ensureFirebase();
+    const cred = await s.authMod.getRedirectResult(s.auth);
+    return cred ? cred.user : null;
+  } catch (err) {
+    return null;
   }
 }
 
@@ -455,6 +518,8 @@ export {
   onAuthChange,
   signUp,
   signIn,
+  signInWithGoogle,
+  completeGoogleRedirect,
   signOutUser,
   pushToCloud,
   pullFromCloud,

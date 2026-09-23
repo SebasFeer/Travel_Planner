@@ -947,6 +947,25 @@ a { color: inherit; }
   max-width: 100%;
 }
 
+/* Separador "o con tu email" entre el botón de Google y el
+   formulario de email/contraseña, en la pantalla de inicio de
+   sesión. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .field-check {
   display: flex;
   align-items: center;

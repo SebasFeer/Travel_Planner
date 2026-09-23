@@ -1,6 +1,6 @@
-import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, checkAndNotifyToday, installPullToRefresh } from "./app.js";
+import { renderApp, installSwipeBack, installAndroidBackHandling, loadTheme, checkAndNotifyToday, installPullToRefresh, afterLogin } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
-import { onAuthChange, enableAutoSync, syncOnLaunch } from "./cloud.js";
+import { onAuthChange, enableAutoSync, syncOnLaunch, completeGoogleRedirect } from "./cloud.js";
 import { shouldShowOnboarding, renderOnboarding } from "./onboarding.js";
 import { loadLanguage } from "./i18n.js";
 
@@ -59,12 +59,26 @@ onAuthChange(() => {
 // Ajustes → Mi cuenta. Si no has iniciado sesión, esto no hace nada.
 enableAutoSync();
 
-// Si al abrir la app ya había una sesión recordada de antes, se
-// sincroniza con la nube en segundo plano (sin bloquear el arranque,
-// que siempre se hace con lo que ya hay en local). Si trae datos
-// nuevos de otro dispositivo, se vuelve a pintar la pantalla.
-syncOnLaunch().then((updated) => {
-  if (updated) renderApp();
+// Si el usuario acaba de volver de iniciar sesión con Google por
+// redirección (signInWithRedirect, el respaldo cuando el navegador
+// bloquea la ventana emergente — típico en la app instalada como
+// PWA), esto completa ese inicio de sesión y sigue el mismo camino
+// que un login normal (afterLogin, con su aviso de "ya hay copia en
+// la nube" si hiciera falta). Si no había ningún regreso pendiente,
+// devuelve null y seguimos con la sincronización silenciosa de
+// siempre para una sesión ya recordada de antes.
+completeGoogleRedirect().then((user) => {
+  if (user) {
+    afterLogin(user);
+    return;
+  }
+  // Si al abrir la app ya había una sesión recordada de antes, se
+  // sincroniza con la nube en segundo plano (sin bloquear el arranque,
+  // que siempre se hace con lo que ya hay en local). Si trae datos
+  // nuevos de otro dispositivo, se vuelve a pintar la pantalla.
+  syncOnLaunch().then((updated) => {
+    if (updated) renderApp();
+  });
 });
 
 // Aviso local de vuelos, reservas de hotel y actividades (solo si el
