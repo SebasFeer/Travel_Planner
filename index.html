@@ -86,7 +86,13 @@
 <div class="atmos-bg" aria-hidden="true"></div>
 
 <div id="splash-screen">
-  <img src="icons/logo-splash.png" alt="TravelPlanner" class="splash-logo" />
+  <div class="splash-mark" aria-hidden="true">
+    <svg class="splash-svg" viewBox="0 0 100 100" fill="none">
+      <path class="splash-route" d="M20 74 Q 40 30, 78 24" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 14" />
+      <circle class="splash-dest" cx="78" cy="24" r="9" fill="#fff" />
+      <g class="splash-plane"><path d="M16 0 L-14 -9 L-4 0 L-14 9 Z" fill="#fff" /></g>
+    </svg>
+  </div>
   <p class="splash-tag">Tu próximo viaje, organizado</p>
 </div>
 
@@ -138,7 +144,7 @@
       var splash = document.getElementById("splash-screen");
       if (!splash) return;
       splash.classList.add("splash-hide");
-      setTimeout(function () { splash.remove(); }, 2000);
+      setTimeout(function () { splash.remove(); }, 500);
     }, 2000);
   }
 </script>
