@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v29";
+const CACHE_NAME = "travelplanner-v30";
 
 // Caché de teselas del mapa: va SEPARADA a propósito y con nombre
 // fijo (sin número de versión de la app), para que sobreviva a las
@@ -35,6 +35,7 @@ const APP_SHELL = [
   "./js/photo.js",
   "./js/lock.js",
   "./js/onboarding.js",
+  "./js/i18n.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

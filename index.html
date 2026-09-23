@@ -21,6 +21,37 @@
       document.documentElement.classList.add("tp-skip-splash");
     }
   } catch (e) {}
+
+  // Idioma para el splash/arranque, ANTES de que cargue ningún módulo
+  // (js/i18n.js hace exactamente esta misma detección para el resto
+  // de la app, pero eso tarda un poco en IndexedDB — aquí solo hace
+  // falta el texto de dos frases, así que se resuelve aparte y al
+  // instante para que no se vean en español un frame y luego cambien
+  // de golpe). Respeta el idioma elegido a mano en Ajustes si ya se
+  // guardó antes (setLanguage() en i18n.js escribe aquí también,
+  // como caché de solo lectura rápida); si no, detecta el del
+  // dispositivo.
+  try {
+    var SUPPORTED_LANGS = ["es", "en", "pt", "zh", "ar"];
+    var lang = localStorage.getItem("tp_lang_cache");
+    if (!lang || SUPPORTED_LANGS.indexOf(lang) === -1) {
+      var devLangs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "es"]);
+      lang = "es";
+      for (var i = 0; i < devLangs.length; i++) {
+        var code = String(devLangs[i]).slice(0, 2).toLowerCase();
+        if (SUPPORTED_LANGS.indexOf(code) !== -1) { lang = code; break; }
+      }
+    }
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    window.__TP_BOOT_STRINGS = {
+      es: { tag: "Tu próximo viaje, organizado", loading: "Cargando TravelPlanner…" },
+      en: { tag: "Your next trip, organized", loading: "Loading TravelPlanner…" },
+      pt: { tag: "Sua próxima viagem, organizada", loading: "Carregando o TravelPlanner…" },
+      zh: { tag: "让下一次旅行井井有条", loading: "TravelPlanner 加载中…" },
+      ar: { tag: "رحلتك القادمة، منظَّمة", loading: "جارٍ تحميل TravelPlanner…" },
+    }[lang];
+  } catch (e) {}
 </script>
 
 <!-- Instalable en el iPhone/Android (Añadir a pantalla de inicio) -->
@@ -64,10 +95,25 @@
     <div class="boot-screen">
       <div class="boot-badge">🧭</div>
       <div class="boot-spinner"></div>
-      <p>Cargando TravelPlanner…</p>
+      <p id="boot-loading-text">Cargando TravelPlanner…</p>
     </div>
   </div>
 </div>
+
+<script>
+  // Aplica los textos de arranque en el idioma detectado (ver script
+  // del <head>) ANTES de que el navegador pinte — así nunca se ve un
+  // frame en español seguido de un salto al idioma real.
+  try {
+    var bootStrings = window.__TP_BOOT_STRINGS;
+    if (bootStrings) {
+      var tagEl = document.querySelector(".splash-tag");
+      if (tagEl) tagEl.textContent = bootStrings.tag;
+      var loadingEl = document.getElementById("boot-loading-text");
+      if (loadingEl) loadingEl.textContent = bootStrings.loading;
+    }
+  } catch (e) {}
+</script>
 
 <script type="module" src="js/main.js"></script>
 <script>
