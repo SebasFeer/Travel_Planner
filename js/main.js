@@ -1,4 +1,4 @@
-import { renderApp, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, loadTheme, checkAndNotifyToday, installPullToRefresh, afterLogin } from "./app.js";
+import { renderApp, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, loadTheme, checkAndNotifyToday, installPullToRefresh, afterLogin } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange, enableAutoSync, syncOnLaunch, completeGoogleRedirect } from "./cloud.js";
 import { shouldShowOnboarding, renderOnboarding } from "./onboarding.js";
@@ -34,6 +34,7 @@ async function bootApp(withLock) {
     installSwipeBack();
     installAndroidBackHandling();
     installModalSwipeToClose();
+    installReturnSplash();
   };
   if (await shouldShowOnboarding()) {
     renderOnboarding(start);

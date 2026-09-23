@@ -125,6 +125,27 @@ const T = {
   traveler_couple: { es: "En pareja", en: "As a couple", pt: "Em casal", zh: "情侣出行", ar: "مع الشريك" },
   traveler_family: { es: "En familia", en: "With family", pt: "Em família", zh: "家庭出游", ar: "مع العائلة" },
   traveler_friends: { es: "Con amigos", en: "With friends", pt: "Com amigos", zh: "和朋友一起", ar: "مع الأصدقاء" },
+  ob4_title: {
+    es: "Guarda tus viajes en la nube",
+    en: "Back up your trips to the cloud",
+    pt: "Guarde suas viagens na nuvem",
+    zh: "把你的行程备份到云端",
+    ar: "احفظ رحلاتك في السحابة",
+  },
+  ob4_body: {
+    es: "Crea una cuenta para tener tus viajes también en otros dispositivos. Es opcional — puedes hacerlo después desde Ajustes.",
+    en: "Create an account to also have your trips on other devices. It's optional — you can do it later from Settings.",
+    pt: "Crie uma conta para ter suas viagens também em outros dispositivos. É opcional — você pode fazer isso depois em Ajustes.",
+    zh: "创建账户，让你的行程也能在其他设备上使用。这是可选的——你也可以稍后在设置中完成。",
+    ar: "أنشئ حساباً لتتوفر رحلاتك أيضاً على أجهزة أخرى. هذا اختياري — يمكنك فعل ذلك لاحقاً من الإعدادات.",
+  },
+  ob_create_account: { es: "Crear cuenta", en: "Create account", pt: "Criar conta", zh: "创建账户", ar: "إنشاء حساب" },
+  ob_skip_auth: { es: "Ahora no", en: "Not now", pt: "Agora não", zh: "暂不需要", ar: "ليس الآن" },
+  auth_google_continue: { es: "Continuar con Google", en: "Continue with Google", pt: "Continuar com o Google", zh: "使用 Google 继续", ar: "المتابعة باستخدام Google" },
+  auth_email_label: { es: "Email", en: "Email", pt: "E-mail", zh: "电子邮箱", ar: "البريد الإلكتروني" },
+  auth_password_label: { es: "Contraseña", en: "Password", pt: "Senha", zh: "密码", ar: "كلمة المرور" },
+  auth_password_hint: { es: "Mínimo 6 caracteres", en: "At least 6 characters", pt: "Mínimo de 6 caracteres", zh: "至少 6 个字符", ar: "6 أحرف على الأقل" },
+  auth_or_email: { es: "o con tu email", en: "or with your email", pt: "ou com seu e-mail", zh: "或使用邮箱", ar: "أو عبر بريدك الإلكتروني" },
 
   // ---------- Ajustes ----------
   settings_title: { es: "Ajustes", en: "Settings", pt: "Ajustes", zh: "设置", ar: "الإعدادات" },

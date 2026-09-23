@@ -674,6 +674,55 @@ function installModalSwipeToClose() {
   document.addEventListener("touchcancel", onEnd, { passive: true });
 }
 
+/**
+ * Vuelve a mostrar el splash de bienvenida (logo animado + foto de
+ * una maravilla del mundo) cada vez que la app vuelve a primer plano
+ * después de haber estado en segundo plano — al abrirla de nuevo
+ * desde el multitarea del sistema, por ejemplo. Se apoya en
+ * "visibilitychange", que SOLO se dispara cuando el documento pasa
+ * de oculto a visible de verdad (minimizar/cambiar de app y volver);
+ * navegar DENTRO de la app (entrar a un viaje y volver al inicio,
+ * cerrar una ventana modal...) nunca oculta el documento, así que
+ * ese caso no puede disparar esto por error — no hace falta ninguna
+ * lógica extra para distinguirlos.
+ *
+ * Reutiliza el splash real de index.html: clona la plantilla que se
+ * guardó en window.__TP_SPLASH_TEMPLATE (antes de que index.html
+ * retirara la suya) en vez de reconstruir aquí el marcado y las
+ * animaciones por segunda vez. Al ser un elemento recién insertado,
+ * sus animaciones (el "pop" de entrada, el vuelo del avión...)
+ * arrancan solas desde el principio, sin ningún truco para
+ * reiniciarlas.
+ */
+function installReturnSplash() {
+  const HOLD_MS = 1300;
+  const FADE_MS = 450;
+  let active = false;
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || active) return;
+    const template = window.__TP_SPLASH_TEMPLATE;
+    if (!template) return;
+
+    active = true;
+    const splash = template.cloneNode(true);
+    // Sin id (y con la clase equivalente en su lugar): así la regla
+    // de "recarga dentro de la sesión" — html.tp-skip-splash #splash-screen
+    // — no lo apaga a él también si esta sesión tuvo alguna recarga
+    // en algún momento (ver comentario junto a esa regla en el CSS).
+    splash.removeAttribute("id");
+    splash.classList.add("splash-screen-base");
+    document.body.appendChild(splash);
+    setTimeout(() => {
+      splash.classList.add("splash-hide");
+      setTimeout(() => {
+        splash.remove();
+        active = false;
+      }, FADE_MS);
+    }, HOLD_MS);
+  });
+}
+
 // ============================================================
 // ESTRUCTURA DE UN VIAJE (topbar + contenido)
 // La navegación entre secciones (vuelos, hoteles, transporte...)
@@ -1762,7 +1811,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, openDiscoverSheet, openMapsAppPicker };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
