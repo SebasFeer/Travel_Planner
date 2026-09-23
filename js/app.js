@@ -1935,7 +1935,6 @@ function openSettingsSheet() {
       <div class="modal-handle"></div>
       <h2 class="modal-title">${t("settings_title")}</h2>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-profile">${icon("luggage")} ${t("settings_profile")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-backup">${icon("cloud")} ${t("settings_backup")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">${icon("link")} ${t("settings_join_shared")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-config">${icon("settings")} ${t("settings_config")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} ${t("settings_dev")}</button></div>
@@ -1952,7 +1951,6 @@ function openSettingsSheet() {
       openSubSheet(overlay, fn);
     });
   go("#st-profile", openProfileSheet);
-  go("#st-backup", openBackupSheet);
   go("#st-join-shared", openJoinTripSheet);
   go("#st-config", openConfigSheet);
   go("#st-dev", openDevModeSheet);
@@ -1972,6 +1970,7 @@ function openConfigSheet() {
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <h2 class="modal-title">${t("settings_config")}</h2>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cfg-backup">${icon("cloud")} ${t("settings_backup")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="cfg-theme">${icon("theme")} ${t("settings_theme")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="cfg-language">${icon("globe")} ${t("settings_language")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="cfg-notifications">${icon("bell")} ${t("settings_notifications")}</button></div>
@@ -1986,6 +1985,7 @@ function openConfigSheet() {
     overlay.querySelector(id).addEventListener("click", () => {
       openSubSheet(overlay, fn);
     });
+  go("#cfg-backup", openBackupSheet);
   go("#cfg-theme", openThemeSheet);
   go("#cfg-language", openLanguageSheet);
   go("#cfg-notifications", openNotificationsSheet);

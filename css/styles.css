@@ -891,26 +891,29 @@ a { color: inherit; }
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  background: var(--bg);
+  background: var(--surface-tint);
   border: 1px solid var(--border);
   color: var(--text);
-  border-radius: 12px;
-  padding: 12px 13px;
+  border-radius: 14px;
+  padding: 13px 14px;
   font-size: 15px;
   font-family: inherit;
 }
 
 /* <input type="date"> trae su propio layout interno (segmentos
    dd/mm/aaaa + icono de calendario) que en iOS Safari puede ignorar
-   width:100% y quedarse con un ancho mínimo de contenido propio. Se
-   fuerza a que el control entero (y su parte interna que pinta la
-   fecha) respete el ancho de su celda en vez del de su contenido. */
+   width:100% y quedarse con un ancho mínimo de contenido propio, además
+   de imponer su propio alto nativo por encima del resto de campos.
+   appearance:none apaga ese estilo nativo de la plataforma (Safari
+   sigue abriendo el selector de fecha al tocar el campo, solo deja de
+   dibujar su propio "cromado") para que padding/height/width de aquí
+   sean los que de verdad se apliquen, y así el campo quede del mismo
+   alto que el resto de líneas del formulario en cualquier navegador. */
 .field input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
   min-width: 0;
   width: 100%;
-  /* El icono de calendario nativo pide un poco más de alto por su
-     cuenta, así que sin esto un <input type="date"> queda ~2px más
-     alto que el resto de campos del mismo formulario. */
   height: 46px;
   box-sizing: border-box;
 }
@@ -2453,22 +2456,6 @@ html.tp-skip-splash #splash-screen {
   border-color: transparent;
   color: #fff;
   box-shadow: var(--shadow-brand);
-}
-
-/* ---------- Formularios ---------- */
-
-.field input,
-.field select,
-.field textarea {
-  border-radius: 14px;
-  padding: 13px 14px;
-  background: var(--surface-tint);
-}
-
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
-  outline: 2px solid var(--brand);
 }
 
 .modal-sheet {
