@@ -123,4 +123,47 @@ async function routeBetween(points) {
   }
 }
 
-export { geocode, geocodeAll, routeBetween, searchPlaces };
+/** Distancia en línea recta entre dos puntos {lat,lng}, en km (fórmula
+ * de Haversine) — solo para comparar cercanías, no para navegación. */
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const la1 = (a.lat * Math.PI) / 180;
+  const la2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * Reordena una lista de puntos [{lat,lng,...}] con un heurístico de
+ * "vecino más cercano": mantiene el primero fijo (el primer
+ * compromiso del día, que ya tiene una hora puesta) y va encadenando
+ * siempre el punto no visitado geográficamente más cercano al
+ * último. No es la ruta óptima de verdad (eso es NP-difícil pasando
+ * de un puñado de puntos), pero para las paradas de un solo día se
+ * acerca bastante y es instantáneo, sin depender de ningún servicio
+ * externo — a diferencia de routeBetween(), que sí necesita red.
+ */
+function optimizeRouteOrder(points) {
+  if (!points || points.length < 3) return points ? [...points] : [];
+  const remaining = points.slice(1);
+  const ordered = [points[0]];
+  let current = points[0];
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = haversineKm(current, remaining[i]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    current = remaining.splice(bestIdx, 1)[0];
+    ordered.push(current);
+  }
+  return ordered;
+}
+
+export { geocode, geocodeAll, routeBetween, searchPlaces, optimizeRouteOrder };

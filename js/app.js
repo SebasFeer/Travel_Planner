@@ -1571,8 +1571,10 @@ async function renderHome() {
  * texto y sugiere alojamientos y lugares de interés cercanos (datos
  * abiertos de OpenStreetMap/Wikipedia, igual que "Descubre"), con un
  * botón para añadir directamente ese destino como viaje nuevo. Más
- * sugerencias y ordenar la ruta de forma óptima quedan como mejora
- * de pago (Pro), igual que el resto de funciones Pro de la app.
+ * sugerencias quedan como mejora de pago (Pro), igual que el resto
+ * de funciones Pro de la app. (Ordenar la ruta por cercanía es otra
+ * función Pro, pero vive en la sección Mapa de cada viaje — ver
+ * optimizeRouteOrder en geocode.js — no aquí en el buscador.)
  */
 async function runDestinationSearch(query, container, knownCoords) {
   if (!container) return;
@@ -1656,7 +1658,7 @@ async function runDestinationSearch(query, container, knownCoords) {
       ${
         pro
           ? ""
-          : `<button class="dest-search-pro" id="dest-search-pro">🔒 Ver más sugerencias y ordenar la ruta óptima — función Pro</button>`
+          : `<button class="dest-search-pro" id="dest-search-pro">🔒 Ver más sugerencias — función Pro</button>`
       }
     </div>`;
 
@@ -1674,7 +1676,7 @@ async function runDestinationSearch(query, container, knownCoords) {
   const proBtn = container.querySelector("#dest-search-pro");
   if (proBtn) {
     proBtn.addEventListener("click", () => {
-      toast("Más sugerencias y ordenar la ruta óptima es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+      toast("Ver más sugerencias es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
     });
   }
 }
