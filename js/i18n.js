@@ -133,6 +133,7 @@ const T = {
   settings_backup: { es: "Copiar / restaurar datos", en: "Back up / restore data", pt: "Copiar / restaurar dados", zh: "备份/恢复数据", ar: "نسخ / استعادة البيانات" },
   settings_join_shared: { es: "Unirme a un viaje compartido", en: "Join a shared trip", pt: "Entrar em uma viagem compartilhada", zh: "加入共享行程", ar: "الانضمام إلى رحلة مشتركة" },
   settings_profile: { es: "Mi perfil", en: "My profile", pt: "Meu perfil", zh: "我的账户", ar: "ملفي الشخصي" },
+  settings_config: { es: "Configuración", en: "Preferences", pt: "Preferências", zh: "偏好设置", ar: "التفضيلات" },
   settings_theme: { es: "Tema", en: "Theme", pt: "Tema", zh: "主题", ar: "المظهر" },
   settings_language: { es: "Idioma", en: "Language", pt: "Idioma", zh: "语言", ar: "اللغة" },
   settings_notifications: { es: "Notificaciones", en: "Notifications", pt: "Notificações", zh: "通知", ar: "الإشعارات" },
