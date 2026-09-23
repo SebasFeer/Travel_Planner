@@ -2,7 +2,7 @@
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v33";
+const CACHE_NAME = "travelplanner-v34";
 
 // Caché de teselas del mapa: va SEPARADA a propósito y con nombre
 // fijo (sin número de versión de la app), para que sobreviva a las
@@ -46,6 +46,8 @@ const APP_SHELL = [
   "./img/wonders/christ-redeemer.webp",
   "./img/wonders/colosseum.webp",
   "./img/wonders/taj-mahal.webp",
+  "./img/wonders/petra.webp",
+  "./img/wonders/great-wall.webp",
 ];
 
 // CDNs externos (mapa y arrastrar/soltar): se precargan aparte porque
