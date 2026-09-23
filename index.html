@@ -168,6 +168,21 @@
   // o la app del todo, que es cuando sí queremos ver la bienvenida.
   try { sessionStorage.setItem("tp_booted", "1"); } catch (e) {}
 
+  // Guarda una copia limpia de todo el splash (fondo + logo animado +
+  // texto) en window ANTES de tocarla, para que js/app.js pueda
+  // volver a mostrarla más adelante cada vez que la app vuelva de
+  // segundo plano (ver installReturnSplash en app.js) sin tener que
+  // duplicar aquí ni el marcado ni la animación — clona esta misma
+  // plantilla y la reinserta, así que se ve exactamente igual.
+  try {
+    var splashForTemplate = document.getElementById("splash-screen");
+    if (splashForTemplate) {
+      var tmpl = splashForTemplate.cloneNode(true);
+      tmpl.classList.remove("splash-hide");
+      window.__TP_SPLASH_TEMPLATE = tmpl;
+    }
+  } catch (e) {}
+
   // Bienvenida: se ve ~1s y se desvanece sola. No depende de si la
   // app ya ha terminado de cargar (eso sigue su curso por su lado,
   // debajo del splash) — es puramente decorativo. Si ya se detectó

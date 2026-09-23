@@ -9,8 +9,10 @@
 // ============================================================
 
 import { Data } from "./db.js";
-import { icon, brandMark } from "./icons.js";
+import { icon, brandMark, googleIcon } from "./icons.js";
 import { t as tr } from "./i18n.js";
+import { signUp, signInWithGoogle, pushToCloud } from "./cloud.js";
+import { afterLogin } from "./app.js";
 
 const ONBOARDING_KEY = "onboarding_seen";
 const TRAVELER_TYPE_KEY = "traveler_type";
@@ -66,10 +68,30 @@ function renderOnboarding(onDone) {
             .join("")}
         </div>
       </section>
+      <section class="onboarding-slide">
+        <div class="onboarding-mark">${brandMark()}</div>
+        <h1>${tr("ob4_title")}</h1>
+        <p>${tr("ob4_body")}</p>
+        <div class="onboarding-auth-form">
+          <button type="button" class="btn btn-secondary" id="ob-google">${googleIcon()} ${tr("auth_google_continue")}</button>
+          <div class="auth-divider"><span>${tr("auth_or_email")}</span></div>
+          <div class="field">
+            <label>${tr("auth_email_label")}</label>
+            <input type="email" id="ob-email" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label>${tr("auth_password_label")}</label>
+            <input type="password" id="ob-password" autocomplete="new-password" placeholder="${tr("auth_password_hint")}" />
+          </div>
+          <p id="ob-auth-error" style="color:#ff8b7f; font-size:12.5px; min-height:16px; text-align:left;"></p>
+          <button type="button" class="btn btn-primary" id="ob-create-account">${tr("ob_create_account")}</button>
+          <button type="button" class="btn btn-ghost" id="ob-skip-auth">${tr("ob_skip_auth")}</button>
+        </div>
+      </section>
     </div>
-    <div class="onboarding-footer">
+    <div class="onboarding-footer" id="ob-footer">
       <div class="onboarding-dots" id="ob-dots">
-        <span class="onboarding-dot is-active"></span><span class="onboarding-dot"></span><span class="onboarding-dot"></span>
+        <span class="onboarding-dot is-active"></span><span class="onboarding-dot"></span><span class="onboarding-dot"></span><span class="onboarding-dot"></span>
       </div>
       <button type="button" class="btn btn-primary onboarding-next" id="ob-next">${tr("ob_next")}</button>
     </div>
@@ -79,7 +101,9 @@ function renderOnboarding(onDone) {
   const track = overlay.querySelector("#ob-track");
   const slides = [...overlay.querySelectorAll(".onboarding-slide")];
   const dots = [...overlay.querySelectorAll(".onboarding-dot")];
+  const footer = overlay.querySelector("#ob-footer");
   const nextBtn = overlay.querySelector("#ob-next");
+  const AUTH_SLIDE = slides.length - 1; // la última: registro, con sus propios botones
   let current = 0;
   let selectedType = null;
   let finished = false;
@@ -87,7 +111,11 @@ function renderOnboarding(onDone) {
   function setActive(i) {
     current = i;
     dots.forEach((d, idx) => d.classList.toggle("is-active", idx === current));
-    nextBtn.textContent = current === slides.length - 1 ? tr("ob_start") : tr("ob_next");
+    // La pantalla de registro trae sus propios botones (Google, crear
+    // cuenta, ahora no) en vez del "Siguiente" compartido — así que
+    // ese pie se oculta solo ahí.
+    footer.classList.toggle("is-hidden", current === AUTH_SLIDE);
+    nextBtn.textContent = current === AUTH_SLIDE - 1 ? tr("ob_start") : tr("ob_next");
   }
 
   function goTo(i) {
@@ -136,11 +164,48 @@ function renderOnboarding(onDone) {
     }, 240);
   }
 
+  // "Siguiente" avanza de pantalla en pantalla; al llegar a la de
+  // registro ya no hace nada (el pie con este botón está oculto ahí,
+  // ver setActive) — esa pantalla termina sola, con sus propios
+  // botones (Google, crear cuenta, o "Ahora no").
   nextBtn.addEventListener("click", () => {
-    if (current < slides.length - 1) goTo(current + 1);
-    else finish();
+    if (current < AUTH_SLIDE) goTo(current + 1);
   });
+  // El "Omitir" de arriba salta TODO de una vez, registro incluido —
+  // es la salida más rápida desde cualquier pantalla.
   overlay.querySelector("#ob-skip").addEventListener("click", finish);
+
+  // ---------- Pantalla de registro (la última) ----------
+  const authGoogleBtn = overlay.querySelector("#ob-google");
+  const authEmailEl = overlay.querySelector("#ob-email");
+  const authPasswordEl = overlay.querySelector("#ob-password");
+  const authErrorEl = overlay.querySelector("#ob-auth-error");
+  const authCreateBtn = overlay.querySelector("#ob-create-account");
+
+  authGoogleBtn.addEventListener("click", async () => {
+    authErrorEl.textContent = "";
+    authGoogleBtn.disabled = true;
+    const { user, error, cancelled, redirecting } = await signInWithGoogle();
+    if (redirecting) return; // la página está navegando a Google
+    authGoogleBtn.disabled = false;
+    if (cancelled) return;
+    if (error) { authErrorEl.textContent = error; return; }
+    await finish();
+    await afterLogin(user);
+  });
+
+  authCreateBtn.addEventListener("click", async () => {
+    authErrorEl.textContent = "";
+    const { user, error } = await signUp(authEmailEl.value.trim(), authPasswordEl.value);
+    if (error) { authErrorEl.textContent = error; return; }
+    await finish();
+    // Cuenta recién creada: sube lo que ya haya en este dispositivo
+    // (normalmente nada todavía, pero por si ya se creó algún viaje
+    // antes de registrarse).
+    await pushToCloud();
+  });
+
+  overlay.querySelector("#ob-skip-auth").addEventListener("click", finish);
 }
 
 export { shouldShowOnboarding, renderOnboarding };

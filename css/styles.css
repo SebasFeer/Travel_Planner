@@ -1422,7 +1422,14 @@ a { color: inherit; }
    SPLASH DE BIENVENIDA (logo + mensaje, ~1s al abrir la app)
    ============================================================ */
 
-#splash-screen {
+/* .splash-screen-base es la clase compartida (además del id, que solo
+   lleva el splash original de index.html): installReturnSplash() en
+   app.js clona ese splash para volver a mostrarlo cada vez que la app
+   regresa de segundo plano, pero SIN id (para que la regla de más
+   abajo, pensada solo para el arranque, no lo apague también a él —
+   ver el comentario ahí). */
+#splash-screen,
+.splash-screen-base {
   position: fixed;
   inset: 0;
   z-index: 999;
@@ -1435,7 +1442,8 @@ a { color: inherit; }
   transition: opacity 0.45s ease, visibility 0.45s ease;
 }
 
-#splash-screen.splash-hide {
+#splash-screen.splash-hide,
+.splash-screen-base.splash-hide {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1444,7 +1452,12 @@ a { color: inherit; }
 /* Si el <head> detecta que esto es una recarga dentro de la misma
    sesión (no el primer arranque real), oculta el splash al instante
    por CSS — evita que llegue a pintarse ni un frame mientras el JS
-   del final del body decide si lo retira del DOM. */
+   del final del body decide si lo retira del DOM. Deliberadamente
+   solo por id (no por .splash-screen-base): esta clase de "recarga
+   dentro de la sesión" se queda puesta en <html> el resto de la
+   sesión una vez que ocurre una, y si alcanzara también a los clones
+   de installReturnSplash (ver arriba), esos jamás volverían a
+   mostrarse en focus por el resto de la sesión. */
 html.tp-skip-splash #splash-screen {
   display: none;
 }
@@ -1694,7 +1707,21 @@ html.tp-skip-splash #splash-screen {
   text-align: center;
   padding: calc(64px + var(--safe-top)) 32px 40px;
   gap: 14px;
+  overflow-y: auto;
 }
+
+/* Formulario de registro de la última pantalla (Google + email):
+   mismo ancho que el texto de las demás pantallas, para que se sienta
+   parte del mismo carrusel y no un formulario aparte. */
+.onboarding-auth-form {
+  width: 100%;
+  max-width: 320px;
+  text-align: left;
+  margin-top: 4px;
+}
+.onboarding-auth-form .btn { margin-top: 10px; }
+.onboarding-auth-form .btn:first-child { margin-top: 0; }
+.onboarding-auth-form .field { margin-bottom: 10px; }
 
 .onboarding-slide h1 {
   font-family: var(--font-display);
@@ -1783,6 +1810,7 @@ html.tp-skip-splash #splash-screen {
   gap: 16px;
   padding: 0 28px calc(28px + var(--safe-bottom));
 }
+.onboarding-footer.is-hidden { display: none; }
 
 .onboarding-dots {
   display: flex;
