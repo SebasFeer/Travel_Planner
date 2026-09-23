@@ -17,9 +17,19 @@ const RATES_URL = "https://api.frankfurter.dev/v1/latest";
 const CACHE_KEY = "currency_rates_cache";
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
 
-// Las 5 monedas más operadas del mundo (BIS Triennial Survey), como
-// accesos rápidos antes de tener que buscar nada.
-const TOP_CURRENCIES = ["USD", "EUR", "JPY", "GBP", "CNY"];
+// Frankfurter (Banco Central Europeo) solo publica tipos para ~30
+// monedas — el resto de divisas del mundo, como el sol peruano o
+// buena parte de las latinoamericanas, no aparecían ahí y la
+// conversión fallaba siempre. open.er-api.com (gratis, sin clave,
+// mismo trato de "a lo mejor esfuerzo" que el de arriba) cubre más de
+// 150, así que se usa como respaldo solo para las monedas que
+// Frankfurter no tiene — ver convertCurrency más abajo.
+const FALLBACK_RATES_URL = "https://open.er-api.com/v6/latest/EUR";
+const FALLBACK_CACHE_KEY = "currency_rates_fallback_cache";
+
+// Accesos rápidos antes de tener que buscar nada: dólar, euro, franco
+// suizo, libra y yuan.
+const TOP_CURRENCIES = ["USD", "EUR", "CHF", "GBP", "CNY"];
 
 // Lista casi completa de monedas del mundo (ISO 4217), para el
 // buscador: "escribe el nombre y aparece abajo para elegirla". No
@@ -178,20 +188,6 @@ const ALL_CURRENCIES = [
   { code: "ZMW", label: "Kwacha zambiano" },
 ];
 
-// Monedas con tipo de cambio en vivo disponible (las que de verdad
-// publica Frankfurter/BCE). El resto aparecen igual en el buscador
-// —es una lista real de monedas del mundo—, pero al elegir una que
-// no esté aquí, la UI avisa en vez de intentar convertir a ciegas.
-const RATES_SUPPORTED = new Set([
-  "AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
-  "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR",
-  "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR",
-]);
-
-function isRateSupported(code) {
-  return RATES_SUPPORTED.has(code);
-}
-
 /** Compatibilidad con el resto de la app: la lista curada de antes,
  *  derivada ahora de TOP_CURRENCIES + ALL_CURRENCIES. */
 const CURRENCIES = TOP_CURRENCIES.map((code) => ALL_CURRENCIES.find((c) => c.code === code)).filter(Boolean);
@@ -217,14 +213,57 @@ async function getRates() {
   }
 }
 
-/** Convierte `amount` de la moneda `from` a la moneda `to`. */
+/**
+ * Igual que getRates(), pero contra la fuente de respaldo de más
+ * cobertura (ver comentario junto a FALLBACK_RATES_URL). Se cachea
+ * aparte, con su propia clave, para no pisar la copia de Frankfurter.
+ */
+async function getFallbackRates() {
+  const cached = await Data.settingGet(FALLBACK_CACHE_KEY).catch(() => null);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.rates;
+  }
+  try {
+    const res = await fetch(FALLBACK_RATES_URL);
+    if (!res.ok) return (cached && cached.rates) || null;
+    const data = await res.json();
+    if (data.result !== "success" || !data.rates) return (cached && cached.rates) || null;
+    const rates = { ...data.rates, EUR: 1 };
+    await Data.settingSet(FALLBACK_CACHE_KEY, { rates, fetchedAt: Date.now() }).catch(() => {});
+    return rates;
+  } catch (err) {
+    return (cached && cached.rates) || null;
+  }
+}
+
+/**
+ * Convierte `amount` de la moneda `from` a la moneda `to`. Primero
+ * intenta con los tipos de Frankfurter/BCE; para cualquiera de las
+ * dos monedas que no aparezca ahí, completa con la fuente de
+ * respaldo en vez de rendirse — así ya no falla con las divisas que
+ * el BCE simplemente no publica (la mayoría de Latinoamérica, por
+ * ejemplo). Solo devuelve null si ninguna de las dos fuentes tiene
+ * datos para esa moneda (o no hay conexión y tampoco copia en caché).
+ */
 async function convertCurrency(amount, from, to) {
   const n = parseFloat(amount || 0);
   if (from === to) return n;
+
   const rates = await getRates();
-  if (!rates || !rates[from] || !rates[to]) return null;
-  const amountInEur = n / rates[from];
-  return amountInEur * rates[to];
+  let fromRate = rates ? rates[from] : undefined;
+  let toRate = rates ? rates[to] : undefined;
+
+  if (fromRate === undefined || toRate === undefined) {
+    const fallback = await getFallbackRates();
+    if (fallback) {
+      if (fromRate === undefined) fromRate = fallback[from];
+      if (toRate === undefined) toRate = fallback[to];
+    }
+  }
+
+  if (fromRate === undefined || toRate === undefined) return null;
+  const amountInEur = n / fromRate;
+  return amountInEur * toRate;
 }
 
-export { CURRENCIES, TOP_CURRENCIES, ALL_CURRENCIES, isRateSupported, getRates, convertCurrency };
+export { CURRENCIES, TOP_CURRENCIES, ALL_CURRENCIES, getRates, convertCurrency };
