@@ -6,7 +6,7 @@ import {
   formatDatePretty,
   daysBetween,
 } from "./utils.js";
-import { geocodeAll, routeBetween } from "./geocode.js";
+import { geocodeAll, routeBetween, optimizeRouteOrder } from "./geocode.js";
 import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
@@ -1391,6 +1391,11 @@ async function renderCalendar(trip) {
 // ============================================================
 
 let mapDayFilter = "all";
+// "time": las paradas del día en el orden en que están programadas
+// (por defecto). "optimal": reordenadas por cercanía geográfica
+// (optimizeRouteOrder, función Pro) — se mantiene entre cambios de
+// día a propósito, para no tener que reactivarla cada vez.
+let mapRouteMode = "time";
 let leafletInstance = null;
 
 const KIND_ICON = { hotel: "🏨", itinerary: "📍", reservation: "🎟️", transport: "🚗" };
@@ -1679,6 +1684,7 @@ async function renderMap(trip) {
   section(h`
     <div class="pill-row">${chips}</div>
     <p id="map-status" style="color:var(--muted); font-size:13px; margin:0 0 10px;">Localizando lugares…</p>
+    <div id="map-route-toggle"></div>
     <div id="leaflet-map" style="height:46vh; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-card);"></div>
     <button class="btn btn-secondary" id="map-download-offline" style="width:100%; margin-top:10px;">${icon("download")} Guardar en PDF para sin conexión (Pro)</button>
     <div id="map-list" style="margin-top:14px;"></div>
@@ -1703,6 +1709,34 @@ async function renderMap(trip) {
     return;
   }
 
+  // Orden a mostrar: por hora programada de siempre, o —si se ve un
+  // solo día, hay 3+ paradas y el usuario activó el interruptor de
+  // abajo— reordenadas por cercanía geográfica (función Pro). El
+  // mismo "ordered" se usa para los números de los marcadores, la
+  // lista de abajo Y la ruta trazada, para que los tres coincidan.
+  const byTime = [...located].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const canOptimize = mapDayFilter !== "all" && byTime.length >= 3;
+  const showOptimized = canOptimize && mapRouteMode === "optimal";
+  const ordered = showOptimized ? optimizeRouteOrder(byTime) : byTime;
+
+  const toggleEl = document.getElementById("map-route-toggle");
+  if (toggleEl) {
+    toggleEl.innerHTML = canOptimize
+      ? `<button class="btn ${showOptimized ? "btn-primary" : "btn-secondary"}" id="map-route-optimize" style="width:100%; margin-bottom:10px;">${icon("compass")} ${showOptimized ? "Ruta óptima activada" : "Ordenar ruta por cercanía (Pro)"}</button>`
+      : "";
+    const optimizeBtn = document.getElementById("map-route-optimize");
+    if (optimizeBtn) {
+      optimizeBtn.addEventListener("click", async () => {
+        if (!showOptimized && !(await isPro())) {
+          toast("Ordenar la ruta por cercanía es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+          return;
+        }
+        mapRouteMode = showOptimized ? "time" : "optimal";
+        renderMap(trip);
+      });
+    }
+  }
+
   if (leafletInstance) {
     leafletInstance.remove();
     leafletInstance = null;
@@ -1718,7 +1752,7 @@ async function renderMap(trip) {
     maxZoom: 19,
   }).addTo(map);
 
-  const markers = located.map((p, i) => {
+  const markers = ordered.map((p, i) => {
     const icon = L.divIcon({
       html: `<div class="tp-map-marker">${i + 1}</div>`,
       className: "",
@@ -1732,7 +1766,7 @@ async function renderMap(trip) {
 
   const listEl = document.getElementById("map-list");
   if (listEl) {
-    listEl.innerHTML = located
+    listEl.innerHTML = ordered
       .map(
         (p) => `
         <div class="map-sheet-row">
@@ -1746,26 +1780,26 @@ async function renderMap(trip) {
       .join("");
   }
 
-  const bounds = L.latLngBounds(located.map((p) => [p.lat, p.lng]));
+  const bounds = L.latLngBounds(ordered.map((p) => [p.lat, p.lng]));
   map.fitBounds(bounds.pad(0.25));
 
   const downloadBtn = document.getElementById("map-download-offline");
   if (downloadBtn) {
     const dayLabel = mapDayFilter === "all" ? "Todos los días" : formatDatePretty(mapDayFilter);
-    downloadBtn.addEventListener("click", () => exportMapPdf(trip, located, dayLabel));
+    downloadBtn.addEventListener("click", () => exportMapPdf(trip, ordered, dayLabel));
   }
 
-  if (mapDayFilter !== "all" && located.length >= 2) {
+  if (mapDayFilter !== "all" && ordered.length >= 2) {
     statusEl.textContent = "Calculando ruta…";
-    const ordered = [...located].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
     const route = await routeBetween(ordered);
     if (route) {
       L.polyline(route.coords, { color: "#5b6ef5", weight: 4, opacity: 0.85 }).addTo(map);
       const h = Math.floor(route.durationMin / 60);
       const m = Math.round(route.durationMin % 60);
-      statusEl.textContent = `Ruta del día: ${route.distanceKm.toFixed(1)} km · ${h > 0 ? h + " h " : ""}${m} min en coche`;
+      const label = showOptimized ? "Ruta óptima del día" : "Ruta del día";
+      statusEl.textContent = `${label}: ${route.distanceKm.toFixed(1)} km · ${h > 0 ? h + " h " : ""}${m} min en coche`;
     } else {
-      statusEl.textContent = `${located.length} lugares localizados. No se pudo calcular la ruta (revisa tu conexión).`;
+      statusEl.textContent = `${ordered.length} lugares localizados. No se pudo calcular la ruta (revisa tu conexión).`;
     }
   } else {
     statusEl.textContent = `${located.length} de ${visible.length} lugares localizados en el mapa.`;
