@@ -1449,6 +1449,31 @@ html.tp-skip-splash #splash-screen {
   display: none;
 }
 
+/* Foto de fondo del splash: alterna entre las 7 maravillas del mundo
+   en cada apertura real de la app (la rotación vive en el script del
+   <head> de index.html, que también pone la url() aquí antes del
+   primer pintado). Un degradado oscuro por encima mantiene legible
+   el logo y el texto sin importar los colores de la foto de turno. */
+.splash-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.splash-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 14, 30, 0.55) 0%,
+    rgba(10, 14, 30, 0.2) 38%,
+    rgba(10, 14, 30, 0.32) 64%,
+    rgba(10, 14, 30, 0.78) 100%
+  );
+}
+
 /* Logo del splash: el mismo motivo de marca que el logo del header
    (avión de papel trazando una ruta punteada hasta el destino), pero
    aquí de verdad "vuela": recorre la curva de un extremo al otro de
@@ -1460,6 +1485,8 @@ html.tp-skip-splash #splash-screen {
    (como el icono de "enviar" de cualquier app de mensajería), no una
    flecha de cursor. */
 .splash-mark {
+  position: relative;
+  z-index: 1;
   width: 116px;
   height: 116px;
   border-radius: 28px;
@@ -1500,10 +1527,13 @@ html.tp-skip-splash #splash-screen {
 }
 
 .splash-tag {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-display);
   font-size: 14.5px;
   font-weight: 600;
-  color: var(--muted-dark);
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
   margin: 0;
   letter-spacing: 0.01em;
   animation: fade-up-in 0.5s ease 0.15s both;

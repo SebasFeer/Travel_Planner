@@ -52,6 +52,28 @@
       ar: { tag: "رحلتك القادمة، منظَّمة", loading: "جارٍ تحميل TravelPlanner…" },
     }[lang];
   } catch (e) {}
+
+  // Fondo del splash: alterna entre fotos de las 7 maravillas del
+  // mundo, una distinta en cada apertura REAL de la app (no en cada
+  // recarga a medio uso — ver tp-skip-splash más arriba, que ahí ni
+  // siquiera llega a pintarse el splash). Se resuelve aquí, antes de
+  // pintar nada, para que la foto correcta ya esté puesta desde el
+  // primer fotograma en vez de aparecer de golpe tras cargar main.js.
+  try {
+    var WONDERS = [
+      "img/wonders/machu-picchu.webp",
+      "img/wonders/chichen-itza.webp",
+      "img/wonders/christ-redeemer.webp",
+      "img/wonders/colosseum.webp",
+      "img/wonders/taj-mahal.webp",
+    ];
+    var wIdx = parseInt(localStorage.getItem("tp_wonder_idx") || "0", 10);
+    if (isNaN(wIdx) || wIdx < 0) wIdx = 0;
+    window.__TP_WONDER_BG = WONDERS[wIdx % WONDERS.length];
+    if (!document.documentElement.classList.contains("tp-skip-splash")) {
+      localStorage.setItem("tp_wonder_idx", String((wIdx + 1) % WONDERS.length));
+    }
+  } catch (e) {}
 </script>
 
 <!-- Instalable en el iPhone/Android (Añadir a pantalla de inicio) -->
@@ -86,6 +108,7 @@
 <div class="atmos-bg" aria-hidden="true"></div>
 
 <div id="splash-screen">
+  <div class="splash-bg" aria-hidden="true"></div>
   <div class="splash-mark" aria-hidden="true">
     <svg class="splash-svg" viewBox="0 0 100 100" fill="none">
       <circle class="splash-dot splash-dot-1" cx="24.18" cy="65.58" r="1.7" fill="#fff" />
@@ -125,6 +148,10 @@
       if (tagEl) tagEl.textContent = bootStrings.tag;
       var loadingEl = document.getElementById("boot-loading-text");
       if (loadingEl) loadingEl.textContent = bootStrings.loading;
+    }
+    if (window.__TP_WONDER_BG) {
+      var bgEl = document.querySelector(".splash-bg");
+      if (bgEl) bgEl.style.backgroundImage = "url('" + window.__TP_WONDER_BG + "')";
     }
   } catch (e) {}
 </script>
