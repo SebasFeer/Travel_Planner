@@ -28,8 +28,8 @@ const FALLBACK_RATES_URL = "https://open.er-api.com/v6/latest/EUR";
 const FALLBACK_CACHE_KEY = "currency_rates_fallback_cache";
 
 // Accesos rápidos antes de tener que buscar nada: dólar, euro, franco
-// suizo, libra y yuan.
-const TOP_CURRENCIES = ["USD", "EUR", "CHF", "GBP", "CNY"];
+// suizo, libra, yuan y florín húngaro.
+const TOP_CURRENCIES = ["USD", "EUR", "CHF", "GBP", "CNY", "HUF"];
 
 // Lista casi completa de monedas del mundo (ISO 4217), para el
 // buscador: "escribe el nombre y aparece abajo para elegirla". No
