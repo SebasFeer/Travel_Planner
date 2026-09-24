@@ -622,7 +622,7 @@ async function renderItinerary(trip) {
 
   if (!dates.length && !noDate.length) {
     const aiRow = isAiCopilotConfigured()
-      ? `<div class="ai-actions-row"><button class="btn btn-primary" id="ai-generate-empty">✨ Generar itinerario con IA</button></div>`
+      ? `<div class="ai-actions-row"><button class="btn btn-primary" id="ai-generate-empty">✨ Generar itinerario con IA (Pro)</button></div>`
       : "";
     section(aiRow + emptyState("📍", t("empty_itinerary_general")));
     setFab(fabBtn());
@@ -683,10 +683,10 @@ async function renderItinerary(trip) {
   const aiMeta = itinDayFilter !== "__nodate" ? trip.ai_plan?.byDate?.[itinDayFilter] : null;
   const aiActionsHtml = isAiCopilotConfigured()
     ? `<div class="ai-actions-row">
-         <button class="btn btn-ghost btn-sm" id="ai-generate-day">✨ Generar todo el itinerario</button>
+         <button class="btn btn-ghost btn-sm" id="ai-generate-day">✨ Generar todo el itinerario (Pro)</button>
          ${
            itinDayFilter !== "__nodate"
-             ? `<button class="btn btn-ghost btn-sm" id="ai-regenerate-day">🔄 Regenerar este día</button>`
+             ? `<button class="btn btn-ghost btn-sm" id="ai-regenerate-day">🔄 Regenerar este día (Pro)</button>`
              : ""
          }
        </div>`

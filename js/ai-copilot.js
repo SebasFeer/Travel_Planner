@@ -13,6 +13,19 @@ import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
 import { h, toast, state, withTransition, renderApp } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
+import { isPro } from "./pro.js";
+
+async function checkAiCopilotAccess() {
+  if (!isAiCopilotConfigured()) {
+    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
+    return false;
+  }
+  if (!(await isPro())) {
+    toast("El Copiloto IA es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+    return false;
+  }
+  return true;
+}
 
 // ------------------------------------------------------------
 // TEMPORAL — mock local del Copiloto IA (desarrollo, sin gastar
@@ -239,11 +252,8 @@ function resultPreviewHtml(result) {
   `;
 }
 
-function openAiPlannerSheet(trip, onApplied) {
-  if (!isAiCopilotConfigured()) {
-    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
-    return;
-  }
+async function openAiPlannerSheet(trip, onApplied) {
+  if (!(await checkAiCopilotAccess())) return;
 
   const totalDays = trip.start_date && trip.end_date ? (daysBetween(trip.start_date, trip.end_date) || 0) + 1 : null;
 
@@ -323,11 +333,8 @@ function openAiPlannerSheet(trip, onApplied) {
 // SHEET: regenerar un solo día
 // ============================================================
 
-function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
-  if (!isAiCopilotConfigured()) {
-    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
-    return;
-  }
+async function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
+  if (!(await checkAiCopilotAccess())) return;
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
@@ -402,11 +409,8 @@ function openAiDayRegenerateSheet(trip, dateStr, dayNumber, onApplied) {
 // gustos, crea el viaje y le aplica el itinerario generado.
 // ============================================================
 
-function openAiNewTripSheet() {
-  if (!isAiCopilotConfigured()) {
-    toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
-    return;
-  }
+async function openAiNewTripSheet() {
+  if (!(await checkAiCopilotAccess())) return;
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
