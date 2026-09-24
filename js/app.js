@@ -2670,44 +2670,66 @@ almacenamiento local del navegador (IndexedDB). No se envían a ningún
 servidor salvo que actives voluntariamente la copia en la nube.
 
 2. Cuenta y copia en la nube (opcional)
-Si creas una cuenta (email y contraseña), tus datos se guardan también en
-Firebase (Google) bajo tu usuario, para poder recuperarlos en otro
-dispositivo. Puedes cerrar sesión y eliminar tu cuenta cuando quieras. Sin
-cuenta, la app funciona igualmente de forma 100% local.
+Si creas una cuenta (con email y contraseña, o con tu cuenta de Google),
+tus datos se guardan también en Firebase (Google) bajo tu usuario, para
+poder recuperarlos en otro dispositivo. Puedes cerrar sesión y eliminar tu
+cuenta cuando quieras. Sin cuenta, la app funciona igualmente de forma
+100% local.
 
 3. Servicios externos que puede consultar la app
-Para mostrar mapas, calcular rutas, o encontrar fotos e imágenes reales de
-tus vuelos, hoteles, actividades y transportes, la app envía consultas
-puntuales (por ejemplo, un nombre de lugar o de aerolínea) a servicios
-públicos de terceros: OpenStreetMap/Nominatim y OSRM (mapas y rutas), y
-Wikipedia/Openverse (fotos). Estas consultas no incluyen tu identidad ni el
-resto de tus datos, solo el texto necesario para la búsqueda. Si activas
-los avisos de estado de vuelo (función Pro), el número de vuelo y la fecha
-se consultan a AeroDataBox/RapidAPI para conocer retrasos y puerta de
-embarque.
+Para mostrar mapas, calcular rutas, encontrar fotos e imágenes reales de
+tus vuelos, hoteles, actividades y transportes, descubrir lugares cercanos,
+o convertir monedas, la app envía consultas puntuales (por ejemplo, un
+nombre de lugar, unas coordenadas, o los códigos de dos monedas) a
+servicios públicos de terceros: OpenStreetMap/Nominatim, OSRM y Overpass
+(mapas, rutas y lugares cercanos), Wikipedia/Wikimedia Commons/Openverse
+(fotos y descripciones), y Frankfurter/open.er-api (tipos de cambio).
+Estas consultas no incluyen tu identidad ni el resto de tus datos, solo el
+texto necesario para la búsqueda.
 
-4. Viajes compartidos (función Pro)
-Si compartes un viaje, sus datos (vuelos, hoteles, itinerario...) se guardan
-en un documento de Firestore accesible por quienes tengan el código, además
-de en tu copia personal de la nube. Cualquiera con el código puede ver y
-unirse a ese viaje mientras esté activo.
+4. Copiloto de viajes con IA
+Al generar un itinerario con IA, el destino, las fechas y las preferencias
+que escribes se envían a una función de servidor propia (Cloud Function),
+que a su vez se los pasa a la API de Anthropic (Claude) para redactar la
+propuesta. Solo viaja lo que escribes en ese formulario, nunca el resto de
+tus datos guardados; la respuesta no se usa para nada más que mostrarte el
+itinerario generado.
 
-5. Notificaciones
+5. Avisos de estado de vuelo (función Pro)
+Si activas esta función, el número de vuelo y la fecha se envían a una
+función de servidor propia, que consulta AeroDataBox/RapidAPI para conocer
+retrasos y puerta de embarque. Estos datos no pasan por ningún otro sitio.
+
+6. Viajes compartidos (función Pro)
+Si compartes un viaje con un código de 6 dígitos, sus datos (vuelos,
+hoteles, itinerario...) se guardan en un documento de Firestore accesible
+por quienes tengan el código, además de en tu copia personal de la nube.
+Cualquiera con el código puede ver y unirse a ese viaje mientras esté
+activo.
+
+7. Notificaciones
 Si activas los avisos, se generan en tu propio dispositivo a partir de tus
 datos guardados localmente. No implican el envío de información a
 servidores externos.
 
-6. PIN de bloqueo
-El PIN, si lo activas, se guarda cifrado (hash) únicamente en tu
-dispositivo. Nadie más que tú puede verlo ni recuperarlo.
+8. PIN y desbloqueo biométrico
+El PIN es opcional y, si lo activas, se guarda cifrado (hash) únicamente en
+tu dispositivo. Si además activas Face ID/huella como atajo, la
+verificación la hace tu propio sistema operativo: la app nunca recibe ni
+guarda tu huella o tu cara, solo la confirmación de que el gesto se
+completó. Nadie más que tú puede ver ni recuperar tu PIN.
 
-7. Tus derechos
+9. Analítica y publicidad
+TravelPlanner no usa herramientas de analítica ni de seguimiento, y no
+muestra publicidad dentro de la app.
+
+10. Tus derechos
 Puedes exportar, importar o borrar tus datos en cualquier momento desde
 Ajustes → Copiar / restaurar datos, o eliminar tu cuenta desde
 Ajustes → Mi cuenta. No compartimos tus datos con terceros con fines
-comerciales ni mostramos publicidad dentro de la app.
+comerciales.
 
-8. Contacto
+11. Contacto
 Si tienes dudas sobre tus datos o esta política, puedes escribirnos a
 [tu email de contacto aquí].
 `.trim();
