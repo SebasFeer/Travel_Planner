@@ -45,6 +45,7 @@ const PATHS = {
   bag: `<path d="M6 8h12l1 12.5a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 20.5L6 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>`,
   // Cabeza + hombros — cuenta / iniciar sesión / perfil.
   user: `<circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6"/>`,
+  users: `<circle cx="9" cy="8.5" r="3"/><path d="M3 20c0-3.5 2.7-5.5 6-5.5s6 2 6 5.5"/><path d="M15.5 6.2a2.7 2.7 0 0 1 0 5.2"/><path d="M18 14.7c2 .5 3.2 2 3.2 5.3"/>`,
   // Nube — copia de seguridad / restaurar datos.
   cloud: `<path d="M7.5 18a4.5 4.5 0 0 1-.4-9 5.5 5.5 0 0 1 10.6-1.8A4 4 0 0 1 17 18H7.5Z"/>`,
   // Eslabones encadenados — unirse a un viaje compartido por código/enlace.

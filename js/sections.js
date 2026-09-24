@@ -952,10 +952,142 @@ const EXPENSE_CATEGORY_META = {
   Otros: { color: "var(--exp-otros)", soft: "var(--exp-otros-soft)", icon: "notes" },
 };
 
-let expenseTab = "resumen"; // "resumen" | "categoria"
+let expenseTab = "resumen"; // "resumen" | "categoria" | "reparto"
+
+// ------------------------------------------------------------
+// ACOMPAÑANTES Y DIVISIÓN DE GASTOS — "me" representa al dueño del
+// viaje (no es un registro propio, para no tener que crear uno por
+// cada viaje). Un gasto solo cuenta para el reparto si su
+// `split_with` tiene 2 o más participantes; con 0 o 1 se trata como
+// un gasto normal, sin dividir.
+// ------------------------------------------------------------
+const EXPENSE_ME_ID = "me";
+
+async function getCompanions(tripId) {
+  const list = await Data.getAllByTrip("companions", tripId);
+  return list.sort((a, b) => (a.id || 0) - (b.id || 0));
+}
+
+// Balance neto por participante a partir de los gastos divididos:
+// positivo = le deben, negativo = debe. La suma de todos los saldos
+// siempre da 0.
+function computeExpenseBalances(items, companions) {
+  const participants = [{ id: EXPENSE_ME_ID, name: "Yo" }, ...companions.map((c) => ({ id: String(c.id), name: c.name }))];
+  const net = {};
+  participants.forEach((p) => (net[p.id] = 0));
+
+  items.forEach((e) => {
+    const split = Array.isArray(e.split_with) ? e.split_with.map(String) : [];
+    const amount = parseFloat(e.amount || 0);
+    if (split.length < 2 || !amount) return;
+    const payer = String(e.paid_by ?? EXPENSE_ME_ID);
+    const share = amount / split.length;
+    split.forEach((pid) => {
+      net[pid] = (net[pid] || 0) - share;
+    });
+    net[payer] = (net[payer] || 0) + amount;
+  });
+
+  return participants.map((p) => ({ id: p.id, name: p.name, amount: net[p.id] || 0 }));
+}
+
+// Reduce los saldos netos al menor número de pagos posible entre
+// personas (empareja a quien más debe con a quien más le deben).
+function simplifyExpenseDebts(balances) {
+  const creditors = balances.filter((b) => b.amount > 0.005).map((b) => ({ ...b })).sort((a, b) => b.amount - a.amount);
+  const debtors = balances.filter((b) => b.amount < -0.005).map((b) => ({ ...b, amount: -b.amount })).sort((a, b) => b.amount - a.amount);
+  const settlements = [];
+  let i = 0,
+    j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(debtors[i].amount, creditors[j].amount);
+    settlements.push({ from: debtors[i].name, to: creditors[j].name, amount: pay });
+    debtors[i].amount -= pay;
+    creditors[j].amount -= pay;
+    if (debtors[i].amount < 0.005) i++;
+    if (creditors[j].amount < 0.005) j++;
+  }
+  return settlements;
+}
+
+function openCompanionsSheet(trip, onClose) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+      if (onClose) onClose();
+    }
+  });
+
+  async function render() {
+    const companions = await getCompanions(trip.id);
+    overlay.innerHTML = h`
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <h2 class="modal-title">${icon("users")} Acompañantes</h2>
+        <p style="color:var(--muted); font-size:13px; line-height:1.6; margin-top:-8px;">
+          Añade a quienes viajan contigo para poder dividir los gastos del viaje entre todos.
+        </p>
+        <div class="field-row" style="align-items:flex-end;">
+          <div class="field" style="flex:1; margin-bottom:0;">
+            <label for="comp-name">Nombre</label>
+            <input type="text" id="comp-name" placeholder="Ej. Ana" autocomplete="off" />
+          </div>
+          <button type="button" class="btn btn-primary" id="comp-add" style="height:44px;">Añadir</button>
+        </div>
+        <div style="margin-top:14px;">
+          ${
+            companions.length
+              ? companions
+                  .map(
+                    (c) => h`
+                <div class="expense-row" data-id="${c.id}">
+                  <span class="exp-icon" style="background:var(--brand-soft); color:var(--brand);">${icon("user")}</span>
+                  <div class="exp-info"><p class="exp-title">${escapeHtml(c.name)}</p></div>
+                  <button type="button" class="btn-icon-inline" data-del="${c.id}" title="Quitar">${icon("trash")}</button>
+                </div>`
+                  )
+                  .join("")
+              : `<p style="color:var(--muted); font-size:13px; padding:8px 2px;">Todavía no has añadido a nadie.</p>`
+          }
+        </div>
+        <div class="modal-actions"><button type="button" class="btn btn-ghost" id="comp-close">Cerrar</button></div>
+      </div>`;
+
+    overlay.querySelector("#comp-close").addEventListener("click", () => {
+      overlay.remove();
+      if (onClose) onClose();
+    });
+    overlay.querySelector("#comp-add").addEventListener("click", async () => {
+      const input = overlay.querySelector("#comp-name");
+      const name = input.value.trim();
+      if (!name) {
+        toast("Escribe un nombre");
+        return;
+      }
+      await Data.add("companions", { trip_id: trip.id, name });
+      render();
+    });
+    overlay.querySelectorAll("[data-del]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = parseInt(btn.dataset.del, 10);
+        if (!(await confirmAction("¿Quitar a esta persona del viaje? Los gastos ya divididos con ella mantienen su reparto guardado."))) return;
+        await Data.delete("companions", id);
+        render();
+      });
+    });
+
+    setTimeout(() => overlay.querySelector("#comp-name")?.focus(), 50);
+  }
+
+  render();
+}
 
 async function renderExpenses(trip) {
   const items = await Data.getAllByTrip("expenses", trip.id);
+  const companions = await getCompanions(trip.id);
   items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   const total = items.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
@@ -1013,12 +1145,13 @@ async function renderExpenses(trip) {
         .slice(0, expenseTab === "resumen" ? 6 : items.length)
         .map((e) => {
           const meta = EXPENSE_CATEGORY_META[e.category] || EXPENSE_CATEGORY_META.Otros;
+          const isSplit = Array.isArray(e.split_with) && e.split_with.length >= 2;
           return h`
         <div class="expense-row" data-id="${e.id}">
           <span class="exp-icon" style="background:${meta.soft}; color:${meta.color};">${icon(meta.icon)}</span>
           <div class="exp-info">
             <p class="exp-title">${escapeHtml(e.description || e.category || "Gasto")}</p>
-            <p class="exp-sub">${formatDatePretty(e.date)}${e.category ? ` · ${escapeHtml(e.category)}` : ""}</p>
+            <p class="exp-sub">${formatDatePretty(e.date)}${e.category ? ` · ${escapeHtml(e.category)}` : ""}${isSplit ? " · 👥 dividido" : ""}</p>
           </div>
           <span class="exp-amount">${money(e.amount)}</span>
         </div>`;
@@ -1026,17 +1159,74 @@ async function renderExpenses(trip) {
         .join("")
     : emptyState("💶", t("empty_expenses"));
 
+  const balances = computeExpenseBalances(items, companions);
+  const settlements = simplifyExpenseDebts(balances);
+  const hasSplitExpenses = items.some((e) => Array.isArray(e.split_with) && e.split_with.length >= 2);
+
+  const balanceRowsHtml = balances
+    .map((b) => {
+      const owed = b.amount >= 0.005;
+      const owes = b.amount <= -0.005;
+      const color = owed ? "var(--cat-checklist)" : owes ? "var(--rose)" : "var(--muted)";
+      return h`
+        <div class="expense-row">
+          <span class="exp-icon" style="background:var(--brand-soft); color:var(--brand);">${icon(b.id === EXPENSE_ME_ID ? "user" : "user")}</span>
+          <div class="exp-info">
+            <p class="exp-title">${escapeHtml(b.name)}</p>
+            <p class="exp-sub">${owed ? "Le deben" : owes ? "Debe" : "En paz"}</p>
+          </div>
+          <span class="exp-amount" style="color:${color};">${money(Math.abs(b.amount))}</span>
+        </div>`;
+    })
+    .join("");
+
+  const settlementsHtml = settlements.length
+    ? h`
+      <div class="panel">
+        <h3>Para saldar cuentas</h3>
+        ${settlements
+          .map((s) => `<p style="font-size:13.5px; margin:6px 0;">💸 <b>${escapeHtml(s.from)}</b> le paga ${money(s.amount)} a <b>${escapeHtml(s.to)}</b></p>`)
+          .join("")}
+      </div>`
+    : "";
+
+  const repartoHtml = companions.length
+    ? h`
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${hasSplitExpenses ? "0" : "8px"};">
+          <h3 style="margin:0;">Reparto entre acompañantes</h3>
+          <button type="button" class="btn-icon-inline" id="manage-companions" title="Gestionar acompañantes">${icon("users")}</button>
+        </div>
+        ${hasSplitExpenses ? "" : `<p style="color:var(--muted); font-size:13px;">Todavía no has dividido ningún gasto. Al crear o editar uno, marca con quién lo compartes.</p>`}
+      </div>
+      ${hasSplitExpenses ? `<div>${balanceRowsHtml}</div>${settlementsHtml}` : ""}
+    `
+    : h`
+      <div class="panel">
+        <h3>Reparto entre acompañantes</h3>
+        <p style="color:var(--muted); font-size:13px; line-height:1.6;">
+          Añade a quienes viajan contigo para dividir los gastos y ver quién le debe a quién.
+        </p>
+        <button type="button" class="btn btn-secondary" id="manage-companions" style="margin-top:8px;">${icon("users")} Añadir acompañantes</button>
+      </div>`;
+
   section(h`
     <div class="segmented">
       <button data-tab="resumen" class="${expenseTab === "resumen" ? "active" : ""}">Resumen</button>
       <button data-tab="categoria" class="${expenseTab === "categoria" ? "active" : ""}">Por categoría</button>
+      <button data-tab="reparto" class="${expenseTab === "reparto" ? "active" : ""}">Reparto</button>
     </div>
-    ${expenseTab === "resumen" ? totalCardHtml : categoryPanelHtml}
-    <div class="section-title-row">
-      <p class="section-title">Gastos recientes</p>
-      <button class="btn-icon-inline" id="open-currency-converter" title="Convertir moneda">🔁</button>
-    </div>
-    <div>${recentHtml}</div>
+    ${expenseTab === "resumen" ? totalCardHtml : expenseTab === "categoria" ? categoryPanelHtml : repartoHtml}
+    ${
+      expenseTab === "reparto"
+        ? ""
+        : h`
+      <div class="section-title-row">
+        <p class="section-title">Gastos recientes</p>
+        <button class="btn-icon-inline" id="open-currency-converter" title="Convertir moneda">🔁</button>
+      </div>
+      <div>${recentHtml}</div>`
+    }
   `);
   setFab(fabBtn());
 
@@ -1062,6 +1252,10 @@ async function renderExpenses(trip) {
       }
       openCurrencyConverterSheet(trip);
     });
+  }
+  const manageCompanionsBtn = document.getElementById("manage-companions");
+  if (manageCompanionsBtn) {
+    manageCompanionsBtn.addEventListener("click", () => openCompanionsSheet(trip, () => renderExpenses(trip)));
   }
 }
 
@@ -1196,19 +1390,136 @@ function openCurrencyConverterSheet(trip) {
   });
 }
 
-function openExpenseForm(trip, e, prefill) {
-  showFormModal({
-    title: e ? "Editar gasto" : "Nuevo gasto",
-    initial: e || prefill || null,
-    fields: [
-      { name: "description", label: "Descripción", required: true },
-      { name: "category", label: "Categoría", type: "select", options: EXPENSE_CATEGORIES, half: true },
-      { name: "amount", label: "Importe (€)", type: "number", half: true, required: true },
-      { name: "date", label: "Fecha", type: "date", default: todayString() },
-    ],
-    onDelete: e ? () => deleteAndRefresh("expenses", e.id, "Gasto eliminado") : null,
-    onSave: (values) => saveAndRefresh("expenses", trip.id, e, values, "Gasto guardado"),
+// El formulario de gastos vive fuera del sistema genérico de
+// showFormModal porque necesita algo que ese sistema no ofrece:
+// casillas de "con quién se comparte" (varias marcadas a la vez), que
+// solo tienen sentido cuando el viaje ya tiene acompañantes.
+async function openExpenseForm(trip, e, prefill) {
+  const companions = await getCompanions(trip.id);
+  const initial = e || prefill || {};
+  const hasCompanions = companions.length > 0;
+  const paidByOptions = [{ id: EXPENSE_ME_ID, name: "Yo" }, ...companions.map((c) => ({ id: String(c.id), name: c.name }))];
+  const splitInitial = Array.isArray(initial.split_with) ? initial.split_with.map(String) : [];
+  const paidByInitial = String(initial.paid_by ?? EXPENSE_ME_ID);
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">${e ? "Editar gasto" : "Nuevo gasto"}</h2>
+      <form id="expense-form">
+        <div class="field">
+          <label for="exp-description">Descripción</label>
+          <input type="text" id="exp-description" value="${escapeHtml(initial.description || "")}" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="exp-category">Categoría</label>
+            <select id="exp-category">
+              ${EXPENSE_CATEGORIES.map((c) => `<option value="${escapeHtml(c)}" ${c === initial.category ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label for="exp-amount">Importe (€)</label>
+            <input type="number" step="0.01" id="exp-amount" value="${initial.amount ?? ""}" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="exp-date">Fecha</label>
+          <input type="date" id="exp-date" value="${initial.date || todayString()}" />
+        </div>
+        ${
+          hasCompanions
+            ? h`
+          <div class="field">
+            <label for="exp-paid-by">Pagado por</label>
+            <select id="exp-paid-by">
+              ${paidByOptions.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === paidByInitial ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label>Dividir entre</label>
+            ${paidByOptions
+              .map(
+                (p) => `
+              <div class="field-check">
+                <input type="checkbox" id="exp-split-${escapeHtml(p.id)}" data-split="${escapeHtml(p.id)}" ${splitInitial.includes(p.id) ? "checked" : ""} />
+                <label for="exp-split-${escapeHtml(p.id)}" style="margin:0;">${escapeHtml(p.name)}</label>
+              </div>`
+              )
+              .join("")}
+            <p style="color:var(--muted); font-size:12px; margin-top:6px;">
+              Marca a quienes comparten este gasto para repartirlo a partes iguales.
+              Si no marcas al menos a dos, se cuenta como un gasto sin dividir.
+            </p>
+          </div>`
+            : h`
+          <p style="color:var(--muted); font-size:12.5px; line-height:1.6;">
+            Añade acompañantes para poder dividir este gasto entre varios.
+            <button type="button" id="exp-add-companions" style="background:none; border:none; color:var(--brand); padding:0; font:inherit; text-decoration:underline; cursor:pointer;">Añadir acompañantes</button>
+          </p>`
+        }
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="exp-cancel">${t("common_cancel")}</button>
+          <button type="submit" class="btn btn-primary">${t("common_save")}</button>
+        </div>
+        ${e ? `<div class="modal-actions"><button type="button" class="btn btn-danger" id="exp-delete">Eliminar gasto</button></div>` : ""}
+      </form>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (ev) => ev.target === overlay && overlay.remove());
+  overlay.querySelector("#exp-cancel").addEventListener("click", () => overlay.remove());
+
+  const addCompanionsBtn = overlay.querySelector("#exp-add-companions");
+  if (addCompanionsBtn) {
+    addCompanionsBtn.addEventListener("click", () => {
+      overlay.remove();
+      openCompanionsSheet(trip, () => openExpenseForm(trip, e, prefill));
+    });
+  }
+
+  if (e) {
+    overlay.querySelector("#exp-delete").addEventListener("click", async () => {
+      if (!(await confirmAction("¿Seguro que quieres eliminarlo? No se puede deshacer."))) return;
+      overlay.remove();
+      await deleteAndRefresh("expenses", e.id, "Gasto eliminado");
+    });
+  }
+
+  overlay.querySelector("#expense-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const description = overlay.querySelector("#exp-description").value.trim();
+    const amount = parseFloat(overlay.querySelector("#exp-amount").value || "0") || 0;
+    if (!description) {
+      toast('Falta "Descripción"');
+      return;
+    }
+    if (!amount) {
+      toast('Falta "Importe (€)"');
+      return;
+    }
+
+    const values = {
+      description,
+      category: overlay.querySelector("#exp-category").value,
+      amount,
+      date: overlay.querySelector("#exp-date").value || todayString(),
+    };
+
+    if (hasCompanions) {
+      values.paid_by = overlay.querySelector("#exp-paid-by").value;
+      values.split_with = [...overlay.querySelectorAll("[data-split]")].filter((cb) => cb.checked).map((cb) => cb.dataset.split);
+    } else {
+      values.paid_by = EXPENSE_ME_ID;
+      values.split_with = [];
+    }
+
+    overlay.remove();
+    await saveAndRefresh("expenses", trip.id, e, values, "Gasto guardado");
   });
+
+  setTimeout(() => overlay.querySelector("#exp-description")?.focus(), 50);
 }
 
 // ============================================================
