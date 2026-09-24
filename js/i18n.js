@@ -67,6 +67,7 @@ const T = {
     ar: "أخبرنا بالوجهة وأذواقك، وسننشئ لك خط السير",
   },
   new_trip: { es: "＋ Nuevo viaje", en: "＋ New trip", pt: "＋ Nova viagem", zh: "＋ 新建行程", ar: "＋ رحلة جديدة" },
+  currency_converter: { es: "Conversor de moneda", en: "Currency converter", pt: "Conversor de moeda", zh: "货币转换器", ar: "محول العملات" },
   my_trips: { es: "Mis viajes", en: "My trips", pt: "Minhas viagens", zh: "我的行程", ar: "رحلاتي" },
   see_all: { es: "Ver todos", en: "See all", pt: "Ver todos", zh: "查看全部", ar: "عرض الكل" },
   upcoming_events: { es: "Próximos eventos", en: "Upcoming events", pt: "Próximos eventos", zh: "近期日程", ar: "الأحداث القادمة" },

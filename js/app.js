@@ -1591,8 +1591,10 @@ async function renderHome() {
     </div>
     <div class="view has-tabbar">
       <div id="destination-search"></div>
-      <button class="hero-cta" id="fab-new-trip">${t("new_trip")}</button>
-      <button class="btn btn-secondary" id="btn-currency-converter" style="width:100%; margin-top:10px;">${icon("wallet")} Conversor de moneda</button>
+      <div class="hero-cta-row">
+        <button class="hero-cta" id="fab-new-trip">${t("new_trip")}</button>
+        <button class="hero-quick-btn" id="btn-currency-converter" title="${t("currency_converter")}">${icon("wallet")}</button>
+      </div>
       <div class="section-title-row">
         <p class="section-title">${t("my_trips")}</p>
         ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">${t("see_all")} ${icon("chevron")}</button>` : ""}
