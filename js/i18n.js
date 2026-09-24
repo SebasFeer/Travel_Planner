@@ -160,7 +160,7 @@ const T = {
   settings_notifications: { es: "Notificaciones", en: "Notifications", pt: "Notificações", zh: "通知", ar: "الإشعارات" },
   settings_security: { es: "Seguridad (PIN)", en: "Security (PIN)", pt: "Segurança (PIN)", zh: "安全（PIN 码）", ar: "الأمان (رمز PIN)" },
   settings_dev: { es: "Modo desarrollador", en: "Developer mode", pt: "Modo desenvolvedor", zh: "开发者模式", ar: "وضع المطوّر" },
-  settings_privacy: { es: "Política de privacidad", en: "Privacy policy", pt: "Política de privacidade", zh: "隐私政策", ar: "سياسة الخصوصية" },
+  settings_privacy: { es: "Legal", en: "Legal", pt: "Legal", zh: "法律信息", ar: "الشؤون القانونية" },
   settings_cache: { es: "Uso de caché", en: "Cache usage", pt: "Uso de cache", zh: "缓存使用情况", ar: "استخدام التخزين المؤقت" },
   lang_updated: { es: "Idioma actualizado", en: "Language updated", pt: "Idioma atualizado", zh: "语言已更新", ar: "تم تحديث اللغة" },
   lang_system_note: {
