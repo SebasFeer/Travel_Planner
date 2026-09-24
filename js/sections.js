@@ -5,6 +5,8 @@ import {
   escapeHtml,
   formatDatePretty,
   daysBetween,
+  download,
+  uid,
 } from "./utils.js";
 import { geocodeAll, routeBetween, optimizeRouteOrder } from "./geocode.js";
 import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker } from "./app.js";
@@ -2540,4 +2542,188 @@ async function renderPrintArea(trip) {
   document.getElementById("print-area").innerHTML = html;
 }
 
-export { TABS, renderSection, renderPrintArea, exportItineraryPdf };
+// ------------------------------------------------------------
+// EXPORTAR AL CALENDARIO DEL DISPOSITIVO (.ics) — solo bajo demanda.
+// Genera un único archivo .ics con vuelos, hoteles, itinerario,
+// transporte y reservas para que el usuario lo abra con su propia
+// app de calendario (Google Calendar, Apple Calendar...) y decida
+// qué añadir. No hay ninguna sincronización automática ni en segundo
+// plano: esto solo ocurre cuando el usuario pulsa el botón, una vez,
+// y el archivo generado no vuelve a tocarse después.
+// ------------------------------------------------------------
+
+function icsEscape(text) {
+  return String(text || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
+function icsDate(dateStr) {
+  return (dateStr || "").replace(/-/g, "");
+}
+
+function icsDateTime(dateStr, timeStr) {
+  return `${icsDate(dateStr)}T${(timeStr || "00:00").replace(":", "")}00`;
+}
+
+function icsNowStamp() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+}
+
+// Suma N días a una fecha ISO ("2026-06-05" + 1 -> "2026-06-06"), para
+// el DTEND (exclusivo) de eventos de día completo o el valor por
+// defecto cuando no se guardó fecha de salida/fin.
+function icsAddDays(dateStr, days) {
+  const [y, m, d] = (dateStr || "").split("-").map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+function icsEvent({ uid: eventUid, summary, description, location, allDay, startDate, startTime, endDate, endTime }) {
+  const lines = ["BEGIN:VEVENT", `UID:${eventUid}`, `DTSTAMP:${icsNowStamp()}`];
+  if (allDay) {
+    lines.push(`DTSTART;VALUE=DATE:${icsDate(startDate)}`);
+    lines.push(`DTEND;VALUE=DATE:${icsDate(endDate || icsAddDays(startDate, 1))}`);
+  } else {
+    lines.push(`DTSTART:${icsDateTime(startDate, startTime)}`);
+    if (endDate) {
+      lines.push(`DTEND:${icsDateTime(endDate, endTime || startTime)}`);
+    } else {
+      // Sin hora de fin guardada: se asume 1 hora de duración, para no
+      // dejar el evento "abierto" en el calendario.
+      const [hh, mm] = (startTime || "00:00").split(":").map(Number);
+      const endMinutes = (hh || 0) * 60 + (mm || 0) + 60;
+      const endDateAdj = endMinutes >= 24 * 60 ? icsAddDays(startDate, 1) : startDate;
+      const endHh = String(Math.floor(endMinutes / 60) % 24).padStart(2, "0");
+      const endMm = String(endMinutes % 60).padStart(2, "0");
+      lines.push(`DTEND:${icsDateTime(endDateAdj, `${endHh}:${endMm}`)}`);
+    }
+  }
+  lines.push(`SUMMARY:${icsEscape(summary)}`);
+  if (location) lines.push(`LOCATION:${icsEscape(location)}`);
+  if (description) lines.push(`DESCRIPTION:${icsEscape(description)}`);
+  lines.push("END:VEVENT");
+  return lines.join("\r\n");
+}
+
+async function exportTripToIcs(trip) {
+  const [flights, hotels, itin, transport, reservations] = await Promise.all([
+    Data.getAllByTrip("flights", trip.id),
+    Data.getAllByTrip("hotels", trip.id),
+    Data.getAllByTrip("itinerary", trip.id),
+    Data.getAllByTrip("transport", trip.id),
+    Data.getAllByTrip("reservations", trip.id),
+  ]);
+
+  const events = [];
+
+  flights.forEach((f) => {
+    if (!f.date) return;
+    const route = [f.origin, f.destination].filter(Boolean).join(" → ");
+    events.push(
+      icsEvent({
+        uid: uid("flight"),
+        summary: `Vuelo${f.flight_number ? ` ${f.flight_number}` : ""}${route ? `: ${route}` : ""}`,
+        description: [f.airline, f.notes].filter(Boolean).join(" — "),
+        location: route,
+        allDay: !f.time,
+        startDate: f.date,
+        startTime: f.time,
+      })
+    );
+    if (f.return_date) {
+      const backRoute = [f.destination, f.origin].filter(Boolean).join(" → ");
+      events.push(
+        icsEvent({
+          uid: uid("flight-return"),
+          summary: `Vuelo de vuelta${backRoute ? `: ${backRoute}` : ""}`,
+          description: f.airline || "",
+          location: backRoute,
+          allDay: true,
+          startDate: f.return_date,
+        })
+      );
+    }
+  });
+
+  hotels.forEach((hh) => {
+    if (!hh.check_in) return;
+    events.push(
+      icsEvent({
+        uid: uid("hotel"),
+        summary: `Hotel: ${hh.name || "Alojamiento"}`,
+        description: hh.notes || "",
+        location: hh.address || "",
+        allDay: !hh.check_in_time,
+        startDate: hh.check_in,
+        startTime: hh.check_in_time,
+        endDate: hh.check_out || undefined,
+        endTime: hh.check_in_time,
+      })
+    );
+  });
+
+  itin.forEach((i) => {
+    if (!i.date) return;
+    events.push(
+      icsEvent({
+        uid: uid("itin"),
+        summary: i.title || "Actividad",
+        description: i.notes || "",
+        location: i.location || "",
+        allDay: !i.time,
+        startDate: i.date,
+        startTime: i.time,
+      })
+    );
+  });
+
+  transport.forEach((tr) => {
+    if (!tr.date) return;
+    const route = [tr.origin, tr.destination].filter(Boolean).join(" → ");
+    events.push(
+      icsEvent({
+        uid: uid("transport"),
+        summary: `${tr.type || "Transporte"}${route ? `: ${route}` : ""}`,
+        description: [tr.company, tr.notes].filter(Boolean).join(" — "),
+        location: route,
+        allDay: !tr.time,
+        startDate: tr.date,
+        startTime: tr.time,
+      })
+    );
+  });
+
+  reservations.forEach((r) => {
+    if (!r.date) return;
+    events.push(
+      icsEvent({
+        uid: uid("reservation"),
+        summary: r.name || r.type || "Reserva",
+        description: [r.type, r.notes].filter(Boolean).join(" — "),
+        location: r.location || "",
+        allDay: !r.time,
+        startDate: r.date,
+        startTime: r.time,
+      })
+    );
+  });
+
+  if (!events.length) {
+    toast("No hay nada con fecha todavía para exportar al calendario.");
+    return;
+  }
+
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TravelPlanner//ES", "CALSCALE:GREGORIAN", ...events, "END:VCALENDAR"].join("\r\n");
+  const filename = `calendario-${(trip.destination || trip.name || "viaje").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.ics`;
+  download(filename, ics, "text/calendar");
+  toast("Calendario descargado — ábrelo con tu app de calendario para añadirlo");
+}
+
+export { TABS, renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs };
