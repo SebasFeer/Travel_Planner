@@ -36,7 +36,7 @@ import {
   openAiNewTripSheet,
 } from "./ai-copilot.js";
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
-import { renderSection, renderPrintArea } from "./sections.js";
+import { renderSection, renderPrintArea, exportItineraryPdf } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon, brandMark, googleIcon } from "./icons.js";
 import { geocode, searchPlaces as searchPlaceSuggestions } from "./geocode.js";
@@ -982,6 +982,7 @@ function openTripMenu(trip) {
           ? `<div class="modal-actions"><button class="btn btn-secondary" id="mn-refresh-share">${icon("refresh")} Actualizar desde la nube</button></div>`
           : ""
       }
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-pdf">${icon("download")} Itinerario en PDF (Pro)</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-print">${icon("printer")} Exportar / Imprimir</button></div>
       <div class="modal-actions"><button class="btn btn-danger" id="mn-delete">${icon("trash")} Eliminar viaje</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="mn-close">Cerrar</button></div>
@@ -1024,6 +1025,10 @@ function openTripMenu(trip) {
     overlay.remove();
     await renderPrintArea(trip);
     setTimeout(() => window.print(), 150);
+  });
+  overlay.querySelector("#mn-pdf").addEventListener("click", async () => {
+    overlay.remove();
+    await exportItineraryPdf(trip);
   });
 }
 
