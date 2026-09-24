@@ -2373,6 +2373,35 @@ html.tp-skip-splash #splash-screen {
 .hero-cta:active { transform: scale(0.98); }
 @media (hover: hover) { .hero-cta:hover { filter: brightness(1.06); } }
 
+/* Fila de la CTA principal ("Nuevo viaje") + un acceso rápido
+   secundario a su lado (p. ej. el conversor de moneda), en vez de
+   apilar dos botones a lo ancho uno debajo del otro. */
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-cta-row .hero-cta { flex: 1; }
+
+.hero-quick-btn {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.hero-quick-btn .icon-svg { width: 20px; height: 20px; }
+.hero-quick-btn:active { transform: scale(0.95); }
+@media (hover: hover) {
+  .hero-quick-btn:hover { border-color: var(--brand); color: var(--brand-deep); }
+}
+
 /* Botón "Planificar viaje con IA" — CTA propia entre la búsqueda y
    "Mis viajes", con el mismo lenguaje visual que el resto de la app
    (degradado de marca, esquinas grandes, sombra suave). */
