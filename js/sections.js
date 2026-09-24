@@ -1977,6 +1977,286 @@ async function exportMapPdf(trip, located, dayLabel) {
   toast("PDF descargado");
 }
 
+// ------------------------------------------------------------
+// ITINERARIO COMPLETO EN PDF (Pro) — a diferencia de "Exportar /
+// Imprimir" (que delega en el diálogo de impresión del navegador con
+// una tabla básica), esto genera un PDF de verdad con jsPDF: portada
+// con el nombre del viaje, y una sección con su propio color de
+// acento por tipo de dato (vuelos, hoteles, itinerario día a día,
+// transporte, reservas, gastos y checklist).
+// ------------------------------------------------------------
+
+const PDF_COLORS = {
+  brand: [108, 92, 231],
+  dark: [30, 28, 46],
+  muted: [130, 130, 148],
+  line: [228, 226, 238],
+  flights: [37, 99, 235],
+  hotels: [13, 148, 136],
+  itinerary: [108, 92, 231],
+  transport: [217, 119, 6],
+  reservations: [219, 39, 119],
+  expenses: [22, 163, 74],
+  checklist: [100, 116, 139],
+};
+
+async function exportItineraryPdf(trip) {
+  if (!(await isPro())) {
+    toast("Descargar el itinerario en PDF es una función Pro");
+    return;
+  }
+  if (!window.jspdf) {
+    toast("No se pudo generar el PDF (falta cargar una librería). Revisa tu conexión y vuelve a intentarlo.");
+    return;
+  }
+  toast("Generando PDF…");
+
+  const [flights, hotels, itin, transport, reservations, expenses, checklist] = await Promise.all([
+    Data.getAllByTrip("flights", trip.id),
+    Data.getAllByTrip("hotels", trip.id),
+    Data.getAllByTrip("itinerary", trip.id),
+    Data.getAllByTrip("transport", trip.id),
+    Data.getAllByTrip("reservations", trip.id),
+    Data.getAllByTrip("expenses", trip.id),
+    Data.getAllByTrip("checklist", trip.id),
+  ]);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 44;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  function ensureSpace(h) {
+    if (y + h > pageH - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  }
+
+  function sectionTitle(text, color) {
+    ensureSpace(30);
+    doc.setFillColor(...color);
+    doc.rect(margin, y - 10, 3, 15, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(...PDF_COLORS.dark);
+    doc.text(text, margin + 10, y);
+    y += 20;
+  }
+
+  function emptyLine(text) {
+    ensureSpace(16);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9.5);
+    doc.setTextColor(...PDF_COLORS.muted);
+    doc.text(text, margin, y);
+    y += 20;
+  }
+
+  function itemLine(title, subtitle, amount) {
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(...PDF_COLORS.dark);
+    const titleLines = doc.splitTextToSize(title || "(sin título)", contentW - (amount ? 90 : 0));
+    doc.text(titleLines, margin, y);
+    if (amount) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.text(amount, pageW - margin, y, { align: "right" });
+    }
+    y += titleLines.length * 13;
+    if (subtitle) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...PDF_COLORS.muted);
+      const subLines = doc.splitTextToSize(subtitle, contentW);
+      doc.text(subLines, margin, y);
+      y += subLines.length * 12;
+    }
+    doc.setTextColor(...PDF_COLORS.dark);
+    y += 8;
+  }
+
+  // ---- Portada ----
+  const coverH = 130;
+  doc.setFillColor(...PDF_COLORS.brand);
+  doc.rect(0, 0, pageW, coverH, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  const titleLines = doc.splitTextToSize(trip.name || trip.destination || "Viaje", contentW);
+  doc.text(titleLines, margin, 52);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  let coverY = 52 + titleLines.length * 22;
+  if (trip.destination) {
+    doc.text(trip.destination, margin, coverY);
+    coverY += 18;
+  }
+  const dateRange = trip.start_date && trip.end_date ? `${formatDatePretty(trip.start_date)} → ${formatDatePretty(trip.end_date)}` : "";
+  if (dateRange) doc.text(dateRange, margin, coverY);
+  doc.setTextColor(...PDF_COLORS.dark);
+  y = coverH + 26;
+
+  if (trip.notes) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(10);
+    doc.setTextColor(...PDF_COLORS.muted);
+    const noteLines = doc.splitTextToSize(trip.notes, contentW);
+    doc.text(noteLines, margin, y);
+    doc.setTextColor(...PDF_COLORS.dark);
+    y += noteLines.length * 13 + 14;
+  }
+
+  // ---- Vuelos ----
+  sectionTitle("Vuelos", PDF_COLORS.flights);
+  if (flights.length) {
+    flights
+      .slice()
+      .sort((a, b) => `${a.date || ""}${a.time || ""}`.localeCompare(`${b.date || ""}${b.time || ""}`))
+      .forEach((f) => {
+        const title = [f.origin, f.destination].filter(Boolean).join(" → ") || f.airline || "Vuelo";
+        const subtitle = [f.date ? formatDatePretty(f.date) : "", f.time, f.airline, f.flight_number].filter(Boolean).join(" · ");
+        itemLine(title, subtitle);
+      });
+  } else {
+    emptyLine("Sin vuelos guardados.");
+  }
+
+  // ---- Hoteles ----
+  sectionTitle("Hoteles", PDF_COLORS.hotels);
+  if (hotels.length) {
+    hotels.forEach((hh) => {
+      const subtitleParts = [hh.address, hh.check_in && hh.check_out ? `${formatDatePretty(hh.check_in)} → ${formatDatePretty(hh.check_out)}` : ""].filter(Boolean);
+      itemLine(hh.name || "Hotel", subtitleParts.join(" · "), hh.price ? money(hh.price) : "");
+    });
+  } else {
+    emptyLine("Sin hoteles guardados.");
+  }
+
+  // ---- Itinerario, agrupado por día ----
+  sectionTitle("Itinerario", PDF_COLORS.itinerary);
+  const byDate = {};
+  const noDate = [];
+  itin.forEach((i) => {
+    if (!i.date) {
+      noDate.push(i);
+      return;
+    }
+    (byDate[i.date] ||= []).push(i);
+  });
+  const dates = Object.keys(byDate).sort();
+  if (!dates.length && !noDate.length) {
+    emptyLine("Sin actividades planificadas.");
+  } else {
+    dates.forEach((date, dayIdx) => {
+      ensureSpace(20);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(...PDF_COLORS.itinerary);
+      doc.text(`Día ${dayIdx + 1} · ${formatDatePretty(date)}`, margin, y);
+      doc.setTextColor(...PDF_COLORS.dark);
+      y += 16;
+      byDate[date]
+        .slice()
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .forEach((i) => {
+          itemLine(i.title || "Actividad", [i.time, i.location].filter(Boolean).join(" · "));
+        });
+    });
+    if (noDate.length) {
+      ensureSpace(20);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(...PDF_COLORS.itinerary);
+      doc.text("Sin fecha", margin, y);
+      doc.setTextColor(...PDF_COLORS.dark);
+      y += 16;
+      noDate.forEach((i) => itemLine(i.title || "Actividad", [i.time, i.location].filter(Boolean).join(" · ")));
+    }
+  }
+
+  // ---- Transporte ----
+  sectionTitle("Transporte", PDF_COLORS.transport);
+  if (transport.length) {
+    transport.forEach((tr) => {
+      const title = [tr.origin, tr.destination].filter(Boolean).join(" → ") || tr.type || "Trayecto";
+      const subtitle = [tr.date ? formatDatePretty(tr.date) : "", tr.type].filter(Boolean).join(" · ");
+      itemLine(title, subtitle, tr.price ? money(tr.price) : "");
+    });
+  } else {
+    emptyLine("Sin transportes guardados.");
+  }
+
+  // ---- Reservas ----
+  sectionTitle("Reservas", PDF_COLORS.reservations);
+  if (reservations.length) {
+    reservations.forEach((r) => {
+      const subtitle = [r.date ? formatDatePretty(r.date) : "", r.type, r.location].filter(Boolean).join(" · ");
+      itemLine(r.name || "Reserva", subtitle, r.price ? money(r.price) : "");
+    });
+  } else {
+    emptyLine("Sin reservas guardadas.");
+  }
+
+  // ---- Gastos ----
+  sectionTitle("Gastos", PDF_COLORS.expenses);
+  if (expenses.length) {
+    const total = expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    ensureSpace(18);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...PDF_COLORS.expenses);
+    doc.text(`Total: ${money(total)}`, margin, y);
+    doc.setTextColor(...PDF_COLORS.dark);
+    y += 18;
+    expenses
+      .slice()
+      .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+      .forEach((e) => {
+        const subtitle = [e.date ? formatDatePretty(e.date) : "", e.category].filter(Boolean).join(" · ");
+        itemLine(e.description || e.category || "Gasto", subtitle, money(e.amount));
+      });
+  } else {
+    emptyLine("Sin gastos registrados.");
+  }
+
+  // ---- Checklist ----
+  sectionTitle("Checklist", PDF_COLORS.checklist);
+  if (checklist.length) {
+    checklist.forEach((c) => {
+      ensureSpace(16);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(...(c.completed ? PDF_COLORS.muted : PDF_COLORS.dark));
+      doc.text(`${c.completed ? "[x]" : "[ ]"} ${c.task || ""}`, margin, y);
+      doc.setTextColor(...PDF_COLORS.dark);
+      y += 15;
+    });
+  } else {
+    emptyLine("Sin tareas en la checklist.");
+  }
+
+  // ---- Pie con numeración de página ----
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...PDF_COLORS.muted);
+    doc.text("TravelPlanner", margin, pageH - 20);
+    doc.text(`Página ${p} de ${pageCount}`, pageW - margin, pageH - 20, { align: "right" });
+    doc.setTextColor(...PDF_COLORS.dark);
+  }
+
+  doc.save(`itinerario-${(trip.destination || trip.name || "viaje").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
+  toast("PDF descargado");
+}
+
 async function renderMap(trip) {
   const pins = await collectMapPins(trip);
 
@@ -2260,4 +2540,4 @@ async function renderPrintArea(trip) {
   document.getElementById("print-area").innerHTML = html;
 }
 
-export { TABS, renderSection, renderPrintArea };
+export { TABS, renderSection, renderPrintArea, exportItineraryPdf };
