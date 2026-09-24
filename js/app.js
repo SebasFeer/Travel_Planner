@@ -1716,7 +1716,46 @@ async function collectUpcomingEvents(trips) {
   return events.slice(0, 3);
 }
 
-function openTripForm(trip, prefill) {
+// El plan gratis deja crear hasta este número de viajes; a partir de
+// ahí, hace falta Pro (viajes ilimitados). Los viajes ya creados
+// nunca se bloquean ni se ocultan, solo la creación de uno nuevo.
+const FREE_TRIP_LIMIT = 2;
+
+function openTripLimitUpsell() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">🔒 Límite del plan gratis</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+        El plan gratis permite tener hasta ${FREE_TRIP_LIMIT} viajes a la vez.
+        Con <b>Pro</b> puedes crear viajes ilimitados, además de compartirlos,
+        recibir avisos de vuelo, usar el copiloto de IA y ordenar tus rutas
+        automáticamente.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="trip-limit-upgrade">✨ Activar Pro</button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="trip-limit-close">Ahora no</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#trip-limit-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#trip-limit-upgrade").addEventListener("click", () => {
+    overlay.remove();
+    openDevModeSheet();
+  });
+}
+
+async function openTripForm(trip, prefill) {
+  if (!trip) {
+    const trips = await Data.getAll("trips");
+    if (trips.length >= FREE_TRIP_LIMIT && !(await isPro())) {
+      openTripLimitUpsell();
+      return;
+    }
+  }
   showFormModal({
     title: trip ? "Editar viaje" : "Nuevo viaje",
     initial: trip || prefill || null,
