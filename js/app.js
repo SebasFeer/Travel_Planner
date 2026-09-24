@@ -10,7 +10,7 @@ import {
   mapsRouteUrl,
   download,
 } from "./utils.js";
-import { isPinSet, setPin, removePin, verifyPin } from "./lock.js";
+import { isPinSet, setPin, removePin, verifyPin, isBiometricAvailable, isBiometricEnabled, enableBiometric, disableBiometric } from "./lock.js";
 import {
   currentUser,
   onAuthChange,
@@ -1821,6 +1821,8 @@ export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp
 
 async function openSecuritySheet() {
   const hasPin = await isPinSet();
+  const bioAvailable = hasPin && (await isBiometricAvailable());
+  const bioEnabled = bioAvailable && (await isBiometricEnabled());
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
@@ -1829,15 +1831,26 @@ async function openSecuritySheet() {
       <div class="modal-handle"></div>
       <h2 class="modal-title">Seguridad</h2>
       <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
-        Un PIN local pide un código cada vez que abres la app o vuelves a ella
-        tras cambiar de app. Solo vive en este dispositivo — si lo olvidas,
-        no hay forma de recuperarlo salvo borrar los datos de la app.
+        El PIN es opcional: mientras no lo actives, la app abre directo.
+        Una vez activado, pide un código cada vez que abres la app o
+        vuelves a ella tras cambiar de app. Solo vive en este dispositivo
+        — si lo olvidas, no hay forma de recuperarlo salvo borrar los
+        datos de la app.
       </p>
       <div class="modal-actions" style="margin-top:16px;">
         <button class="btn btn-secondary" id="sec-toggle">
           ${hasPin ? "🔁 Cambiar PIN" : "🔒 Activar PIN"}
         </button>
       </div>
+      ${
+        bioAvailable
+          ? `<div class="modal-actions">
+              <button class="btn btn-secondary" id="sec-bio-toggle">
+                ${bioEnabled ? "🔓 Desactivar Face ID / huella" : "🔓 Activar Face ID / huella"}
+              </button>
+            </div>`
+          : ""
+      }
       ${hasPin ? `<div class="modal-actions"><button class="btn btn-danger" id="sec-remove">Quitar PIN</button></div>` : ""}
       <div class="modal-actions"><button class="btn btn-ghost" id="sec-close">Cerrar</button></div>
     </div>`;
@@ -1856,8 +1869,23 @@ async function openSecuritySheet() {
         return;
       }
     }
-    promptNewPin();
+    await promptNewPin();
+    openSecuritySheet();
   });
+
+  if (bioAvailable) {
+    overlay.querySelector("#sec-bio-toggle").addEventListener("click", async () => {
+      overlay.remove();
+      if (bioEnabled) {
+        await disableBiometric();
+        toast("Face ID / huella desactivado");
+      } else {
+        const ok = await enableBiometric();
+        toast(ok ? "Face ID / huella activado" : "No se pudo activar (cancelado o no disponible)");
+      }
+      openSecuritySheet();
+    });
+  }
 
   if (hasPin) {
     overlay.querySelector("#sec-remove").addEventListener("click", async () => {

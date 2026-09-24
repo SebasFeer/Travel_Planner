@@ -4,11 +4,6 @@ import { onAuthChange, enableAutoSync, syncOnLaunch, completeGoogleRedirect } fr
 import { shouldShowOnboarding, renderOnboarding } from "./onboarding.js";
 import { loadLanguage } from "./i18n.js";
 
-// ⚠️ SOLO MIENTRAS SE DESARROLLA: con esto en `true` la app arranca
-// sin pedir el PIN, para no tener que desbloquearla en cada prueba.
-// Pon esto en `false` para volver a activar el bloqueo por PIN.
-const DEV_DISABLE_PIN = true;
-
 // Aplica el tema guardado (claro/oscuro/automático) antes del primer
 // render, para evitar el parpadeo del tema por defecto.
 loadTheme();
@@ -21,7 +16,7 @@ installPullToRefresh();
 // 3 pantallas. El resto del arranque (candado, gestos, back de
 // Android...) espera a que se cierre, igual que ya esperaba a que
 // se resolviera el PIN.
-async function bootApp(withLock) {
+async function bootApp() {
   // Se espera aquí (no "fire and forget" como loadTheme) porque t()
   // lee el idioma actual de forma síncrona durante el render — si
   // renderApp() se disparara antes de que esto termine, el primer
@@ -30,7 +25,10 @@ async function bootApp(withLock) {
   await loadLanguage();
   const start = () => {
     renderApp();
-    if (withLock) installBackgroundLock();
+    // Si el usuario no activó el PIN en Ajustes → Seguridad, esto no
+    // hace nada al volver de segundo plano (installBackgroundLock lo
+    // comprueba solo por su cuenta).
+    installBackgroundLock();
     installSwipeBack();
     installAndroidBackHandling();
     installModalSwipeToClose();
@@ -43,11 +41,8 @@ async function bootApp(withLock) {
   }
 }
 
-if (DEV_DISABLE_PIN) {
-  bootApp(false);
-} else {
-  guardOnLaunch(() => bootApp(true));
-}
+// El PIN es opcional: si no se activó, guardOnLaunch pasa directo.
+guardOnLaunch(bootApp);
 
 // Refresca la pantalla cuando Firebase confirma la sesión (al cargar,
 // o si se inicia/cierra sesión desde otro sitio) para que el icono de
