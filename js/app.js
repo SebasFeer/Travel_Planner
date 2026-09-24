@@ -36,7 +36,7 @@ import {
   openAiNewTripSheet,
 } from "./ai-copilot.js";
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
-import { renderSection, renderPrintArea, exportItineraryPdf } from "./sections.js";
+import { renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon, brandMark, googleIcon } from "./icons.js";
 import { geocode, searchPlaces as searchPlaceSuggestions } from "./geocode.js";
@@ -983,6 +983,7 @@ function openTripMenu(trip) {
           : ""
       }
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-pdf">${icon("download")} Itinerario en PDF (Pro)</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="mn-ics">${icon("calendar")} Exportar a calendario (.ics)</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="mn-print">${icon("printer")} Exportar / Imprimir</button></div>
       <div class="modal-actions"><button class="btn btn-danger" id="mn-delete">${icon("trash")} Eliminar viaje</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="mn-close">Cerrar</button></div>
@@ -1029,6 +1030,10 @@ function openTripMenu(trip) {
   overlay.querySelector("#mn-pdf").addEventListener("click", async () => {
     overlay.remove();
     await exportItineraryPdf(trip);
+  });
+  overlay.querySelector("#mn-ics").addEventListener("click", async () => {
+    overlay.remove();
+    await exportTripToIcs(trip);
   });
 }
 
@@ -2920,24 +2925,32 @@ Si activas los avisos, se generan en tu propio dispositivo a partir de tus
 datos guardados localmente. No implican el envío de información a
 servidores externos.
 
-8. PIN y desbloqueo biométrico
+8. Exportar a PDF o al calendario del dispositivo
+El PDF del itinerario y el archivo .ics para el calendario se generan
+enteramente en tu dispositivo, a partir de tus datos guardados, y solo
+cuando tú pulsas el botón correspondiente — nunca en automático ni en
+segundo plano. El archivo .ics no se sincroniza con nada por su cuenta:
+tienes que abrirlo tú mismo con tu app de calendario (Google Calendar,
+Apple Calendar...) para decidir qué añadir.
+
+9. PIN y desbloqueo biométrico
 El PIN es opcional y, si lo activas, se guarda cifrado (hash) únicamente en
 tu dispositivo. Si además activas Face ID/huella como atajo, la
 verificación la hace tu propio sistema operativo: la app nunca recibe ni
 guarda tu huella o tu cara, solo la confirmación de que el gesto se
 completó. Nadie más que tú puede ver ni recuperar tu PIN.
 
-9. Analítica y publicidad
+10. Analítica y publicidad
 TravelPlanner no usa herramientas de analítica ni de seguimiento, y no
 muestra publicidad dentro de la app.
 
-10. Tus derechos
+11. Tus derechos
 Puedes exportar, importar o borrar tus datos en cualquier momento desde
 Ajustes → Copiar / restaurar datos, o eliminar tu cuenta desde
 Ajustes → Mi cuenta. No compartimos tus datos con terceros con fines
 comerciales.
 
-11. Contacto
+12. Contacto
 Si tienes dudas sobre tus datos o esta política, puedes escribirnos a
 [tu email de contacto aquí].
 `.trim();
