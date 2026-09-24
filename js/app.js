@@ -2400,7 +2400,6 @@ function openSettingsSheet() {
       <div class="modal-actions"><button class="btn btn-secondary" id="st-join-shared">${icon("link")} ${t("settings_join_shared")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-config">${icon("settings")} ${t("settings_config")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-dev">${icon("flask")} ${t("settings_dev")}</button></div>
-      <div class="modal-actions"><button class="btn btn-secondary" id="st-legal">${icon("shield")} ${t("settings_privacy")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="st-cache">${icon("cloud")} ${t("settings_cache")}</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="st-close">${t("common_close")}</button></div>
     </div>`;
@@ -2416,13 +2415,13 @@ function openSettingsSheet() {
   go("#st-join-shared", openJoinTripSheet);
   go("#st-config", openConfigSheet);
   go("#st-dev", openDevModeSheet);
-  go("#st-legal", openLegalSheet);
   go("#st-cache", openCacheUsageSheet);
 }
 
 // ------------------------------------------------------------
-// CONFIGURACIÓN — submenú con tema, idioma, notificaciones y
-// seguridad, agrupados aparte del menú principal de ajustes.
+// CONFIGURACIÓN — submenú con copia de seguridad, tema, idioma,
+// notificaciones, seguridad y legal, agrupados aparte del menú
+// principal de ajustes.
 // ------------------------------------------------------------
 
 function openConfigSheet() {
@@ -2437,6 +2436,7 @@ function openConfigSheet() {
       <div class="modal-actions"><button class="btn btn-secondary" id="cfg-language">${icon("globe")} ${t("settings_language")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="cfg-notifications">${icon("bell")} ${t("settings_notifications")}</button></div>
       <div class="modal-actions"><button class="btn btn-secondary" id="cfg-security">${icon("lock")} ${t("settings_security")}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cfg-legal">${icon("shield")} ${t("settings_privacy")}</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="cfg-close">${t("common_close")}</button></div>
     </div>`;
   document.body.appendChild(overlay);
@@ -2452,6 +2452,7 @@ function openConfigSheet() {
   go("#cfg-language", openLanguageSheet);
   go("#cfg-notifications", openNotificationsSheet);
   go("#cfg-security", openSecuritySheet);
+  go("#cfg-legal", openLegalSheet);
 }
 
 async function openLanguageSheet() {
