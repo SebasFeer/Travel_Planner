@@ -1236,13 +1236,17 @@ async function openShareTripSheet(trip) {
       <div class="modal-handle"></div>
       <h2 class="modal-title">Viaje compartido</h2>
       <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
-        Dale este código a quien quieras invitar. Desde
+        Dale este código (o el QR) a quien quieras invitar. Desde
         Ajustes → Unirme a un viaje compartido, con su propia cuenta
-        iniciada, podrá añadirlo a sus viajes.
+        iniciada, podrá añadirlo a sus viajes escribiéndolo o
+        escaneándolo.
       </p>
       <div class="field" style="margin-top:6px;">
         <input type="text" id="share-code-value" value="${escapeHtml(res.code)}" readonly
           style="text-align:center; font-size:22px; letter-spacing:3px; font-weight:700;" />
+      </div>
+      <div id="share-qr-wrap" style="display:flex; justify-content:center; margin:14px 0;">
+        <canvas id="share-qr-canvas"></canvas>
       </div>
       <div class="modal-actions"><button class="btn btn-primary" id="share-copy">📋 Copiar código</button></div>
       <div class="modal-actions"><button class="btn btn-ghost" id="share-close">Cerrar</button></div>
@@ -1259,6 +1263,121 @@ async function openShareTripSheet(trip) {
       toast("Selecciona y copia el código");
     }
   });
+
+  const qrCanvas = overlay.querySelector("#share-qr-canvas");
+  if (typeof QRCode !== "undefined") {
+    QRCode.toCanvas(qrCanvas, shareCodeToQrText(res.code), { width: 190, margin: 1 }, (err) => {
+      if (err) overlay.querySelector("#share-qr-wrap").remove();
+    });
+  } else {
+    overlay.querySelector("#share-qr-wrap").remove();
+  }
+}
+
+// Prefijo propio para que el escáner sepa que un QR es de este app
+// (y no lo confunda con cualquier otro código que alguien escanee sin
+// querer). Al leerlo, se quita el prefijo antes de pasarlo a
+// joinSharedTrip; si alguien escanea un QR sin este prefijo, se usa
+// el texto tal cual, por si el código se comparte de otra forma.
+const SHARE_QR_PREFIX = "TPJOIN:";
+
+function shareCodeToQrText(code) {
+  return `${SHARE_QR_PREFIX}${code}`;
+}
+
+function shareCodeFromQrText(text) {
+  const trimmed = (text || "").trim();
+  return trimmed.toUpperCase().startsWith(SHARE_QR_PREFIX) ? trimmed.slice(SHARE_QR_PREFIX.length) : trimmed;
+}
+
+/**
+ * Escáner de QR genérico con la cámara del dispositivo. Llama a
+ * `onResult(text)` en cuanto lee un código y cierra el overlay. Si el
+ * navegador no permite cámara, o falla el permiso, avisa con un toast
+ * y no llama a `onResult`.
+ */
+async function openQrScannerSheet(onResult) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    toast("Este dispositivo no permite acceder a la cámara desde el navegador");
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">📷 Escanear QR</h2>
+      <p style="color:var(--muted); font-size:13px; margin-top:-8px;">Apunta la cámara al código QR del viaje.</p>
+      <div style="position:relative; border-radius:16px; overflow:hidden; background:#000; aspect-ratio:1/1;">
+        <video id="qr-video" playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+      </div>
+      <p id="qr-scan-status" style="color:var(--muted); font-size:12.5px; text-align:center; margin-top:8px;">Buscando código…</p>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="qr-cancel">Cancelar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const video = overlay.querySelector("#qr-video");
+  const statusEl = overlay.querySelector("#qr-scan-status");
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  let stream = null;
+  let rafId = null;
+  let stopped = false;
+
+  function stop() {
+    stopped = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    if (stream) stream.getTracks().forEach((tr) => tr.stop());
+  }
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      stop();
+      overlay.remove();
+    }
+  });
+  overlay.querySelector("#qr-cancel").addEventListener("click", () => {
+    stop();
+    overlay.remove();
+  });
+
+  function scanLoop() {
+    if (stopped) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = jsQR(imageData.data, imageData.width, imageData.height);
+      if (result?.data) {
+        stop();
+        overlay.remove();
+        onResult(result.data);
+        return;
+      }
+    }
+    rafId = requestAnimationFrame(scanLoop);
+  }
+
+  if (typeof jsQR === "undefined") {
+    statusEl.textContent = "No se pudo cargar el lector de QR (revisa tu conexión e inténtalo de nuevo).";
+    return;
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    if (stopped) {
+      // Se canceló mientras se pedía el permiso de cámara.
+      stream.getTracks().forEach((tr) => tr.stop());
+      return;
+    }
+    video.srcObject = stream;
+    await video.play();
+    scanLoop();
+  } catch (err) {
+    statusEl.textContent = "No se pudo acceder a la cámara (revisa los permisos del navegador).";
+  }
 }
 
 // ------------------------------------------------------------
@@ -1275,21 +1394,61 @@ async function openJoinTripSheet() {
     return;
   }
 
-  const code = await promptModal({
-    title: "Unirme a un viaje compartido",
-    message: "Introduce el código de 6 caracteres que te han pasado.",
-    inputType: "text",
-  });
-  if (!code) return;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Unirme a un viaje compartido</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">
+        Introduce el código de 6 caracteres que te han pasado, o escanea su QR.
+      </p>
+      <div class="field">
+        <input type="text" id="join-code-input" placeholder="Ej. AB12CD" autocomplete="off"
+          style="text-align:center; font-size:20px; letter-spacing:3px; text-transform:uppercase;" />
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" id="join-scan">📷 Escanear QR</button></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="join-cancel">${t("common_cancel")}</button>
+        <button type="button" class="btn btn-primary" id="join-confirm">Unirme</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#join-cancel").addEventListener("click", () => overlay.remove());
 
-  toast("Uniéndote al viaje…");
-  const res = await joinSharedTrip(code);
-  if (res.ok) {
-    toast("¡Listo! El viaje ya aparece en tu lista");
-    await renderApp();
-  } else {
-    toast(res.error || "No se pudo unir al viaje");
+  const codeInput = overlay.querySelector("#join-code-input");
+
+  async function doJoin(code) {
+    const clean = (code || "").trim();
+    if (!clean) {
+      toast("Introduce un código");
+      return;
+    }
+    toast("Uniéndote al viaje…");
+    const res = await joinSharedTrip(clean);
+    if (res.ok) {
+      overlay.remove();
+      toast("¡Listo! El viaje ya aparece en tu lista");
+      await renderApp();
+    } else {
+      toast(res.error || "No se pudo unir al viaje");
+    }
   }
+
+  overlay.querySelector("#join-confirm").addEventListener("click", () => doJoin(codeInput.value));
+  codeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") doJoin(codeInput.value);
+  });
+  overlay.querySelector("#join-scan").addEventListener("click", () => {
+    openQrScannerSheet((text) => {
+      const code = shareCodeFromQrText(text);
+      overlay.remove();
+      doJoin(code);
+    });
+  });
+
+  setTimeout(() => codeInput.focus(), 50);
 }
 
 // ============================================================
@@ -2741,11 +2900,15 @@ función de servidor propia, que consulta AeroDataBox/RapidAPI para conocer
 retrasos y puerta de embarque. Estos datos no pasan por ningún otro sitio.
 
 6. Viajes compartidos (función Pro)
-Si compartes un viaje con un código de 6 dígitos, sus datos (vuelos,
-hoteles, itinerario...) se guardan en un documento de Firestore accesible
-por quienes tengan el código, además de en tu copia personal de la nube.
-Cualquiera con el código puede ver y unirse a ese viaje mientras esté
-activo.
+Si compartes un viaje con un código de 6 dígitos (o su QR, que solo
+contiene ese mismo código), sus datos (vuelos, hoteles, itinerario...)
+se guardan en un documento de Firestore accesible por quienes tengan
+el código, además de en tu copia personal de la nube. Cualquiera con
+el código o el QR puede ver y unirse a ese viaje mientras esté activo.
+Al escanear un QR para unirte a un viaje, la app usa la cámara del
+dispositivo solo mientras la ventana de escaneo está abierta: ese
+vídeo nunca se guarda ni se envía a ningún sitio, solo se analiza en
+el propio dispositivo para leer el código.
 
 7. Notificaciones
 Si activas los avisos, se generan en tu propio dispositivo a partir de tus
