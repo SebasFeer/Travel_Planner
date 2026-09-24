@@ -9,7 +9,7 @@ import {
   uid,
 } from "./utils.js";
 import { geocodeAll, routeBetween, optimizeRouteOrder } from "./geocode.js";
-import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker } from "./app.js";
+import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
@@ -970,10 +970,11 @@ async function getCompanions(tripId) {
   return list.sort((a, b) => (a.id || 0) - (b.id || 0));
 }
 
-// Balance neto por participante a partir de los gastos divididos:
+// Balance neto por participante a partir de los gastos divididos y de
+// los pagos ya registrados para saldar cuentas ("settlementRecords"):
 // positivo = le deben, negativo = debe. La suma de todos los saldos
 // siempre da 0.
-function computeExpenseBalances(items, companions) {
+function computeExpenseBalances(items, companions, settlementRecords = []) {
   const participants = [{ id: EXPENSE_ME_ID, name: "Yo" }, ...companions.map((c) => ({ id: String(c.id), name: c.name }))];
   const net = {};
   participants.forEach((p) => (net[p.id] = 0));
@@ -990,6 +991,17 @@ function computeExpenseBalances(items, companions) {
     net[payer] = (net[payer] || 0) + amount;
   });
 
+  // Un pago registrado de "from" a "to" reduce lo que "from" debía y
+  // lo que a "to" le debían, en la misma cantidad.
+  settlementRecords.forEach((s) => {
+    const amount = parseFloat(s.amount || 0);
+    if (!amount) return;
+    const from = String(s.from);
+    const to = String(s.to);
+    net[from] = (net[from] || 0) + amount;
+    net[to] = (net[to] || 0) - amount;
+  });
+
   return participants.map((p) => ({ id: p.id, name: p.name, amount: net[p.id] || 0 }));
 }
 
@@ -1003,7 +1015,7 @@ function simplifyExpenseDebts(balances) {
     j = 0;
   while (i < debtors.length && j < creditors.length) {
     const pay = Math.min(debtors[i].amount, creditors[j].amount);
-    settlements.push({ from: debtors[i].name, to: creditors[j].name, amount: pay });
+    settlements.push({ fromId: debtors[i].id, from: debtors[i].name, toId: creditors[j].id, to: creditors[j].name, amount: pay });
     debtors[i].amount -= pay;
     creditors[j].amount -= pay;
     if (debtors[i].amount < 0.005) i++;
@@ -1090,6 +1102,7 @@ function openCompanionsSheet(trip, onClose) {
 async function renderExpenses(trip) {
   const items = await Data.getAllByTrip("expenses", trip.id);
   const companions = await getCompanions(trip.id);
+  const settlementRecords = await Data.getAllByTrip("settlements", trip.id);
   items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   const total = items.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
@@ -1161,7 +1174,7 @@ async function renderExpenses(trip) {
         .join("")
     : emptyState("💶", t("empty_expenses"));
 
-  const balances = computeExpenseBalances(items, companions);
+  const balances = computeExpenseBalances(items, companions, settlementRecords);
   const settlements = simplifyExpenseDebts(balances);
   const hasSplitExpenses = items.some((e) => Array.isArray(e.split_with) && e.split_with.length >= 2);
 
@@ -1187,7 +1200,16 @@ async function renderExpenses(trip) {
       <div class="panel">
         <h3>Para saldar cuentas</h3>
         ${settlements
-          .map((s) => `<p style="font-size:13.5px; margin:6px 0;">💸 <b>${escapeHtml(s.from)}</b> le paga ${money(s.amount)} a <b>${escapeHtml(s.to)}</b></p>`)
+          .map(
+            (s, i) => `
+          <div class="expense-row" style="padding:8px 0;">
+            <div class="exp-info">
+              <p class="exp-title">💸 ${escapeHtml(s.from)} le paga a ${escapeHtml(s.to)}</p>
+              <p class="exp-sub">${money(s.amount)}</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-settle-index="${i}">✅ Pagado</button>
+          </div>`
+          )
           .join("")}
       </div>`
     : "";
@@ -1249,7 +1271,7 @@ async function renderExpenses(trip) {
   if (converterBtn) {
     converterBtn.addEventListener("click", async () => {
       if (!(await isPro())) {
-        toast("El conversor de moneda es una función Pro");
+        openProUpsellSheet("El conversor de moneda es una función Pro.");
         return;
       }
       openCurrencyConverterSheet(trip);
@@ -1259,6 +1281,15 @@ async function renderExpenses(trip) {
   if (manageCompanionsBtn) {
     manageCompanionsBtn.addEventListener("click", () => openCompanionsSheet(trip, () => renderExpenses(trip)));
   }
+  root.querySelectorAll("[data-settle-index]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const s = settlements[parseInt(btn.dataset.settleIndex, 10)];
+      if (!s) return;
+      await Data.add("settlements", { trip_id: trip.id, from: s.fromId, to: s.toId, amount: s.amount, date: todayString() });
+      toast("Pago registrado");
+      renderExpenses(trip);
+    });
+  });
 }
 
 // ------------------------------------------------------------
@@ -1266,7 +1297,7 @@ async function renderExpenses(trip) {
 // euros, y opcionalmente lo pasa como gasto nuevo ya en EUR.
 // ------------------------------------------------------------
 
-function openCurrencyConverterSheet(trip) {
+function openCurrencyConverterSheet(trip = null) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
 
@@ -1283,9 +1314,9 @@ function openCurrencyConverterSheet(trip) {
       <div class="modal-handle"></div>
       <h2 class="modal-title">🔁 Conversor de moneda</h2>
       <p style="color:var(--muted); font-size:12.5px; margin-top:-10px;">
-        Tipos de cambio del Banco Central Europeo. Todos los gastos
-        del viaje se guardan en euros, así que aquí conviertes antes
-        de apuntarlo.
+        Tipos de cambio del Banco Central Europeo.${
+          trip ? " Todos los gastos del viaje se guardan en euros, así que aquí conviertes antes de apuntarlo." : ""
+        }
       </p>
       <div class="field">
         <label>Importe</label>
@@ -1301,7 +1332,7 @@ function openCurrencyConverterSheet(trip) {
       <div id="conv-result" style="min-height:34px; font-size:20px; font-weight:700; color:var(--brand); margin:10px 0;"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="conv-close">Cerrar</button>
-        <button type="button" class="btn btn-primary" id="conv-use" disabled>Usar en un gasto nuevo</button>
+        ${trip ? `<button type="button" class="btn btn-primary" id="conv-use" disabled>Usar en un gasto nuevo</button>` : ""}
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1361,7 +1392,7 @@ function openCurrencyConverterSheet(trip) {
     const amount = parseFloat(amountEl.value || 0);
     if (!amount) {
       resultEl.textContent = "";
-      useBtn.disabled = true;
+      if (useBtn) useBtn.disabled = true;
       lastConverted = null;
       return;
     }
@@ -1369,27 +1400,29 @@ function openCurrencyConverterSheet(trip) {
     const converted = await convertCurrency(amount, selected.code, "EUR");
     if (converted === null) {
       resultEl.innerHTML = `<span style="color:var(--rose); font-size:13px; font-weight:400;">No se pudo obtener el tipo de cambio para esta moneda (revisa tu conexión e inténtalo de nuevo).</span>`;
-      useBtn.disabled = true;
+      if (useBtn) useBtn.disabled = true;
       lastConverted = null;
       return;
     }
     lastConverted = converted;
     resultEl.textContent = money(converted);
-    useBtn.disabled = false;
+    if (useBtn) useBtn.disabled = false;
   }
 
   updateSelectedLabel();
   amountEl.addEventListener("input", recalc);
 
-  useBtn.addEventListener("click", () => {
-    if (lastConverted === null) return;
-    overlay.remove();
-    openExpenseForm(trip, null, {
-      amount: Math.round(lastConverted * 100) / 100,
-      date: todayString(),
-      description: `Pago en ${selected.label}`,
+  if (useBtn) {
+    useBtn.addEventListener("click", () => {
+      if (lastConverted === null) return;
+      overlay.remove();
+      openExpenseForm(trip, null, {
+        amount: Math.round(lastConverted * 100) / 100,
+        date: todayString(),
+        description: `Pago en ${selected.label}`,
+      });
     });
-  });
+  }
 }
 
 // El formulario de gastos vive fuera del sistema genérico de
@@ -1887,7 +1920,7 @@ async function composeStaticMap(centerLat, centerLng, zoom, widthPx, heightPx, p
  */
 async function exportMapPdf(trip, located, dayLabel) {
   if (!(await isPro())) {
-    toast("Guardar el mapa en PDF es una función Pro");
+    openProUpsellSheet("Guardar el mapa en PDF es una función Pro.");
     return;
   }
   if (!window.jspdf) {
@@ -2004,7 +2037,7 @@ const PDF_COLORS = {
 
 async function exportItineraryPdf(trip) {
   if (!(await isPro())) {
-    toast("Descargar el itinerario en PDF es una función Pro");
+    openProUpsellSheet("Descargar el itinerario en PDF es una función Pro.");
     return;
   }
   if (!window.jspdf) {
@@ -2321,7 +2354,7 @@ async function renderMap(trip) {
     if (optimizeBtn) {
       optimizeBtn.addEventListener("click", async () => {
         if (!showOptimized && !(await isPro())) {
-          toast("Ordenar la ruta por cercanía es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+          openProUpsellSheet("Ordenar la ruta por cercanía es una función Pro.");
           return;
         }
         mapRouteMode = showOptimized ? "time" : "optimal";
@@ -2726,4 +2759,4 @@ async function exportTripToIcs(trip) {
   toast("Calendario descargado — ábrelo con tu app de calendario para añadirlo");
 }
 
-export { TABS, renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs };
+export { TABS, renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs, openCurrencyConverterSheet };

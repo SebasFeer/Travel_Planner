@@ -4,7 +4,7 @@
 // ============================================================
 
 const DB_NAME = "travelplanner";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const STORES = [
   "trips",
@@ -16,6 +16,7 @@ const STORES = [
   "expenses",
   "checklist",
   "companions",
+  "settlements",
 ];
 
 // Caché de geocodificación (texto de lugar -> coordenadas).

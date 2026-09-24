@@ -36,7 +36,7 @@ import {
   openAiNewTripSheet,
 } from "./ai-copilot.js";
 import { getFlightStatus, isFlightStatusConfigured } from "./flightstatus.js";
-import { renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs } from "./sections.js";
+import { renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs, openCurrencyConverterSheet } from "./sections.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon, brandMark, googleIcon } from "./icons.js";
 import { geocode, searchPlaces as searchPlaceSuggestions } from "./geocode.js";
@@ -1224,7 +1224,7 @@ async function openDiscoverSheet(trip) {
 
 async function openShareTripSheet(trip) {
   if (!(await isPro())) {
-    toast("Compartir viajes es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+    openProUpsellSheet("Compartir viajes con otras personas es una función Pro.");
     return;
   }
   if (!currentUser()) {
@@ -1275,12 +1275,12 @@ async function openShareTripSheet(trip) {
   });
 
   const qrCanvas = overlay.querySelector("#share-qr-canvas");
-  if (typeof QRCode !== "undefined") {
+  if (typeof QRCode !== "undefined" && typeof QRCode.toCanvas === "function") {
     QRCode.toCanvas(qrCanvas, shareCodeToQrText(res.code), { width: 190, margin: 1 }, (err) => {
-      if (err) overlay.querySelector("#share-qr-wrap").remove();
+      if (err) overlay.querySelector("#share-qr-wrap")?.remove();
     });
   } else {
-    overlay.querySelector("#share-qr-wrap").remove();
+    overlay.querySelector("#share-qr-wrap")?.remove();
   }
 }
 
@@ -1396,7 +1396,7 @@ async function openQrScannerSheet(onResult) {
 
 async function openJoinTripSheet() {
   if (!(await isPro())) {
-    toast("Unirse a viajes compartidos es una función Pro");
+    openProUpsellSheet("Unirte a un viaje compartido es una función Pro.");
     return;
   }
   if (!currentUser()) {
@@ -1592,6 +1592,7 @@ async function renderHome() {
     <div class="view has-tabbar">
       <div id="destination-search"></div>
       <button class="hero-cta" id="fab-new-trip">${t("new_trip")}</button>
+      <button class="btn btn-secondary" id="btn-currency-converter" style="width:100%; margin-top:10px;">${icon("wallet")} Conversor de moneda</button>
       <div class="section-title-row">
         <p class="section-title">${t("my_trips")}</p>
         ${trips.length > 3 ? `<button class="see-all" id="see-all-trips">${t("see_all")} ${icon("chevron")}</button>` : ""}
@@ -1707,6 +1708,13 @@ async function renderHome() {
   root.querySelector("#fab-new-trip").addEventListener("click", () => openTripForm());
   root.querySelector("#btn-settings").addEventListener("click", () => openSettingsSheet());
   root.querySelector("#btn-ai-plan-trip").addEventListener("click", () => openAiNewTripSheet());
+  root.querySelector("#btn-currency-converter").addEventListener("click", async () => {
+    if (!(await isPro())) {
+      openProUpsellSheet("El conversor de moneda es una función Pro.");
+      return;
+    }
+    openCurrencyConverterSheet();
+  });
 
   // Fotos reales del destino: se buscan en segundo plano (no bloquean
   // el primer pintado) y se guardan en el viaje para no tener que
@@ -1845,7 +1853,7 @@ async function runDestinationSearch(query, container, knownCoords) {
   const proBtn = container.querySelector("#dest-search-pro");
   if (proBtn) {
     proBtn.addEventListener("click", () => {
-      toast("Ver más sugerencias es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+      openProUpsellSheet("Ver más sugerencias de destinos es una función Pro.");
     });
   }
 }
@@ -1890,28 +1898,52 @@ async function collectUpcomingEvents(trips) {
 // nunca se bloquean ni se ocultan, solo la creación de uno nuevo.
 const FREE_TRIP_LIMIT = 2;
 
-function openTripLimitUpsell() {
+// ------------------------------------------------------------
+// VENTANA DE SUSCRIPCIÓN PRO — reemplaza a los simples toasts de
+// "esto es función Pro" allí donde tiene sentido detenerse un
+// momento a explicar qué se gana, en vez de solo avisar y seguir.
+// Mientras no haya un cobro real integrado, el botón activa el modo
+// Pro de pruebas (Ajustes → Modo desarrollador) igual que antes.
+// ------------------------------------------------------------
+
+const PRO_FEATURES_LIST = [
+  "Viajes ilimitados (el plan gratis permite hasta 2 a la vez)",
+  "Compartir viajes con código o QR",
+  "Copiloto de viajes con IA",
+  "Avisos de estado de vuelo",
+  "Ordenar la ruta del mapa por cercanía",
+  "Conversor de moneda",
+  "Guardar el mapa y el itinerario en PDF",
+];
+
+function openProUpsellSheet(reasonText) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.innerHTML = h`
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 class="modal-title">🔒 Límite del plan gratis</h2>
-      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
-        El plan gratis permite tener hasta ${FREE_TRIP_LIMIT} viajes a la vez.
-        Con <b>Pro</b> puedes crear viajes ilimitados, además de compartirlos,
-        recibir avisos de vuelo, usar el copiloto de IA y ordenar tus rutas
-        automáticamente.
+      <h2 class="modal-title">✨ Suscríbete a Pro</h2>
+      ${reasonText ? `<p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">${escapeHtml(reasonText)}</p>` : ""}
+      <div class="panel" style="margin-top:4px;">
+        ${PRO_FEATURES_LIST.map(
+          (f) =>
+            `<p style="font-size:13.5px; margin:7px 0; display:flex; gap:8px; align-items:flex-start;"><span style="color:var(--brand); flex-shrink:0;">✓</span><span>${escapeHtml(f)}</span></p>`
+        ).join("")}
+      </div>
+      <p style="color:var(--muted); font-size:11.5px; line-height:1.5; margin-top:10px;">
+        Todavía no hay un cobro real integrado: mientras se termina de
+        construir, puedes activar el modo Pro de pruebas para usarlo
+        sin coste.
       </p>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="trip-limit-upgrade">✨ Activar Pro</button>
+        <button class="btn btn-primary" id="pro-upsell-activate">✨ Activar Pro (modo prueba)</button>
       </div>
-      <div class="modal-actions"><button class="btn btn-ghost" id="trip-limit-close">Ahora no</button></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="pro-upsell-close">Ahora no</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
-  overlay.querySelector("#trip-limit-close").addEventListener("click", () => overlay.remove());
-  overlay.querySelector("#trip-limit-upgrade").addEventListener("click", () => {
+  overlay.querySelector("#pro-upsell-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#pro-upsell-activate").addEventListener("click", () => {
     overlay.remove();
     openDevModeSheet();
   });
@@ -1921,7 +1953,7 @@ async function openTripForm(trip, prefill) {
   if (!trip) {
     const trips = await Data.getAll("trips");
     if (trips.length >= FREE_TRIP_LIMIT && !(await isPro())) {
-      openTripLimitUpsell();
+      openProUpsellSheet(`El plan gratis permite tener hasta ${FREE_TRIP_LIMIT} viajes a la vez.`);
       return;
     }
   }
@@ -2021,11 +2053,22 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
 // ============================================================
+
+function switchRowHtml(id, label, checked) {
+  return h`
+    <div class="switch-row">
+      <span class="switch-row-label">${escapeHtml(label)}</span>
+      <label class="switch">
+        <input type="checkbox" id="${id}" ${checked ? "checked" : ""} />
+        <span class="switch-track"></span>
+      </label>
+    </div>`;
+}
 
 async function openSecuritySheet() {
   const hasPin = await isPinSet();
@@ -2045,30 +2088,53 @@ async function openSecuritySheet() {
         — si lo olvidas, no hay forma de recuperarlo salvo borrar los
         datos de la app.
       </p>
-      <div class="modal-actions" style="margin-top:16px;">
-        <button class="btn btn-secondary" id="sec-toggle">
-          ${hasPin ? "🔁 Cambiar PIN" : "🔒 Activar PIN"}
-        </button>
-      </div>
+      ${switchRowHtml("sec-pin-switch", "PIN de bloqueo", hasPin)}
       ${
-        bioAvailable
-          ? `<div class="modal-actions">
-              <button class="btn btn-secondary" id="sec-bio-toggle">
-                ${bioEnabled ? "🔓 Desactivar Face ID / huella" : "🔓 Activar Face ID / huella"}
-              </button>
-            </div>`
+        hasPin
+          ? `<div class="modal-actions" style="margin-top:6px;"><button class="btn btn-secondary" id="sec-change-pin">🔁 Cambiar PIN</button></div>`
           : ""
       }
-      ${hasPin ? `<div class="modal-actions"><button class="btn btn-danger" id="sec-remove">Quitar PIN</button></div>` : ""}
-      <div class="modal-actions"><button class="btn btn-ghost" id="sec-close">Cerrar</button></div>
+      ${bioAvailable ? switchRowHtml("sec-bio-switch", "Face ID / huella", bioEnabled) : ""}
+      <div class="modal-actions" style="margin-top:16px;"><button class="btn btn-ghost" id="sec-close">Cerrar</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
   overlay.querySelector("#sec-close").addEventListener("click", () => overlay.remove());
 
-  overlay.querySelector("#sec-toggle").addEventListener("click", async () => {
+  const pinSwitch = overlay.querySelector("#sec-pin-switch");
+  pinSwitch.addEventListener("change", async () => {
+    const turningOn = pinSwitch.checked;
+    pinSwitch.disabled = true;
+    if (turningOn) {
+      const ok = await promptNewPin();
+      pinSwitch.disabled = false;
+      if (!ok) {
+        pinSwitch.checked = false;
+        return;
+      }
+    } else {
+      const current = await promptModal({ title: "Confirma tu PIN", message: "Para quitarlo, introduce tu PIN actual.", inputType: "password", inputMode: "numeric" });
+      pinSwitch.disabled = false;
+      if (current === null) {
+        pinSwitch.checked = true;
+        return;
+      }
+      const ok = await verifyPin(current);
+      if (!ok) {
+        toast("PIN incorrecto");
+        pinSwitch.checked = true;
+        return;
+      }
+      await removePin();
+      toast("PIN desactivado");
+    }
     overlay.remove();
-    if (hasPin) {
+    openSecuritySheet();
+  });
+
+  const changePinBtn = overlay.querySelector("#sec-change-pin");
+  if (changePinBtn) {
+    changePinBtn.addEventListener("click", async () => {
       const current = await promptModal({ title: "Introduce tu PIN actual", inputType: "password", inputMode: "numeric" });
       if (current === null) return;
       const ok = await verifyPin(current);
@@ -2076,55 +2142,50 @@ async function openSecuritySheet() {
         toast("PIN incorrecto");
         return;
       }
-    }
-    await promptNewPin();
-    openSecuritySheet();
-  });
-
-  if (bioAvailable) {
-    overlay.querySelector("#sec-bio-toggle").addEventListener("click", async () => {
       overlay.remove();
-      if (bioEnabled) {
-        await disableBiometric();
-        toast("Face ID / huella desactivado");
-      } else {
-        const ok = await enableBiometric();
-        toast(ok ? "Face ID / huella activado" : "No se pudo activar (cancelado o no disponible)");
-      }
+      await promptNewPin();
       openSecuritySheet();
     });
   }
 
-  if (hasPin) {
-    overlay.querySelector("#sec-remove").addEventListener("click", async () => {
-      overlay.remove();
-      const current = await promptModal({ title: "Confirma tu PIN", message: "Para quitarlo, introduce tu PIN actual.", inputType: "password", inputMode: "numeric" });
-      if (current === null) return;
-      const ok = await verifyPin(current);
-      if (!ok) {
-        toast("PIN incorrecto");
-        return;
+  if (bioAvailable) {
+    const bioSwitch = overlay.querySelector("#sec-bio-switch");
+    bioSwitch.addEventListener("change", async () => {
+      const turningOn = bioSwitch.checked;
+      bioSwitch.disabled = true;
+      if (turningOn) {
+        const ok = await enableBiometric();
+        bioSwitch.disabled = false;
+        if (!ok) {
+          toast("No se pudo activar (cancelado o no disponible)");
+          bioSwitch.checked = false;
+          return;
+        }
+        toast("Face ID / huella activado");
+      } else {
+        await disableBiometric();
+        bioSwitch.disabled = false;
+        toast("Face ID / huella desactivado");
       }
-      await removePin();
-      toast("PIN desactivado");
     });
   }
 }
 
 async function promptNewPin() {
   const pin = await promptModal({ title: "Elige un PIN", message: "Entre 4 y 6 números.", inputType: "password", inputMode: "numeric" });
-  if (pin === null) return;
+  if (pin === null) return false;
   if (!/^\d{4,6}$/.test(pin)) {
     toast("El PIN debe tener entre 4 y 6 números");
-    return;
+    return false;
   }
   const confirmPin = await promptModal({ title: "Repite el PIN", inputType: "password", inputMode: "numeric" });
   if (confirmPin !== pin) {
     toast("No coincide, inténtalo de nuevo");
-    return;
+    return false;
   }
   await setPin(pin);
   toast("PIN activado");
+  return true;
 }
 
 // ============================================================

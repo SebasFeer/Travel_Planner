@@ -11,7 +11,7 @@
 import { AI_COPILOT_ENDPOINT } from "./ai-copilot-config.js";
 import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
-import { h, toast, state, withTransition, renderApp } from "./app.js";
+import { h, toast, state, withTransition, renderApp, openProUpsellSheet } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
 import { isPro } from "./pro.js";
 
@@ -21,7 +21,7 @@ async function checkAiCopilotAccess() {
     return false;
   }
   if (!(await isPro())) {
-    toast("El Copiloto IA es una función Pro (actívala en Ajustes → Modo desarrollador mientras la probamos)");
+    openProUpsellSheet("El Copiloto de viajes con IA es una función Pro.");
     return false;
   }
   return true;

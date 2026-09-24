@@ -99,8 +99,10 @@
 <!-- jsPDF: genera el PDF del mapa (sección Mapa → "Guardar en PDF") -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
-<!-- QRCode: genera el QR del código para compartir un viaje -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<!-- QRCode: genera el QR del código para compartir un viaje. Ojo: el
+     paquete "qrcode" de npm no publica un build minificado
+     (qrcode.min.js no existe ahí), así que se usa el bundle normal. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.js"></script>
 <!-- jsQR: lee QR desde la cámara al unirse a un viaje compartido -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
