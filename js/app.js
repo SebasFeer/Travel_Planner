@@ -1414,7 +1414,7 @@ async function renderHome() {
       <button class="ai-plan-cta" id="btn-ai-plan-trip">
         <span class="ai-plan-cta-art">✨</span>
         <span class="ai-plan-cta-text">
-          <strong>${t("ai_plan_title")}</strong>
+          <strong>${t("ai_plan_title")} · Pro</strong>
           <span>${t("ai_plan_subtitle")}</span>
         </span>
         <span class="ai-plan-cta-arrow">${icon("chevron")}</span>
@@ -2334,9 +2334,10 @@ async function openDevModeSheet() {
       <h2 class="modal-title">Modo desarrollador</h2>
       <p style="color:var(--muted); font-size:12.5px; line-height:1.6;">
         Interruptor temporal para probar las funciones Pro (compartir
-        viaje, avisos de vuelo) sin tener todavía cobros de verdad
-        integrados. Cuando se active el pago real, esto se sustituirá
-        por la confirmación de la compra.
+        viaje, avisos de vuelo, copiloto de IA, ordenar ruta, viajes
+        ilimitados...) sin tener todavía cobros de verdad integrados.
+        Cuando se active el pago real, esto se sustituirá por la
+        confirmación de la compra.
       </p>
       <div class="modal-actions" style="margin-top:8px;">
         <button class="btn ${pro ? "btn-danger" : "btn-primary"}" id="dev-pro-toggle">
@@ -2726,7 +2727,7 @@ servicios públicos de terceros: OpenStreetMap/Nominatim, OSRM y Overpass
 Estas consultas no incluyen tu identidad ni el resto de tus datos, solo el
 texto necesario para la búsqueda.
 
-4. Copiloto de viajes con IA
+4. Copiloto de viajes con IA (función Pro)
 Al generar un itinerario con IA, el destino, las fechas y las preferencias
 que escribes se envían a una función de servidor propia (Cloud Function),
 que a su vez se los pasa a la API de Anthropic (Claude) para redactar la
