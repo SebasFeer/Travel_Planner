@@ -2,12 +2,17 @@
 // lock.js — Bloqueo local de la app con PIN (sin servidor).
 // Protege de que alguien coja tu móvil y abra la app directamente.
 //
-// El PIN es OBLIGATORIO: si todavía no hay uno configurado, se
-// fuerza a crearlo antes de entrar (en vez de dejar pasar sin pedir
-// nada). A partir de ahí, se pide en cada apertura de la app.
+// El PIN es OPCIONAL, apagado por defecto: hasta que el usuario no
+// lo activa a propósito desde Ajustes → Configuración → Seguridad,
+// la app abre directo, sin pedir nada. Una vez activado, se pide en
+// cada apertura y al volver de segundo plano — y desde ahí también
+// se puede sumar Face ID/huella (WebAuthn) como atajo, o quitar el
+// PIN del todo cuando se quiera.
 // ============================================================
 
 import { Data } from "./db.js";
+
+const BIOMETRIC_CRED_KEY = "biometric_credential_id";
 
 async function sha256(text) {
   const data = new TextEncoder().encode(text);
@@ -29,6 +34,9 @@ async function setPin(pin) {
 
 async function removePin() {
   await Data.settingDelete("pin_hash");
+  // Sin PIN no tiene sentido guardar un atajo biométrico para
+  // desbloquearlo — se limpia también, silenciosamente.
+  await disableBiometric();
 }
 
 async function verifyPin(pin) {
@@ -36,6 +44,95 @@ async function verifyPin(pin) {
   if (!hash) return true;
   const attempt = await sha256(pin);
   return attempt === hash;
+}
+
+// ------------------------------------------------------------
+// DESBLOQUEO BIOMÉTRICO (Face ID / huella) — WebAuthn con
+// autenticador de plataforma. Solo puede activarse con un PIN ya
+// puesto (el PIN sigue siendo el respaldo si la biometría falla o
+// no está disponible ese día).
+//
+// Ojo con lo que esto es y lo que NO es: al no haber ningún servidor
+// propio para esto (es 100% local, como el PIN), no hay una
+// verificación criptográfica real de la firma que devuelve el
+// autenticador — solo comprobamos que el propio navegador/sistema
+// operativo completó el gesto biométrico sin error. Eso ya es
+// suficiente para el objetivo real (que quien desbloquea el
+// teléfono sea su dueño), exactamente igual de "local" que el PIN
+// mismo — no cambia lo que se guarda ni protege.
+// ------------------------------------------------------------
+
+function bufToBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function base64ToBuf(b64) {
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+/** true si este navegador/dispositivo puede hacer Face ID/huella. */
+async function isBiometricAvailable() {
+  try {
+    if (!window.PublicKeyCredential) return false;
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch (err) {
+    return false;
+  }
+}
+
+async function isBiometricEnabled() {
+  const id = await Data.settingGet(BIOMETRIC_CRED_KEY);
+  return !!id;
+}
+
+/** Da de alta Face ID/huella como atajo. Devuelve true si el usuario
+ * completó el gesto biométrico y quedó guardado; false si lo canceló
+ * o falló (nunca lanza — un fallo aquí no debe romper el resto). */
+async function enableBiometric() {
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const userId = crypto.getRandomValues(new Uint8Array(16));
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: "TravelPlanner" },
+        user: { id: userId, name: "travelplanner-local", displayName: "TravelPlanner" },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+        timeout: 60000,
+        attestation: "none",
+      },
+    });
+    if (!cred) return false;
+    await Data.settingSet(BIOMETRIC_CRED_KEY, bufToBase64(cred.rawId));
+    return true;
+  } catch (err) {
+    return false; // cancelado, no soportado, o falló el sensor
+  }
+}
+
+async function disableBiometric() {
+  await Data.settingDelete(BIOMETRIC_CRED_KEY);
+}
+
+/** Pide Face ID/huella para el atajo ya dado de alta. true si el
+ * gesto se completó correctamente. */
+async function verifyBiometric() {
+  try {
+    const id = await Data.settingGet(BIOMETRIC_CRED_KEY);
+    if (!id) return false;
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ id: base64ToBuf(id), type: "public-key" }],
+        userVerification: "required",
+        timeout: 60000,
+      },
+    });
+    return !!assertion;
+  } catch (err) {
+    return false; // cancelado, o falló el sensor — se cae al PIN
+  }
 }
 
 // ============================================================
@@ -46,7 +143,7 @@ function buildOverlaySkeleton(messageText) {
   const overlay = document.createElement("div");
   overlay.id = "lock-overlay";
   overlay.style.cssText = `
-    position: fixed; inset: 0; z-index: 999; background: var(--overlay-bg, #171436);
+    position: fixed; inset: 0; z-index: 1001; background: var(--overlay-bg, #171436);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 22px; color: #f5f0e1; font-family: "IBM Plex Mono", monospace;
   `;
@@ -54,6 +151,7 @@ function buildOverlaySkeleton(messageText) {
   overlay.innerHTML = `
     <div style="font-size:40px;">🔒</div>
     <div id="lock-msg" style="font-size:14px; opacity:0.7;">${messageText}</div>
+    <div id="lock-biometric" style="display:none;"></div>
     <div id="lock-dots" style="display:flex; gap:14px;"></div>
     <div id="lock-error" style="color:#ff8b7f; font-size:12.5px; height:16px;"></div>
     <div id="lock-keypad" style="display:grid; grid-template-columns:repeat(3,64px); gap:14px;"></div>
@@ -147,12 +245,35 @@ function attachKeypad(overlay, onSubmit) {
 function renderLockScreen(onSuccess) {
   const overlay = buildOverlaySkeleton("Introduce tu PIN");
   const errorEl = overlay.querySelector("#lock-error");
+  const bioEl = overlay.querySelector("#lock-biometric");
+
+  let unlocked = false;
+  function unlock() {
+    if (unlocked) return;
+    unlocked = true;
+    overlay.remove();
+    onSuccess();
+  }
+
+  isBiometricEnabled().then(async (enabled) => {
+    if (!enabled || unlocked) return;
+    bioEl.style.display = "block";
+    bioEl.innerHTML = `<button class="btn btn-secondary" id="lock-bio-btn" style="font-size:13px;">🔓 Usar Face ID / huella</button>`;
+    const bioBtn = bioEl.querySelector("#lock-bio-btn");
+    async function tryBiometric() {
+      const ok = await verifyBiometric();
+      if (ok) unlock();
+      // Si falla o lo cancela, no se muestra error: simplemente se
+      // queda en la pantalla del PIN como respaldo.
+    }
+    bioBtn.addEventListener("click", tryBiometric);
+    tryBiometric(); // se intenta solo al mostrar la pantalla
+  });
 
   attachKeypad(overlay, async (entered, { clearEntry }) => {
     const ok = await verifyPin(entered);
     if (ok) {
-      overlay.remove();
-      onSuccess();
+      unlock();
     } else {
       errorEl.textContent = "PIN incorrecto";
       clearEntry();
@@ -161,63 +282,16 @@ function renderLockScreen(onSuccess) {
   });
 }
 
-// ============================================================
-// PANTALLA DE CREACIÓN DE PIN (todavía no hay ninguno guardado)
-// Obligatoria: no hay forma de saltársela.
-// ============================================================
-
-function renderSetupScreen(onDone) {
-  const overlay = buildOverlaySkeleton("Crea un PIN para esta app (4-6 dígitos)");
-  const msgEl = overlay.querySelector("#lock-msg");
-  const errorEl = overlay.querySelector("#lock-error");
-
-  let stage = "create"; // "create" -> "confirm"
-  let firstPin = "";
-
-  attachKeypad(overlay, async (entered, { clearEntry }) => {
-    if (entered.length < 4) {
-      errorEl.textContent = "Mínimo 4 dígitos";
-      shake(overlay);
-      return;
-    }
-
-    if (stage === "create") {
-      firstPin = entered;
-      stage = "confirm";
-      errorEl.textContent = "";
-      msgEl.textContent = "Repite el PIN para confirmarlo";
-      clearEntry();
-      return;
-    }
-
-    // stage === "confirm"
-    if (entered !== firstPin) {
-      errorEl.textContent = "No coincide, empieza de nuevo";
-      stage = "create";
-      firstPin = "";
-      msgEl.textContent = "Crea un PIN para esta app (4-6 dígitos)";
-      clearEntry();
-      shake(overlay);
-      return;
-    }
-
-    await setPin(entered);
-    overlay.remove();
-    onDone();
-  });
-}
-
 /**
- * Punto de entrada al arrancar la app. El PIN es obligatorio:
- * - Si ya hay uno guardado, pide desbloquear con él.
- * - Si todavía no hay ninguno, obliga a crearlo antes de continuar.
- * En ambos casos, `onReady` solo se llama cuando el acceso queda
- * confirmado.
+ * Punto de entrada al arrancar la app. El PIN es opcional: si el
+ * usuario nunca lo activó desde Ajustes → Configuración → Seguridad,
+ * se entra directo, sin pedir nada. Solo se muestra el candado
+ * cuando ya hay un PIN guardado.
  */
 async function guardOnLaunch(onReady) {
   const active = await isPinSet();
   if (!active) {
-    renderSetupScreen(onReady);
+    onReady();
     return;
   }
   renderLockScreen(onReady);
@@ -225,7 +299,8 @@ async function guardOnLaunch(onReady) {
 
 /**
  * Vuelve a bloquear la app cada vez que se oculta y se vuelve a
- * mostrar (cambiar de app, apagar pantalla, etc.).
+ * mostrar (cambiar de app, apagar pantalla, etc.) — pero solo si el
+ * usuario activó el PIN; si no, no hace nada.
  */
 function installBackgroundLock() {
   let hiddenAt = null;
@@ -237,8 +312,21 @@ function installBackgroundLock() {
     if (hiddenAt === null) return;
     hiddenAt = null;
     if (document.getElementById("lock-overlay")) return; // ya bloqueada
+    if (!(await isPinSet())) return; // PIN desactivado: no hay nada que pedir
     renderLockScreen(() => {});
   });
 }
 
-export { isPinSet, setPin, removePin, verifyPin, guardOnLaunch, installBackgroundLock };
+export {
+  isPinSet,
+  setPin,
+  removePin,
+  verifyPin,
+  guardOnLaunch,
+  installBackgroundLock,
+  isBiometricAvailable,
+  isBiometricEnabled,
+  enableBiometric,
+  disableBiometric,
+  verifyBiometric,
+};
