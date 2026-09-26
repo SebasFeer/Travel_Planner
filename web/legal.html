@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Legal — Viajoo</title>
+<meta name="description" content="Aviso legal, privacidad, términos de uso, cookies y demás documentos legales de Viajoo." />
+<meta name="theme-color" content="#6c5ce7" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="stylesheet" href="css/web.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../icons/icon-192.png" alt="" />Viajoo</a>
+    <nav class="nav">
+      <a class="hide-sm" href="./#funciones">Funciones</a>
+      <a href="mis-viajes.html">Mis viajes</a>
+      <a class="btn btn-primary btn-sm" href="../">Abrir app</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <h1>Información legal</h1>
+    <p>Los mismos documentos que encontrarás dentro de la app, en Ajustes → Legal.</p>
+  </div>
+  <div class="legal-layout">
+    <nav class="legal-toc" id="toc"></nav>
+    <div id="docs"></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© <span data-year></span> Viajoo</span>
+    <nav>
+      <a href="./">Inicio</a>
+      <a href="../">Abrir app</a>
+      <a href="mis-viajes.html">Mis viajes</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="module">
+  import { LEGAL_DOCS } from "./js/legal-texts.js";
+
+  const toc = document.getElementById("toc");
+  const docs = document.getElementById("docs");
+
+  for (const doc of LEGAL_DOCS) {
+    const link = document.createElement("a");
+    link.href = `#${doc.id}`;
+    link.textContent = doc.title;
+    toc.appendChild(link);
+
+    const art = document.createElement("article");
+    art.className = "legal-doc card";
+    art.id = doc.id;
+    const h = document.createElement("h2");
+    h.textContent = doc.title;
+    const body = document.createElement("div");
+    body.className = "body";
+    body.textContent = doc.text;
+    art.append(h, body);
+    docs.appendChild(art);
+  }
+
+  document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new Date().getFullYear()));
+
+  // Resalta en el índice el documento que se está leyendo.
+  const links = [...toc.querySelectorAll("a")];
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        links.forEach((a) => a.classList.toggle("active", a.hash === `#${e.target.id}`));
+      }
+    },
+    { rootMargin: "-90px 0px -60% 0px" }
+  );
+  docs.querySelectorAll(".legal-doc").forEach((el) => io.observe(el));
+
+  // Los artículos se crean después de cargar, así que el salto a
+  // #privacidad (por ejemplo) hay que hacerlo a mano.
+  if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+</script>
+</body>
+</html>
