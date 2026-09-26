@@ -11,7 +11,7 @@
 import { AI_COPILOT_ENDPOINT } from "./ai-copilot-config.js";
 import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
-import { h, toast, state, withTransition, renderApp, openRegisterInviteSheet, hasProAccess } from "./app.js";
+import { h, toast, state, withTransition, renderApp, openRegisterInviteSheet, hasProAccess, checkPaidQueryLimit, bumpPaidQueryCount, PAID_QUERY_LIMIT } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
 
 async function checkAiCopilotAccess() {
@@ -21,6 +21,15 @@ async function checkAiCopilotAccess() {
   }
   if (!(await hasProAccess())) {
     openRegisterInviteSheet("El Copiloto de viajes con IA requiere tener una cuenta.");
+    return false;
+  }
+  if (
+    !isAiCopilotMockEnabled() &&
+    !(await checkPaidQueryLimit(
+      "ai",
+      `Ya usaste tus ${PAID_QUERY_LIMIT} usos gratis del Copiloto de viajes con IA.`
+    ))
+  ) {
     return false;
   }
   return true;
@@ -101,6 +110,7 @@ async function requestItinerary(payload) {
       toast(data.error || "El Copiloto IA no ha podido generar el plan.");
       return null;
     }
+    if (!useMock) await bumpPaidQueryCount("ai");
     return data;
   } catch (err) {
     toast("Sin conexión con el Copiloto IA.");
