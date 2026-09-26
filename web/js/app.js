@@ -119,6 +119,51 @@ function confirmBox(text, okLabel = "Eliminar") {
   });
 }
 
+/**
+ * Ventana genérica para las herramientas (compartir, copiloto, divisas…).
+ * html: contenido; onMount(root, close) para conectar eventos.
+ * Devuelve { root, close }.
+ */
+function openSheet({ title, html = "", wide = false, onMount, onClose }) {
+  const back = document.createElement("div");
+  back.className = "modal-back";
+  back.innerHTML = `
+    <div class="modal sheet ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <div class="sheet-head"><h2>${esc(title)}</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">✕</button></div>
+      <div class="sheet-body">${html}</div>
+    </div>`;
+  const close = () => {
+    if (!back.isConnected) return;
+    back.remove();
+    document.removeEventListener("keydown", onKey);
+    onClose?.();
+  };
+  const onKey = (e) => e.key === "Escape" && close();
+  document.addEventListener("keydown", onKey);
+  back.addEventListener("click", (e) => e.target === back && close());
+  $("[data-close]", back).addEventListener("click", close);
+  document.body.appendChild(back);
+  const root = $(".sheet-body", back);
+  onMount?.(root, close);
+  return { root, close };
+}
+
+// Contexto que reciben las herramientas de web/js/features/*.js. Se
+// cargan bajo demanda (import dinámico) y no importan este archivo,
+// así no hay dependencias circulares.
+function featureCtx() {
+  return { Data, state, esc, pretty, toast, confirmBox, openForm, openSheet, render, go, saveItem, todayString, money };
+}
+async function feature(name) {
+  try {
+    return await import(`./features/${name}.js`);
+  } catch (e) {
+    console.error(e);
+    toast("No se pudo cargar esta función (revisa tu conexión)");
+    return null;
+  }
+}
+
 // ------------------------------------------------------------
 // Formularios (mismos campos que la app, ver sections.js/app.js)
 // ------------------------------------------------------------
@@ -431,6 +476,8 @@ function headerUser() {
       <button class="avatar" id="avatar" type="button" aria-haspopup="menu" aria-label="Tu cuenta">${esc(initial)}</button>
       <div class="menu" id="menu" role="menu" hidden>
         <div class="who"><span class="label">Sesión iniciada</span><b>${esc(u.displayName || "")}</b><span class="muted small">${esc(u.email || "")}</span></div>
+        <button type="button" data-act="settings" role="menuitem">⚙️ Ajustes</button>
+        <button type="button" data-act="join" role="menuitem">🔗 Unirme a un viaje compartido</button>
         <button type="button" data-act="sync" role="menuitem">⟳ Sincronizar ahora</button>
         <a href="./" role="menuitem">Ir a la web de Viajoo</a>
         <a href="legal.html#privacidad" role="menuitem">Privacidad</a>
@@ -447,6 +494,8 @@ function headerUser() {
       await signOutUser();
       toast("Sesión cerrada");
     }
+    if (act === "settings") (await feature("settings"))?.openSettings(featureCtx());
+    if (act === "join") (await feature("share"))?.openJoin(featureCtx());
     if (act === "sync") {
       toast("Sincronizando…");
       const res = await pullOrPush();
@@ -491,10 +540,11 @@ async function renderHome() {
         <span class="label">${firstName ? `Hola, ${esc(firstName)}` : "Tu cuenta"}</span>
         <h1>Mis viajes</h1>
       </div>
-      <button class="btn btn-primary" data-new-trip type="button">+ Nuevo viaje</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary" data-ai-trip type="button">✨ Planificar con IA</button><button class="btn btn-primary" data-new-trip type="button">+ Nuevo viaje</button></div>
     </div>
     ${body}`;
   app.querySelectorAll("[data-new-trip]").forEach((b) => b.addEventListener("click", () => openTripForm()));
+  app.querySelectorAll("[data-ai-trip]").forEach((b) => b.addEventListener("click", async () => (await feature("copilot"))?.openNewTripAI(featureCtx())));
   trips.forEach(ensureTripPhoto);
 }
 
@@ -563,6 +613,14 @@ async function renderTrip(trip) {
         <button class="btn btn-glass btn-sm" type="button" data-edit-trip>Editar viaje</button>
       </div>
     </div>
+    <div class="toolbar" role="toolbar" aria-label="Herramientas del viaje">
+      <button class="tool" type="button" data-tool="copilot"><span>✨</span>Copiloto IA</button>
+      <button class="tool" type="button" data-tool="share"><span>🔗</span>Compartir</button>
+      <button class="tool" type="button" data-tool="discover"><span>🧭</span>Descubrir cerca</button>
+      <button class="tool" type="button" data-tool="currency"><span>💱</span>Divisas</button>
+      <button class="tool" type="button" data-tool="pdf"><span>📄</span>Exportar PDF</button>
+      <button class="tool" type="button" data-tool="ics"><span>📅</span>Añadir al calendario</button>
+    </div>
     <nav class="tabs" role="tablist">
       ${TABS.map((t) => {
         const n = lists[t.id] ? lists[t.id].length : "";
@@ -572,6 +630,18 @@ async function renderTrip(trip) {
     <div id="tab-body"></div>`;
 
   $("[data-edit-trip]", app).addEventListener("click", () => openTripForm(trip));
+  app.querySelectorAll("[data-tool]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const ctx = featureCtx();
+      const t = b.dataset.tool;
+      if (t === "copilot") (await feature("copilot"))?.openCopilot(trip, ctx);
+      if (t === "share") (await feature("share"))?.openShare(trip, ctx);
+      if (t === "discover") (await feature("discover"))?.openDiscover(trip, ctx);
+      if (t === "currency") (await feature("currency"))?.openCurrency(trip, ctx);
+      if (t === "pdf") (await feature("export"))?.exportPdf(trip, ctx);
+      if (t === "ics") (await feature("export"))?.exportIcs(trip, ctx);
+    })
+  );
   app.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => go("trip", trip.id, b.dataset.tab)));
 
   const sel = $(".tab[aria-selected=true]", app);
@@ -687,12 +757,19 @@ function renderFlights(body, trip, L) {
               whenHtml(f.date, f.time),
               esc([f.origin, f.destination].filter(Boolean).join(" → ") || "Vuelo"),
               esc([f.airline, f.return_date ? `vuelta ${pretty(f.return_date)}` : "", f.notes].filter(Boolean).join(" · ")),
-              `<span class="mono">${esc(f.flight_number || "")}</span>`
+              `<span class="mono">${esc(f.flight_number || "")}</span>${f.flight_number ? ` <button class="chip-btn sm" type="button" data-status="${f.id}">Estado</button>` : ""}`
             )
           )
           .join("")}</div>`
       : emptyInline("Aún no hay vuelos en este viaje.", "flights", "Añadir vuelo"));
   wireRows(body, "flights", items);
+  body.querySelectorAll("[data-status]").forEach((b) =>
+    b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const f = items.find((i) => String(i.id) === b.dataset.status);
+      if (f) (await feature("flight-status"))?.openFlightStatus(f, featureCtx());
+    })
+  );
 }
 
 function renderHotels(body, trip, L) {
@@ -947,6 +1024,9 @@ function openExpenseForm(trip, e, companions) {
     if (hasCompanions) {
       values.paid_by = $("#exp-paid-by", back).value;
       values.split_with = [...back.querySelectorAll("[data-split]:checked")].map((c) => c.dataset.split);
+    } else {
+      values.paid_by = EXPENSE_ME_ID;
+      values.split_with = [];
     }
     close();
     if (e) await Data.put("expenses", { ...e, ...values });
@@ -1344,6 +1424,12 @@ function showLoading() {
 }
 
 async function start() {
+  // Mismo ajuste de tema que la app (theme_pref: light | dark | system).
+  Data.settingGet("theme_pref")
+    .then((p) => {
+      if (p === "light" || p === "dark") document.documentElement.dataset.theme = p;
+    })
+    .catch(() => {});
   readHash();
   showLoading();
   enableAutoSync();
