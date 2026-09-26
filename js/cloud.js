@@ -199,10 +199,15 @@ function friendlyAuthError(err) {
   return map[code] || NO_CONNECTION_MSG;
 }
 
-async function signUp(email, password) {
+async function signUp(email, password, displayName) {
   try {
     const s = await ensureFirebase();
     const cred = await s.authMod.createUserWithEmailAndPassword(s.auth, email, password);
+    if (displayName) {
+      // A lo mejor esfuerzo: si esto falla, la cuenta ya se creó bien
+      // igualmente, solo se queda sin nombre para el saludo.
+      await s.authMod.updateProfile(cred.user, { displayName }).catch(() => {});
+    }
     return { user: cred.user, error: null };
   } catch (err) {
     return { user: null, error: friendlyAuthError(err) };
@@ -294,14 +299,53 @@ async function pushToCloud() {
     const user = s.auth.currentUser;
     if (!user) return { ok: false, error: "No has iniciado sesión." };
     const dump = await Data.exportAll();
-    await s.storeMod.setDoc(s.storeMod.doc(s.db, "users", user.uid), {
-      data: JSON.stringify(dump),
-      updatedAt: s.storeMod.serverTimestamp(),
-    });
+    // { merge: true }: este documento también guarda campos de perfil
+    // aparte (ver saveBirthDate) — sin merge, cada subida los borraría.
+    await s.storeMod.setDoc(
+      s.storeMod.doc(s.db, "users", user.uid),
+      {
+        data: JSON.stringify(dump),
+        updatedAt: s.storeMod.serverTimestamp(),
+      },
+      { merge: true }
+    );
     await Data.settingSet(SYNC_PUSHED_KEY, Date.now()).catch(() => {});
     return { ok: true };
   } catch (err) {
     return { ok: false, error: friendlyAuthError(err) };
+  }
+}
+
+/**
+ * Guarda la fecha de nacimiento en el documento de la cuenta en la
+ * nube (aparte del volcado de viajes de pushToCloud), para que
+ * viaje con la cuenta a cualquier dispositivo. Se usa para
+ * personalizar el saludo y, más adelante, para felicitar el
+ * cumpleaños. A lo mejor esfuerzo: si falla, simplemente no queda
+ * guardada y el resto de la app sigue igual.
+ */
+async function saveBirthDate(birthDate) {
+  if (!birthDate) return;
+  try {
+    const s = await ensureFirebase();
+    const user = s.auth.currentUser;
+    if (!user) return;
+    await s.storeMod.setDoc(s.storeMod.doc(s.db, "users", user.uid), { birthDate }, { merge: true });
+  } catch (err) {
+    // sin red o sin sesión: se puede reintentar más adelante
+  }
+}
+
+/** Lee la fecha de nacimiento guardada en la cuenta, si la hay. */
+async function getBirthDate() {
+  try {
+    const s = await ensureFirebase();
+    const user = s.auth.currentUser;
+    if (!user) return null;
+    const snap = await s.storeMod.getDoc(s.storeMod.doc(s.db, "users", user.uid));
+    return snap.exists() ? snap.data().birthDate || null : null;
+  } catch (err) {
+    return null;
   }
 }
 
@@ -522,6 +566,8 @@ export {
   pushToCloud,
   pullFromCloud,
   cloudHasBackup,
+  saveBirthDate,
+  getBirthDate,
   enableAutoSync,
   syncOnLaunch,
   shareTrip,

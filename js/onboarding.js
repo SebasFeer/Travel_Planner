@@ -11,7 +11,7 @@
 import { Data } from "./db.js";
 import { icon, brandMark, googleIcon } from "./icons.js";
 import { t as tr } from "./i18n.js";
-import { signUp, signInWithGoogle, pushToCloud } from "./cloud.js";
+import { signUp, signIn, signInWithGoogle, pushToCloud, saveBirthDate } from "./cloud.js";
 import { afterLogin } from "./app.js";
 
 const ONBOARDING_KEY = "onboarding_seen";
@@ -75,6 +75,14 @@ function renderOnboarding(onDone) {
         <div class="onboarding-auth-form">
           <button type="button" class="btn btn-secondary" id="ob-google">${googleIcon()} ${tr("auth_google_continue")}</button>
           <div class="auth-divider"><span>${tr("auth_or_email")}</span></div>
+          <div class="field" id="ob-firstname-field">
+            <label>${tr("auth_firstname_label")}</label>
+            <input type="text" id="ob-firstname" autocomplete="given-name" />
+          </div>
+          <div class="field" id="ob-lastname-field">
+            <label>${tr("auth_lastname_label")}</label>
+            <input type="text" id="ob-lastname" autocomplete="family-name" />
+          </div>
           <div class="field">
             <label>${tr("auth_email_label")}</label>
             <input type="email" id="ob-email" autocomplete="email" />
@@ -83,8 +91,13 @@ function renderOnboarding(onDone) {
             <label>${tr("auth_password_label")}</label>
             <input type="password" id="ob-password" autocomplete="new-password" placeholder="${tr("auth_password_hint")}" />
           </div>
+          <div class="field" id="ob-birthdate-field">
+            <label>${tr("auth_birthdate_label")}</label>
+            <input type="date" id="ob-birthdate" autocomplete="bday" />
+          </div>
           <p id="ob-auth-error" style="color:#ff8b7f; font-size:12.5px; min-height:16px; text-align:left;"></p>
           <button type="button" class="btn btn-primary" id="ob-create-account">${tr("ob_create_account")}</button>
+          <button type="button" class="btn btn-ghost" id="ob-toggle-mode">${tr("ob_toggle_to_login")}</button>
           <button type="button" class="btn btn-ghost" id="ob-skip-auth">${tr("ob_skip_auth")}</button>
         </div>
       </section>
@@ -176,15 +189,33 @@ function renderOnboarding(onDone) {
   overlay.querySelector("#ob-skip").addEventListener("click", finish);
 
   // ---------- Pantalla de registro (la última) ----------
+  // Por defecto es "crear cuenta" (lo normal al abrir la app por
+  // primera vez), pero si el usuario ya tiene cuenta de antes (p. ej.
+  // cambió a un móvil nuevo) puede pasar a "iniciar sesión" con el
+  // enlace de abajo, para bajar sus viajes en vez de crear una cuenta
+  // distinta sin darse cuenta.
   const authGoogleBtn = overlay.querySelector("#ob-google");
+  const authFirstNameEl = overlay.querySelector("#ob-firstname");
+  const authLastNameEl = overlay.querySelector("#ob-lastname");
   const authEmailEl = overlay.querySelector("#ob-email");
   const authPasswordEl = overlay.querySelector("#ob-password");
+  const authBirthdateEl = overlay.querySelector("#ob-birthdate");
   const authErrorEl = overlay.querySelector("#ob-auth-error");
   const authCreateBtn = overlay.querySelector("#ob-create-account");
+  const authToggleBtn = overlay.querySelector("#ob-toggle-mode");
+  // Nombre/apellido son para dar de alta la cuenta con email — al
+  // iniciar sesión con una cuenta ya existente no hacen falta (ya se
+  // guardaron cuando se creó). La fecha de nacimiento sí se pide en
+  // los dos casos: si alguien inicia sesión con Google por primera
+  // vez en la app, Google no nos da su cumpleaños, así que se
+  // aprovecha este mismo hueco para pedirlo una vez.
+  const signupOnlyFields = [overlay.querySelector("#ob-firstname-field"), overlay.querySelector("#ob-lastname-field")];
+  let loginMode = false;
 
   authGoogleBtn.addEventListener("click", async () => {
     authErrorEl.textContent = "";
     authGoogleBtn.disabled = true;
+    const birthDate = authBirthdateEl.value || null;
     const { user, error, cancelled, redirecting } = await signInWithGoogle();
     if (redirecting) return; // la página está navegando a Google
     authGoogleBtn.disabled = false;
@@ -192,17 +223,39 @@ function renderOnboarding(onDone) {
     if (error) { authErrorEl.textContent = error; return; }
     await finish();
     await afterLogin(user);
+    // El nombre y apellido ya vienen solos de la cuenta de Google
+    // (Firebase los rellena en displayName); solo falta guardar la
+    // fecha de nacimiento si la escribió.
+    if (birthDate) await saveBirthDate(birthDate);
+  });
+
+  authToggleBtn.addEventListener("click", () => {
+    loginMode = !loginMode;
+    authErrorEl.textContent = "";
+    authCreateBtn.textContent = loginMode ? tr("ob_login") : tr("ob_create_account");
+    authToggleBtn.textContent = loginMode ? tr("ob_toggle_to_signup") : tr("ob_toggle_to_login");
+    signupOnlyFields.forEach((el) => { if (el) el.style.display = loginMode ? "none" : ""; });
   });
 
   authCreateBtn.addEventListener("click", async () => {
     authErrorEl.textContent = "";
-    const { user, error } = await signUp(authEmailEl.value.trim(), authPasswordEl.value);
+    if (loginMode) {
+      const { user, error } = await signIn(authEmailEl.value.trim(), authPasswordEl.value);
+      if (error) { authErrorEl.textContent = error; return; }
+      await finish();
+      await afterLogin(user);
+      return;
+    }
+    const displayName = [authFirstNameEl.value.trim(), authLastNameEl.value.trim()].filter(Boolean).join(" ");
+    const birthDate = authBirthdateEl.value || null;
+    const { user, error } = await signUp(authEmailEl.value.trim(), authPasswordEl.value, displayName || undefined);
     if (error) { authErrorEl.textContent = error; return; }
     await finish();
     // Cuenta recién creada: sube lo que ya haya en este dispositivo
     // (normalmente nada todavía, pero por si ya se creó algún viaje
     // antes de registrarse).
     await pushToCloud();
+    if (birthDate) await saveBirthDate(birthDate);
   });
 
   overlay.querySelector("#ob-skip-auth").addEventListener("click", finish);

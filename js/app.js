@@ -21,6 +21,8 @@ import {
   pushToCloud,
   pullFromCloud,
   cloudHasBackup,
+  saveBirthDate,
+  getBirthDate,
   shareTrip,
   joinSharedTrip,
   refreshSharedTrip,
@@ -1563,7 +1565,11 @@ async function renderHome() {
     : `<p style="color:var(--muted); font-size:13px; padding:4px 2px; text-shadow:var(--text-halo);">${t("no_upcoming_events")}</p>`;
 
   const hour = new Date().getHours();
-  const greetWord = hour < 6 ? t("greet_night") : hour < 13 ? t("greet_morning") : hour < 21 ? t("greet_afternoon") : t("greet_night");
+  const loggedInUser = currentUser();
+  const firstName = loggedInUser && loggedInUser.displayName ? loggedInUser.displayName.trim().split(/\s+/)[0] : null;
+  const greetWord = firstName
+    ? t("greet_hello_name", { name: escapeHtml(firstName) })
+    : hour < 6 ? t("greet_night") : hour < 13 ? t("greet_morning") : hour < 21 ? t("greet_afternoon") : t("greet_night");
 
   root.innerHTML = h`
     <div class="hero">
@@ -2396,6 +2402,19 @@ function renderAuthForm() {
       <div class="modal-actions">
         <button class="btn btn-primary" id="auth-login">Iniciar sesión</button>
       </div>
+      <div class="auth-divider"><span>¿Cuenta nueva?</span></div>
+      <div class="field">
+        <label>${t("auth_firstname_label")}</label>
+        <input type="text" id="auth-firstname" autocomplete="given-name" />
+      </div>
+      <div class="field">
+        <label>${t("auth_lastname_label")}</label>
+        <input type="text" id="auth-lastname" autocomplete="family-name" />
+      </div>
+      <div class="field">
+        <label>${t("auth_birthdate_label")}</label>
+        <input type="date" id="auth-birthdate" autocomplete="bday" />
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="auth-signup">Crear cuenta nueva</button>
       </div>
@@ -2408,11 +2427,15 @@ function renderAuthForm() {
   const errorEl = overlay.querySelector("#auth-error");
   const emailEl = overlay.querySelector("#auth-email");
   const passEl = overlay.querySelector("#auth-password");
+  const firstNameEl = overlay.querySelector("#auth-firstname");
+  const lastNameEl = overlay.querySelector("#auth-lastname");
+  const birthdateEl = overlay.querySelector("#auth-birthdate");
 
   overlay.querySelector("#auth-google").addEventListener("click", async (e) => {
     errorEl.textContent = "";
     const btn = e.currentTarget;
     btn.disabled = true;
+    const birthDate = birthdateEl.value || null;
     const { user, error, cancelled, redirecting } = await signInWithGoogle();
     if (redirecting) return; // la página está navegando a Google, no hay más que hacer aquí
     btn.disabled = false;
@@ -2420,6 +2443,9 @@ function renderAuthForm() {
     if (error) { errorEl.textContent = error; return; }
     overlay.remove();
     await afterLogin(user);
+    // El nombre ya viene de la cuenta de Google; solo falta la fecha
+    // de nacimiento, que Google no comparte, si la escribió.
+    if (birthDate) await saveBirthDate(birthDate);
   });
 
   overlay.querySelector("#auth-login").addEventListener("click", async () => {
@@ -2432,17 +2458,27 @@ function renderAuthForm() {
 
   overlay.querySelector("#auth-signup").addEventListener("click", async () => {
     errorEl.textContent = "";
-    const { user, error } = await signUp(emailEl.value.trim(), passEl.value);
+    const displayName = [firstNameEl.value.trim(), lastNameEl.value.trim()].filter(Boolean).join(" ");
+    const birthDate = birthdateEl.value || null;
+    const { user, error } = await signUp(emailEl.value.trim(), passEl.value, displayName || undefined);
     if (error) { errorEl.textContent = error; return; }
     overlay.remove();
     // Cuenta recién creada: subimos lo que ya haya en este dispositivo.
     toast("Cuenta creada, subiendo tus datos…");
     await pushToCloud();
+    if (birthDate) await saveBirthDate(birthDate);
     await renderApp();
   });
 }
 
 async function afterLogin(user) {
+  // A lo mejor esfuerzo: se guarda una copia local de la fecha de
+  // nacimiento (si la cuenta tiene una) para poder usarla más
+  // adelante (p. ej. felicitar el cumpleaños) sin depender de la red.
+  getBirthDate()
+    .then((birthDate) => birthDate && Data.settingSet("profile_birth_date", birthDate))
+    .catch(() => {});
+
   const hasBackup = await cloudHasBackup();
   if (!hasBackup) {
     toast("Sesión iniciada. Subiendo tus datos de este dispositivo…");
