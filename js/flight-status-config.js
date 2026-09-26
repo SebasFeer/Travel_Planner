@@ -16,6 +16,6 @@
 // nada — no rompen el resto de la app.
 // ============================================================
 
-const FLIGHT_STATUS_ENDPOINT = "";
+const FLIGHT_STATUS_ENDPOINT = "https://us-central1-travel-planner-e16e1.cloudfunctions.net/flightStatus";
 
 export { FLIGHT_STATUS_ENDPOINT };
