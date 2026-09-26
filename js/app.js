@@ -3088,6 +3088,44 @@ async function checkAndNotifyToday() {
 }
 
 // ============================================================
+// FELICITACIÓN DE CUMPLEAÑOS — usa la fecha de nacimiento guardada en
+// el perfil (ver saveBirthDate/profile_birth_date en cloud.js/afterLogin)
+// para saludar una vez al año, el día que toque. A propósito NO depende
+// del permiso de notificaciones del navegador (mucha gente no lo da):
+// el toast en pantalla lo ve todo el mundo con sesión iniciada; la
+// notificación del navegador es solo un extra para quien las activó.
+// ============================================================
+const BIRTHDAY_GREETED_KEY = "birthday_greeted_year";
+
+async function checkBirthday() {
+  try {
+    const user = currentUser();
+    if (!user) return; // solo tiene sentido con cuenta (es su fecha, no la del dispositivo)
+
+    const birthDate = await Data.settingGet("profile_birth_date");
+    if (!birthDate) return;
+    const [, month, day] = birthDate.split("-").map(Number);
+    if (!month || !day) return;
+
+    const now = new Date();
+    if (now.getMonth() + 1 !== month || now.getDate() !== day) return;
+
+    const alreadyGreeted = await Data.settingGet(BIRTHDAY_GREETED_KEY);
+    if (alreadyGreeted === now.getFullYear()) return;
+    await Data.settingSet(BIRTHDAY_GREETED_KEY, now.getFullYear());
+
+    const firstName = user.displayName ? user.displayName.trim().split(/\s+/)[0] : "";
+    const message = `🎉 ¡Feliz cumpleaños${firstName ? ", " + firstName : ""}! Que este año venga cargado de viajes.`;
+    toast(message);
+    if ("Notification" in window && Notification.permission === "granted" && (await Data.settingGet(NOTIF_KEY))) {
+      new Notification("Viajoo", { body: message });
+    }
+  } catch (err) {
+    // sin fecha guardada, sin sesión, o cualquier fallo: no pasa nada
+  }
+}
+
+// ============================================================
 // LEGAL — aviso legal (LSSI), privacidad y protección de datos,
 // términos de uso, propiedad intelectual, cookies, contacto y
 // reclamaciones, condiciones de suscripción, y licencias de
@@ -3701,7 +3739,7 @@ async function openProfileSheet() {
   });
 }
 
-export { openSettingsSheet, loadTheme, checkAndNotifyToday, installPullToRefresh, afterLogin };
+export { openSettingsSheet, loadTheme, checkAndNotifyToday, checkBirthday, installPullToRefresh, afterLogin };
 
 // ============================================================
 // DESLIZAR PARA RECARGAR (pull-to-refresh)
