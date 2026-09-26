@@ -26,6 +26,7 @@ import {
   syncOnLaunch,
 } from "../../js/cloud.js";
 import { findDestinationPhoto } from "../../js/photo.js";
+import { geocodeAll, routeBetween, optimizeRouteOrder } from "../../js/geocode.js";
 import { escapeHtml as esc, formatDatePretty, todayString, money, mapsQueryUrl } from "../../js/utils.js";
 
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -358,6 +359,8 @@ const TABS = [
   { id: "reservations", label: "Reservas", accent: "--c-reservations" },
   { id: "expenses", label: "Gastos", accent: "--c-expenses" },
   { id: "checklist", label: "Checklist", accent: "--c-checklist" },
+  { id: "calendar", label: "Calendario", accent: "--c-flights" },
+  { id: "map", label: "Mapa", accent: "--c-hotels" },
 ];
 
 function go(view, tripId, tab) {
@@ -562,7 +565,7 @@ async function renderTrip(trip) {
     </div>
     <nav class="tabs" role="tablist">
       ${TABS.map((t) => {
-        const n = t.id === "overview" ? "" : lists[t.id].length;
+        const n = lists[t.id] ? lists[t.id].length : "";
         return `<button class="tab" role="tab" type="button" data-tab="${t.id}" aria-selected="${state.tab === t.id}" style="--accent:var(${t.accent})"><i></i>${t.label}${n !== "" ? ` <span class="n">${n}</span>` : ""}</button>`;
       }).join("")}
     </nav>
@@ -571,8 +574,12 @@ async function renderTrip(trip) {
   $("[data-edit-trip]", app).addEventListener("click", () => openTripForm(trip));
   app.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => go("trip", trip.id, b.dataset.tab)));
 
+  const sel = $(".tab[aria-selected=true]", app);
+  const bar = $(".tabs", app);
+  if (sel && bar) bar.scrollLeft = sel.offsetLeft - (bar.clientWidth - sel.offsetWidth) / 2;
+
   const body = $("#tab-body", app);
-  const renderers = { overview: renderOverview, flights: renderFlights, hotels: renderHotels, itinerary: renderItinerary, transport: renderTransport, reservations: renderReservations, expenses: renderExpenses, checklist: renderChecklist };
+  const renderers = { overview: renderOverview, flights: renderFlights, hotels: renderHotels, itinerary: renderItinerary, transport: renderTransport, reservations: renderReservations, expenses: renderExpenses, checklist: renderChecklist, calendar: renderCalendar, map: renderMap };
   renderers[state.tab](body, trip, lists);
 }
 
@@ -1037,6 +1044,219 @@ function renderChecklist(body, trip, L) {
       render();
     })
   );
+}
+
+// --- Calendario mensual ----------------------------------------------
+const MONTHS_LONG = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const TRANSPORT_EMOJI = { Avión: "✈️", Tren: "🚆", Bus: "🚌", Coche: "🚗", Barco: "⛴️", Otro: "🚐" };
+let calCursor = null; // { tripId, year, month }
+
+function tripEvents(L) {
+  const ev = [];
+  const push = (date, time, text, color, tab) => date && ev.push({ date, time: time || "", text, color, tab });
+  L.flights.forEach((f) => push(f.date, f.time, `✈️ ${[f.origin, f.destination].filter(Boolean).join(" → ") || f.airline || "Vuelo"}`, "--c-flights", "flights"));
+  L.hotels.forEach((h) => {
+    push(h.check_in, h.check_in_time, `🏨 Entrada · ${h.name || "Hotel"}`, "--c-hotels", "hotels");
+    push(h.check_out, "", `🏨 Salida · ${h.name || "Hotel"}`, "--c-hotels", "hotels");
+  });
+  L.itinerary.forEach((a) => push(a.date, a.time, `📍 ${a.title}`, "--c-itinerary", "itinerary"));
+  L.transport.forEach((t) => push(t.date, t.time, `${TRANSPORT_EMOJI[t.type] || "🚗"} ${[t.origin, t.destination].filter(Boolean).join(" → ") || t.type || "Transporte"}`, "--c-transport", "transport"));
+  L.reservations.forEach((r) => push(r.date, r.time, `🎟️ ${r.name || r.type || "Reserva"}`, "--c-reservations", "reservations"));
+  return ev.sort(sortByDateTime);
+}
+
+function renderCalendar(body, trip, L) {
+  if (!calCursor || calCursor.tripId !== trip.id) {
+    const base = trip.start_date ? new Date(`${trip.start_date}T00:00:00`) : new Date();
+    calCursor = { tripId: trip.id, year: base.getFullYear(), month: base.getMonth() };
+  }
+  const { year, month } = calCursor;
+  const events = tripEvents(L);
+  const byDate = {};
+  events.forEach((e) => (byDate[e.date] = byDate[e.date] || []).push(e));
+  const startWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // lunes = 0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = todayString();
+
+  let cells = "";
+  for (let i = 0; i < startWeekday; i++) cells += `<div class="cal-cell empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${year}-${pad2(month + 1)}-${pad2(d)}`;
+    const list = byDate[iso] || [];
+    const inTrip = trip.start_date && trip.end_date && iso >= trip.start_date && iso <= trip.end_date;
+    cells += `
+      <div class="cal-cell ${inTrip ? "in-trip" : ""} ${iso === today ? "today" : ""}" data-date="${iso}">
+        <span class="d">${d}</span>
+        ${list
+          .slice(0, 3)
+          .map((e) => `<button type="button" class="cal-ev" data-go="${e.tab}" style="--accent:var(${e.color})">${e.time ? `<b>${esc(e.time)}</b> ` : ""}${esc(e.text)}</button>`)
+          .join("")}
+        ${list.length > 3 ? `<span class="more">+${list.length - 3} más</span>` : ""}
+      </div>`;
+  }
+
+  const monthKey = `${year}-${pad2(month + 1)}`;
+  const agenda = events.filter((e) => e.date.startsWith(monthKey));
+
+  body.innerHTML = `
+    <div class="section-bar">
+      <h2>${MONTHS_LONG[month]} ${year}</h2>
+      <div style="display:flex; gap:6px">
+        <button class="icon-btn" type="button" data-cal="-1" aria-label="Mes anterior">‹</button>
+        <button class="btn btn-secondary btn-sm" type="button" data-cal="trip">Mes del viaje</button>
+        <button class="icon-btn" type="button" data-cal="1" aria-label="Mes siguiente">›</button>
+      </div>
+    </div>
+    <div class="cal">
+      ${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((l) => `<div class="cal-dow">${l}</div>`).join("")}
+      ${cells}
+    </div>
+    <div class="cal-agenda">
+      <span class="label">Agenda del mes · ${agenda.length}</span>
+      <div class="rows" style="margin-top:10px">${
+        agenda.length
+          ? agenda.map((e) => `<div class="row clickable" data-go="${e.tab}"><div class="when">${e.time ? `<b>${esc(e.time)}</b>` : ""}${esc(pretty(e.date))}</div><div class="t">${esc(e.text)}</div><div></div></div>`).join("")
+          : `<p class="muted small" style="padding:14px 0">Sin planes este mes.</p>`
+      }</div>
+    </div>`;
+
+  body.querySelectorAll("[data-cal]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (b.dataset.cal === "trip") calCursor = null;
+      else {
+        calCursor.month += Number(b.dataset.cal);
+        if (calCursor.month < 0) (calCursor.month = 11), calCursor.year--;
+        if (calCursor.month > 11) (calCursor.month = 0), calCursor.year++;
+      }
+      renderCalendar(body, trip, L);
+    })
+  );
+  body.querySelectorAll("[data-go]").forEach((el) => el.addEventListener("click", () => go("trip", trip.id, el.dataset.go)));
+}
+
+// --- Mapa (Leaflet + OpenStreetMap, como la app) ---------------------
+let leafletPromise = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (leafletPromise) return leafletPromise;
+  leafletPromise = new Promise((resolve, reject) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    const js = document.createElement("script");
+    js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    js.onload = () => resolve(window.L);
+    js.onerror = () => {
+      leafletPromise = null;
+      reject(new Error("leaflet"));
+    };
+    document.head.appendChild(js);
+  });
+  return leafletPromise;
+}
+
+const KIND_LABEL = { hotel: "Alojamiento", itinerary: "Actividad", reservation: "Reserva", transport: "Transporte" };
+const KIND_COLOR = { hotel: "--c-hotels", itinerary: "--c-itinerary", reservation: "--c-reservations", transport: "--c-transport" };
+
+// Mismos puntos que el mapa de la app (collectMapPins en sections.js).
+function mapPins(L) {
+  const pins = [];
+  L.hotels.forEach((h) => {
+    if (!h.address) return;
+    if (h.check_in) pins.push({ kind: "hotel", text: h.address, date: h.check_in, time: h.check_in_time || "14:00", title: `Entrada: ${h.name || "Hotel"}` });
+    if (h.check_out) pins.push({ kind: "hotel", text: h.address, date: h.check_out, time: "11:00", title: `Salida: ${h.name || "Hotel"}` });
+  });
+  L.itinerary.forEach((i) => i.location && pins.push({ kind: "itinerary", text: i.location, date: i.date, time: i.time || "12:00", title: i.title || "Actividad" }));
+  L.reservations.forEach((r) => r.location && pins.push({ kind: "reservation", text: r.location, date: r.date, time: r.time || "12:00", title: r.name || r.type || "Reserva" }));
+  L.transport.forEach((t) => {
+    if (t.origin) pins.push({ kind: "transport", text: t.origin, date: t.date, time: t.time || "08:00", title: `Salida · ${t.type || "Transporte"}` });
+    if (t.destination) pins.push({ kind: "transport", text: t.destination, date: t.date, time: t.time || "08:01", title: `Llegada · ${t.type || "Transporte"}` });
+  });
+  return pins;
+}
+
+let mapDay = "all";
+let mapOptimize = false;
+let leafletMap = null;
+
+async function renderMap(body, trip, L) {
+  const pins = mapPins(L);
+  if (!pins.length) {
+    body.innerHTML = `<div class="section-bar"><h2>Mapa</h2></div><div class="empty-inline">Añade direcciones a hoteles, actividades, reservas o trayectos y aparecerán aquí.</div>`;
+    return;
+  }
+  const dates = [...new Set(pins.map((p) => p.date).filter(Boolean))].sort();
+  if (mapDay !== "all" && !dates.includes(mapDay)) mapDay = "all";
+
+  body.innerHTML = `
+    <div class="section-bar"><h2>Mapa</h2><span class="muted small" id="map-status">Localizando lugares…</span></div>
+    <div class="chips-row">
+      <button type="button" class="chip-btn" data-day="all" aria-pressed="${mapDay === "all"}">Todos los días</button>
+      ${dates.map((d) => `<button type="button" class="chip-btn" data-day="${d}" aria-pressed="${mapDay === d}">${esc(pretty(d))}</button>`).join("")}
+      ${mapDay !== "all" ? `<button type="button" class="chip-btn" data-optimize aria-pressed="${mapOptimize}">🧭 Ordenar por cercanía</button>` : ""}
+    </div>
+    <div class="map-layout">
+      <div id="leaflet-map" class="map-box"></div>
+      <div class="rows map-list" id="map-list"><p class="muted small" style="padding:14px 0">Localizando…</p></div>
+    </div>`;
+
+  body.querySelectorAll("[data-day]").forEach((b) =>
+    b.addEventListener("click", () => {
+      mapDay = b.dataset.day;
+      renderMap(body, trip, L);
+    })
+  );
+  $("[data-optimize]", body)?.addEventListener("click", () => {
+    mapOptimize = !mapOptimize;
+    renderMap(body, trip, L);
+  });
+
+  const visible = mapDay === "all" ? pins : pins.filter((p) => p.date === mapDay);
+  const [Lf, located] = await Promise.all([loadLeaflet().catch(() => null), geocodeAll(visible, (p) => p.text)]);
+  const status = $("#map-status", body);
+  if (!status || !document.contains(status)) return; // cambió de pestaña mientras tanto
+  if (!located.length) {
+    status.textContent = "No se pudo localizar ninguna dirección (revisa tu conexión).";
+    $("#map-list", body).innerHTML = `<p class="muted small" style="padding:14px 0">Sin lugares localizados.</p>`;
+    return;
+  }
+  const byTime = [...located].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  const ordered = mapDay !== "all" && mapOptimize && byTime.length >= 3 ? optimizeRouteOrder(byTime) : byTime;
+
+  if (leafletMap) {
+    leafletMap.remove();
+    leafletMap = null;
+  }
+  $("#map-list", body).innerHTML = ordered
+    .map(
+      (p, i) => `<div class="row"><div class="when"><b>${i + 1}</b>${esc(p.time || "")}</div><div><div class="t">${esc(p.title)}</div><div class="s">${esc(KIND_LABEL[p.kind])} · ${esc(p.text)}</div></div><div class="r">${mapLink(p.text)}</div></div>`
+    )
+    .join("");
+  if (!Lf) {
+    $("#leaflet-map", body).innerHTML = `<div class="empty-inline" style="margin:24px">No se pudo cargar el mapa (revisa tu conexión). La lista sigue disponible.</div>`;
+    status.textContent = `${located.length} de ${visible.length} lugares localizados`;
+    return;
+  }
+  const map = Lf.map($("#leaflet-map", body), { scrollWheelZoom: false });
+  leafletMap = map;
+  Lf.tileLayer("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
+  ordered.forEach((p, i) => {
+    const icon = Lf.divIcon({ html: `<div class="map-marker" style="--accent:var(${KIND_COLOR[p.kind]})"><span>${i + 1}</span></div>`, className: "", iconSize: [30, 30], iconAnchor: [15, 28] });
+    Lf.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup(`<strong>${esc(p.title)}</strong><br>${esc(p.time || "")} · ${esc(pretty(p.date))}`);
+  });
+  map.fitBounds(Lf.latLngBounds(ordered.map((p) => [p.lat, p.lng])).pad(0.25));
+
+  if (mapDay !== "all" && ordered.length >= 2) {
+    status.textContent = "Calculando ruta…";
+    const route = await routeBetween(ordered);
+    if (route && document.contains(status)) {
+      Lf.polyline(route.coords, { color: "#5b4be8", weight: 4, opacity: 0.85 }).addTo(map);
+      const h = Math.floor(route.durationMin / 60);
+      const m = Math.round(route.durationMin % 60);
+      status.textContent = `Ruta del día: ${route.distanceKm.toFixed(1)} km · ${h ? `${h} h ` : ""}${m} min en coche`;
+    } else if (document.contains(status)) status.textContent = `${ordered.length} lugares localizados. No se pudo calcular la ruta.`;
+  } else status.textContent = `${located.length} de ${visible.length} lugares localizados`;
 }
 
 // ------------------------------------------------------------
