@@ -7,7 +7,6 @@
 
 import { firebaseConfig } from "./firebase-config.js";
 import { Data, STORES, onDataChange } from "./db.js";
-import { isPro } from "./pro.js";
 
 const SDK_BASE = "https://www.gstatic.com/firebasejs/12.19.0";
 
@@ -377,11 +376,10 @@ async function applyRemoteTripUpdate(localTripId, payload) {
 /**
  * Convierte un viaje ya existente en tu lista en un viaje compartido:
  * genera (o reutiliza) un código de 6 caracteres y sube su contenido
- * a un documento propio en Firestore. Función Pro.
+ * a un documento propio en Firestore. Requiere tener una cuenta.
  */
 async function shareTrip(tripId) {
   try {
-    if (!(await isPro())) return { ok: false, error: "Compartir viajes es una función Pro." };
     const s = await ensureFirebase();
     const user = s.auth.currentUser;
     if (!user) return { ok: false, error: "Inicia sesión para compartir un viaje." };
@@ -414,11 +412,11 @@ async function shareTrip(tripId) {
 
 /**
  * Se une a un viaje compartido a partir de su código: lo añade como
- * un viaje nuevo en tu lista, con su propio id local. Función Pro.
+ * un viaje nuevo en tu lista, con su propio id local. Requiere tener
+ * una cuenta.
  */
 async function joinSharedTrip(code) {
   try {
-    if (!(await isPro())) return { ok: false, error: "Unirse a viajes compartidos es una función Pro." };
     const s = await ensureFirebase();
     const user = s.auth.currentUser;
     if (!user) return { ok: false, error: "Inicia sesión para unirte a un viaje compartido." };

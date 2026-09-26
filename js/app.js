@@ -1224,7 +1224,7 @@ async function openDiscoverSheet(trip) {
 
 async function openShareTripSheet(trip) {
   if (!(await hasProAccess())) {
-    openProUpsellSheet("Compartir viajes con otras personas es una función Pro.");
+    openRegisterInviteSheet("Compartir viajes con otras personas requiere tener una cuenta.");
     return;
   }
   if (!currentUser()) {
@@ -1396,7 +1396,7 @@ async function openQrScannerSheet(onResult) {
 
 async function openJoinTripSheet() {
   if (!(await hasProAccess())) {
-    openProUpsellSheet("Unirte a un viaje compartido es una función Pro.");
+    openRegisterInviteSheet("Unirte a un viaje compartido requiere tener una cuenta.");
     return;
   }
   if (!currentUser()) {
@@ -1712,7 +1712,7 @@ async function renderHome() {
   root.querySelector("#btn-ai-plan-trip").addEventListener("click", () => openAiNewTripSheet());
   root.querySelector("#btn-currency-converter").addEventListener("click", async () => {
     if (!(await hasProAccess())) {
-      openProUpsellSheet("El conversor de moneda es una función Pro.");
+      openRegisterInviteSheet("El conversor de moneda requiere tener una cuenta.");
       return;
     }
     openCurrencyConverterSheet();
@@ -1855,7 +1855,7 @@ async function runDestinationSearch(query, container, knownCoords) {
   const proBtn = container.querySelector("#dest-search-pro");
   if (proBtn) {
     proBtn.addEventListener("click", () => {
-      openProUpsellSheet("Ver más sugerencias de destinos es una función Pro.");
+      openRegisterInviteSheet("Ver más sugerencias de destinos requiere tener una cuenta.");
     });
   }
 }
@@ -1901,10 +1901,10 @@ async function collectUpcomingEvents(trips) {
 const FREE_TRIP_LIMIT = 2;
 
 // ------------------------------------------------------------
-// ACCESO A FUNCIONES PRO — mientras no haya un cobro real integrado,
-// tener una cuenta (registrarte) es lo que desbloquea las funciones
-// Pro, en vez de un pago. Esto nos deja llevar la cuenta de quién
-// está interesado sin cobrar todavía nada. El interruptor de
+// ACCESO A FUNCIONES QUE REQUIEREN CUENTA — algunas funciones
+// (compartir viaje, copiloto de IA, avisos de vuelo...) piden tener
+// una cuenta creada, sin que esto tenga que ver con ningún cobro: es
+// solo para llevar la cuenta de quién las usa. El interruptor de
 // Ajustes → Modo desarrollador sigue funcionando aparte, como atajo
 // para probar sin tener que crear una cuenta.
 // ------------------------------------------------------------
@@ -1914,14 +1914,15 @@ async function hasProAccess() {
 }
 
 // ------------------------------------------------------------
-// VENTANA DE REGISTRO PARA FUNCIONES PRO — reemplaza a los simples
-// toasts de "esto es función Pro" allí donde tiene sentido detenerse
-// un momento a explicar qué se gana, en vez de solo avisar y seguir.
-// Solo se muestra cuando falta iniciar sesión (ver hasProAccess): si
-// ya hay cuenta, esta ventana ni se llega a abrir.
+// VENTANA DE REGISTRO — reemplaza a los simples toasts de "esto
+// necesita cuenta" allí donde tiene sentido detenerse un momento a
+// explicar qué se gana, en vez de solo avisar y seguir. Solo se
+// muestra cuando falta iniciar sesión (ver hasProAccess): si ya hay
+// cuenta, esta ventana ni se llega a abrir. No menciona "Pro" ni
+// ningún cobro — de momento no se cobra nada por nada de esto.
 // ------------------------------------------------------------
 
-const PRO_FEATURES_LIST = [
+const ACCOUNT_FEATURES_LIST = [
   "Viajes ilimitados (el plan gratis permite hasta 2 a la vez)",
   "Compartir viajes con código o QR",
   "Copiloto de viajes con IA",
@@ -1931,38 +1932,32 @@ const PRO_FEATURES_LIST = [
   "Guardar el mapa y el itinerario en PDF",
 ];
 
-function openProUpsellSheet(reasonText) {
+function openRegisterInviteSheet(reasonText) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.innerHTML = h`
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 class="modal-title">✨ Regístrate para usar esta función</h2>
+      <h2 class="modal-title">Regístrate para usar esta función</h2>
       ${reasonText ? `<p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">${escapeHtml(reasonText)}</p>` : ""}
       <p style="color:var(--muted); font-size:13px; line-height:1.6;">
-        Las funciones básicas de TravelPlanner siguen sin necesitar cuenta.
-        Para estas, de momento:
+        Estas son algunas de las funciones que se desbloquean al registrarte:
       </p>
       <div class="panel" style="margin-top:4px;">
-        ${PRO_FEATURES_LIST.map(
+        ${ACCOUNT_FEATURES_LIST.map(
           (f) =>
             `<p style="font-size:13.5px; margin:7px 0; display:flex; gap:8px; align-items:flex-start;"><span style="color:var(--brand); flex-shrink:0;">✓</span><span>${escapeHtml(f)}</span></p>`
         ).join("")}
       </div>
-      <p style="color:var(--muted); font-size:11.5px; line-height:1.5; margin-top:10px;">
-        Todavía no hay ningún cobro real: crear la cuenta es gratis y
-        te da acceso a todo lo de arriba mientras se termina de
-        construir el pago.
-      </p>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="pro-upsell-register">✨ Crear cuenta / Iniciar sesión</button>
+        <button class="btn btn-primary" id="register-invite-cta">Crear cuenta / Iniciar sesión</button>
       </div>
-      <div class="modal-actions"><button class="btn btn-ghost" id="pro-upsell-close">Ahora no</button></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="register-invite-close">Ahora no</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
-  overlay.querySelector("#pro-upsell-close").addEventListener("click", () => overlay.remove());
-  overlay.querySelector("#pro-upsell-register").addEventListener("click", () => {
+  overlay.querySelector("#register-invite-close").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("#register-invite-cta").addEventListener("click", () => {
     overlay.remove();
     renderAuthForm();
   });
@@ -1972,7 +1967,7 @@ async function openTripForm(trip, prefill) {
   if (!trip) {
     const trips = await Data.getAll("trips");
     if (trips.length >= FREE_TRIP_LIMIT && !(await hasProAccess())) {
-      openProUpsellSheet(`El plan gratis permite tener hasta ${FREE_TRIP_LIMIT} viajes a la vez.`);
+      openRegisterInviteSheet(`El plan gratis permite tener hasta ${FREE_TRIP_LIMIT} viajes a la vez.`);
       return;
     }
   }
@@ -2072,7 +2067,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet, hasProAccess };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openRegisterInviteSheet, hasProAccess };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
@@ -2808,7 +2803,7 @@ async function openNotificationsSheet() {
     if (!pro) {
       flightCheck.checked = false;
       overlay.remove();
-      openProUpsellSheet("Los avisos de estado de vuelo son una función Pro.");
+      openRegisterInviteSheet("Los avisos de estado de vuelo requieren tener una cuenta.");
       return;
     }
     await Data.settingSet(FLIGHT_ALERTS_KEY, flightCheck.checked);

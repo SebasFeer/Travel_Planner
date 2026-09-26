@@ -11,7 +11,7 @@
 import { AI_COPILOT_ENDPOINT } from "./ai-copilot-config.js";
 import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
-import { h, toast, state, withTransition, renderApp, openProUpsellSheet, hasProAccess } from "./app.js";
+import { h, toast, state, withTransition, renderApp, openRegisterInviteSheet, hasProAccess } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
 
 async function checkAiCopilotAccess() {
@@ -20,7 +20,7 @@ async function checkAiCopilotAccess() {
     return false;
   }
   if (!(await hasProAccess())) {
-    openProUpsellSheet("El Copiloto de viajes con IA es una función Pro.");
+    openRegisterInviteSheet("El Copiloto de viajes con IA requiere tener una cuenta.");
     return false;
   }
   return true;
