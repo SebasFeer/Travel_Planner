@@ -1363,7 +1363,7 @@ function openCurrencyConverterSheet(trip = null) {
 
   function updateSelectedLabel() {
     chipEls.forEach((btn) => btn.classList.toggle("is-selected", btn.dataset.code === selected.code));
-    selectedEl.textContent = `Convirtiendo desde: ${selected.label} (${selected.code})`;
+    selectedEl.textContent = `Convirtiendo desde: ${selected.code}`;
   }
 
   function selectCurrency(currency) {
