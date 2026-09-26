@@ -1,4 +1,4 @@
-# TravelPlanner — versión web (PWA)
+# Viajoo — versión web (PWA)
 
 Reescritura de tu app de escritorio (PySide6 + SQLite) como una **Progressive Web App**:
 funciona en el iPhone (y en cualquier móvil o navegador) sin pasar por la App Store,

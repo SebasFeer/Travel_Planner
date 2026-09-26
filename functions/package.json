@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions de TravelPlanner",
+  "description": "Cloud Functions de Viajoo",
   "engines": {
     "node": "20"
   },

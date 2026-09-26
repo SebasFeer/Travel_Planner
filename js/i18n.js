@@ -82,7 +82,7 @@ const T = {
   },
 
   // ---------- Arranque / bienvenida ----------
-  boot_loading: { es: "Cargando TravelPlanner…", en: "Loading TravelPlanner…", pt: "Carregando o TravelPlanner…", zh: "TravelPlanner 加载中…", ar: "جارٍ تحميل TravelPlanner…" },
+  boot_loading: { es: "Cargando Viajoo…", en: "Loading Viajoo…", pt: "Carregando o Viajoo…", zh: "Viajoo 加载中…", ar: "جارٍ تحميل Viajoo…" },
   ob_skip: { es: "Omitir", en: "Skip", pt: "Pular", zh: "跳过", ar: "تخطي" },
   ob_next: { es: "Siguiente", en: "Next", pt: "Próximo", zh: "下一步", ar: "التالي" },
   ob_start: { es: "Empezar", en: "Get started", pt: "Começar", zh: "开始使用", ar: "ابدأ" },

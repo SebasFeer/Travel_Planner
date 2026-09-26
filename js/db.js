@@ -3,6 +3,10 @@
 // Sustituye a sqlite3 de la versión de escritorio.
 // ============================================================
 
+// OJO: se deja "travelplanner" a propósito pese al cambio de marca a
+// "Viajoo" — es el nombre real de la base de IndexedDB en el
+// navegador de cada persona. Cambiarlo abriría una base nueva y
+// vacía, dejando todos los viajes ya guardados como si no existieran.
 const DB_NAME = "travelplanner";
 const DB_VERSION = 5;
 

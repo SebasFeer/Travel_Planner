@@ -11,7 +11,7 @@
 import { AI_COPILOT_ENDPOINT } from "./ai-copilot-config.js";
 import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
-import { h, toast, state, withTransition, renderApp, openRegisterInviteSheet, hasProAccess, checkPaidQueryLimit, bumpPaidQueryCount, PAID_QUERY_LIMIT } from "./app.js";
+import { h, toast, state, withTransition, renderApp, openRegisterInviteSheet, hasProAccess, checkPaidQueryLimit, bumpPaidQueryCount, syncPaidQueryLimitReached, PAID_QUERY_LIMIT } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
 
 async function checkAiCopilotAccess() {
@@ -27,7 +27,7 @@ async function checkAiCopilotAccess() {
     !isAiCopilotMockEnabled() &&
     !(await checkPaidQueryLimit(
       "ai",
-      `Ya usaste tus ${PAID_QUERY_LIMIT} usos gratis del Copiloto de viajes con IA.`
+      `Ya usaste tus ${PAID_QUERY_LIMIT} usos gratis de hoy del Copiloto de viajes con IA.`
     ))
   ) {
     return false;
@@ -106,6 +106,12 @@ async function requestItinerary(payload) {
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 429 || data.error === "LIMIT_REACHED") {
+      // El servidor manda: puede que el cupo de hoy se haya gastado
+      // desde otro dispositivo con esta misma cuenta.
+      await syncPaidQueryLimitReached("ai", "Ya usaste tus consultas gratis de hoy del Copiloto de viajes con IA.");
+      return null;
+    }
     if (!res.ok || !data.ok) {
       toast(data.error || "El Copiloto IA no ha podido generar el plan.");
       return null;
