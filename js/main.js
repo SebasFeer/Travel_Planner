@@ -1,4 +1,4 @@
-import { renderApp, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, loadTheme, checkAndNotifyToday, installPullToRefresh, afterLogin } from "./app.js";
+import { renderApp, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, loadTheme, checkAndNotifyToday, checkBirthday, installPullToRefresh, afterLogin } from "./app.js";
 import { guardOnLaunch, installBackgroundLock } from "./lock.js";
 import { onAuthChange, enableAutoSync, syncOnLaunch, completeGoogleRedirect } from "./cloud.js";
 import { shouldShowOnboarding, renderOnboarding } from "./onboarding.js";
@@ -88,6 +88,10 @@ setInterval(checkAndNotifyToday, 15 * 60 * 1000);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) checkAndNotifyToday();
 });
+
+// Felicitación de cumpleaños: basta con comprobarlo al abrir la app
+// (no hace falta el sondeo cada 15 min de los avisos de arriba).
+checkBirthday();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
