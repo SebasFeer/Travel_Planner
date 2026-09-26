@@ -134,8 +134,10 @@ function tripStatus(trip) {
   return "upcoming";
 }
 
+let currentUser = null;
+
 async function loadTrips(user) {
-  $("#who").textContent = user.email || user.displayName || "";
+  currentUser = user;
   show("#view-loading");
   const { db, storeMod } = await loadFirebase();
   try {
@@ -144,8 +146,9 @@ async function loadTrips(user) {
   } catch (err) {
     show("#view-trips");
     $("#trips-root").innerHTML = `
-      <div class="card empty">
-        <div class="big">⚠️</div>
+      ${accountBar("Mis viajes")}
+      <div class="empty">
+        <span class="label">Error</span>
         <h2>No se pudieron cargar tus viajes</h2>
         <p class="muted">${esc(friendlyAuthError(err))}</p>
       </div>`;
@@ -168,14 +171,51 @@ function render() {
 }
 window.addEventListener("hashchange", () => dump && render());
 
+// Clic en "Cerrar sesión" (el botón se vuelve a pintar en cada vista).
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("#btn-logout")) return;
+  const s = await loadFirebase();
+  await s.authMod.signOut(s.auth);
+  history.replaceState(null, "", location.pathname);
+});
+
+function accountBar(title) {
+  const who = currentUser ? currentUser.email || currentUser.displayName || "" : "";
+  return `
+    <div class="account-bar">
+      <div>
+        <span class="label readonly-pill">Solo lectura · ${esc(who)}</span>
+        <h1>${esc(title)}</h1>
+      </div>
+      <div class="actions">
+        <a class="btn btn-primary btn-sm" href="../">Editar en la app</a>
+        <button class="btn btn-ghost btn-sm" id="btn-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>`;
+}
+
+// Código de 3 letras para la tarjeta de embarque, sacado del nombre
+// del destino ("Lisboa, Portugal" -> "LIS"). Es solo decorativo: no
+// pretende ser el código IATA real del aeropuerto.
+function placeCode(text) {
+  const clean = String(text || "")
+    .split(",")[0]
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z]/g, "")
+    .toUpperCase();
+  return clean.slice(0, 3) || "···";
+}
+
 function renderList() {
   const trips = [...(dump.trips || [])].sort((a, b) => (a.start_date || "").localeCompare(b.start_date || ""));
   const root = $("#trips-root");
 
   if (!trips.length) {
     root.innerHTML = `
-      <div class="card empty">
-        <div class="big">🧳</div>
+      ${accountBar("Mis viajes")}
+      <div class="empty">
+        <span class="label">Sin viajes</span>
         <h2>Aún no hay viajes en la nube</h2>
         <p class="muted">Crea un viaje en la app con la sesión iniciada y aparecerá aquí en unos segundos.</p>
         <a class="btn btn-primary" href="../">Abrir Viajoo</a>
@@ -188,69 +228,101 @@ function renderList() {
     ["upcoming", "Próximos"],
     ["past", "Pasados"],
   ];
-  root.innerHTML = groups
-    .map(([key, label]) => {
-      let list = trips.filter((t) => tripStatus(t) === key);
-      if (key === "past") list = list.reverse(); // el más reciente primero
-      if (!list.length) return "";
-      return `
-        <div class="trips-group">
-          <h2>${label}</h2>
-          <div class="trip-grid">${list.map(tripCard).join("")}</div>
-        </div>`;
-    })
-    .join("");
+  root.innerHTML =
+    accountBar("Mis viajes") +
+    groups
+      .map(([key, label]) => {
+        let list = trips.filter((t) => tripStatus(t) === key);
+        if (key === "past") list = list.reverse(); // el más reciente primero
+        if (!list.length) return "";
+        return `
+          <div class="trips-group">
+            <span class="label">${label} · ${list.length}</span>
+            <div class="trip-list">${list.map(tripPass).join("")}</div>
+          </div>`;
+      })
+      .join("") +
+    `<div style="height:96px"></div>`;
 }
 
-function tripCard(trip) {
+function tripPass(trip) {
   const status = tripStatus(trip);
   const days = daysUntil(trip.start_date);
-  let badge = "";
-  if (status === "ongoing") badge = "En curso";
-  else if (status === "upcoming" && days != null) badge = days === 0 ? "¡Hoy!" : days === 1 ? "Mañana" : `En ${days} días`;
-  else if (status === "past") badge = "Completado";
+  let big = "";
+  let small = "";
+  if (status === "ongoing") {
+    big = "En curso";
+    small = `Termina el ${prettyDate(trip.end_date)}`;
+  } else if (status === "upcoming" && days != null) {
+    big = days === 0 ? "Hoy" : days === 1 ? "Mañana" : `${days} días`;
+    small = days > 1 ? "para salir" : "sales";
+  } else {
+    big = "Completado";
+    small = prettyDate(trip.end_date);
+  }
 
-  const counts = [
-    ["flights", "✈️", "vuelo", "vuelos"],
-    ["hotels", "🏨", "hotel", "hoteles"],
-    ["itinerary", "🗺️", "actividad", "actividades"],
+  const chips = [
+    ["flights", "--c-flights", "vuelo", "vuelos"],
+    ["hotels", "--c-hotels", "hotel", "hoteles"],
+    ["itinerary", "--c-itinerary", "actividad", "actividades"],
+    ["reservations", "--c-reservations", "reserva", "reservas"],
   ]
-    .map(([store, emoji, one, many]) => {
+    .map(([store, color, one, many]) => {
       const n = byTrip(store, trip.id).length;
-      return n ? `<span class="pill">${emoji} ${n} ${n === 1 ? one : many}</span>` : "";
+      return n ? `<span class="chip" style="--accent:var(${color})"><i></i>${n} ${n === 1 ? one : many}</span>` : "";
     })
     .join("");
 
+  const firstFlight = byTrip("flights", trip.id).sort(sortByDateTime)[0];
+  const from = firstFlight && firstFlight.origin ? placeCode(firstFlight.origin) : "";
+
   return `
-    <a class="trip-card" href="#viaje-${esc(trip.id)}" style="text-decoration:none">
-      <div class="cover" style='${bgUrl(trip.photo_url)}'>${badge ? `<span class="badge">${badge}</span>` : ""}</div>
-      <div class="info">
-        <h3>${esc(trip.name || trip.destination)}</h3>
-        <div class="dest">📍 ${esc(trip.destination)} · ${prettyDate(trip.start_date)} – ${prettyDate(trip.end_date)}</div>
-        <div class="counts">${counts}${trip.share_code ? `<span class="pill">👥 Compartido</span>` : ""}</div>
+    <a class="pass" href="#viaje-${esc(trip.id)}">
+      <div class="pass-main">
+        <span class="label">${esc(trip.name || "Viaje")}</span>
+        <div class="route">
+          ${from ? `<span class="code">${esc(from)}</span><span class="plane"></span>` : ""}
+          <span class="code">${esc(placeCode(trip.destination))}</span>
+        </div>
+        <div class="kv">
+          <div><span class="label">Destino</span><b>${esc(trip.destination)}</b></div>
+          <div><span class="label">Salida</span><b class="mono">${esc(prettyDate(trip.start_date))}</b></div>
+          <div><span class="label">Vuelta</span><b class="mono">${esc(prettyDate(trip.end_date))}</b></div>
+          <div><span class="label">Días</span><b class="mono">${daysBetween(trip.start_date, trip.end_date) || "—"}</b></div>
+        </div>
+        <div class="chips">${chips}${trip.share_code ? `<span class="chip" style="--accent:var(--brand)"><i></i>Compartido</span>` : ""}</div>
+      </div>
+      <div class="pass-stub">
+        <div class="countdown ${status}">
+          <span class="label">${status === "past" ? "Estado" : status === "ongoing" ? "Estado" : "Faltan"}</span>
+          <b>${esc(big)}</b>
+          <span class="muted small">${esc(small)}</span>
+        </div>
+        ${trip.photo_url ? `<div class="photo" style='${bgUrl(trip.photo_url)}'></div>` : `<div class="barcode" aria-hidden="true"></div>`}
       </div>
     </a>`;
 }
 
-function section(title, accent, items, rowFn) {
+function block(title, accent, items, rowFn) {
   if (!items.length) return "";
   return `
     <div class="block" style="--accent: var(${accent})">
-      <h2><span class="sw"></span>${title} <span class="muted" style="font-weight:500">(${items.length})</span></h2>
+      <div class="block-head"><span class="sw"></span><h2>${title}</h2><span class="n">${String(items.length).padStart(2, "0")}</span></div>
       <div class="rows">${items.map(rowFn).join("")}</div>
     </div>`;
 }
 
-function row(title, sub, right, extraClass = "") {
+function row(when, title, sub, right, extraClass = "") {
   return `
     <div class="row ${extraClass}">
+      <div class="when">${when || ""}</div>
       <div><div class="t">${title}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div>
-      ${right ? `<div class="r">${right}</div>` : ""}
+      <div class="r">${right || ""}</div>
     </div>`;
 }
 
 const sortByDateTime = (a, b) => `${a.date || ""} ${a.time || ""}`.localeCompare(`${b.date || ""} ${b.time || ""}`);
-const when = (date, time) => [prettyDate(date), time].filter(Boolean).join(" · ");
+const whenHtml = (date, time) => (date || time ? `${time ? `<b>${esc(time)}</b>` : ""}${esc(prettyDate(date))}` : "");
 
 function renderTrip(trip) {
   const flights = byTrip("flights", trip.id).sort(sortByDateTime);
@@ -264,79 +336,114 @@ function renderTrip(trip) {
   const spent = expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
   const done = checklist.filter((c) => c.completed).length;
   const budget = parseFloat(trip.budget || 0);
+  const pct = budget ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
 
   // Itinerario agrupado por día
   let lastDay = null;
   const itineraryHtml = itinerary.length
     ? `
     <div class="block" style="--accent: var(--c-itinerary)">
-      <h2><span class="sw"></span>Itinerario <span class="muted" style="font-weight:500">(${itinerary.length})</span></h2>
+      <div class="block-head"><span class="sw"></span><h2>Itinerario</h2><span class="n">${String(itinerary.length).padStart(2, "0")}</span></div>
       <div class="rows">
         ${itinerary
           .map((a) => {
-            const head = a.date !== lastDay ? `<div class="day-label">${a.date ? prettyDate(a.date) : "Sin fecha"}</div>` : "";
+            const head = a.date !== lastDay ? `<div class="day-label">${a.date ? esc(prettyDate(a.date)) : "Sin fecha"}</div>` : "";
             lastDay = a.date;
-            return head + row(esc(a.title), esc([a.location, a.type && a.type !== "Detectar automático" ? a.type : ""].filter(Boolean).join(" · ")), esc(a.time || ""));
+            const type = a.type && a.type !== "Detectar automático" ? a.type : "";
+            return head + row(a.time ? `<b>${esc(a.time)}</b>` : "", esc(a.title), esc(a.location || ""), esc(type));
           })
           .join("")}
       </div>
     </div>`
     : "";
 
+  const blocks =
+    block("Vuelos", "--c-flights", flights, (f) =>
+      row(
+        whenHtml(f.date, f.time),
+        esc([f.origin, f.destination].filter(Boolean).join(" → ") || "Vuelo"),
+        esc([f.airline, f.return_date ? `vuelta ${prettyDate(f.return_date)}` : ""].filter(Boolean).join(" · ")),
+        esc(f.flight_number || "")
+      )
+    ) +
+    block("Hoteles", "--c-hotels", hotels, (h) =>
+      row(
+        `<b>${esc(prettyDate(h.check_in))}</b>${esc(prettyDate(h.check_out))}`,
+        esc(h.name || "Hotel"),
+        esc([h.address, h.booking_code ? `Reserva ${h.booking_code}` : ""].filter(Boolean).join(" · ")),
+        h.price ? money(h.price) : ""
+      )
+    ) +
+    itineraryHtml +
+    block("Transporte", "--c-transport", transport, (t) =>
+      row(
+        whenHtml(t.date, t.time),
+        esc([t.origin, t.destination].filter(Boolean).join(" → ") || t.type || "Transporte"),
+        esc([t.type, t.company, t.booking_code].filter(Boolean).join(" · ")),
+        t.price ? money(t.price) : ""
+      )
+    ) +
+    block("Reservas", "--c-reservations", reservations, (r) =>
+      row(
+        whenHtml(r.date, r.time),
+        esc(r.name || r.type || "Reserva"),
+        esc([r.type && r.name ? r.type : "", r.location].filter(Boolean).join(" · ")),
+        esc(r.booking_code || (r.price ? money(r.price) : ""))
+      )
+    ) +
+    block("Gastos", "--c-expenses", expenses, (e) =>
+      row(esc(e.date ? prettyDate(e.date) : ""), esc(e.description || e.category || "Gasto"), esc(e.description ? e.category || "" : ""), money(e.amount))
+    ) +
+    (checklist.length
+      ? `
+    <div class="block" style="--accent: var(--c-checklist)">
+      <div class="block-head"><span class="sw"></span><h2>Checklist</h2><span class="n">${done}/${checklist.length}</span></div>
+      <div class="rows">
+        ${checklist
+          .map(
+            (c) => `
+          <div class="row check ${c.completed ? "done" : ""}">
+            <span class="tick">${c.completed ? "✓" : ""}</span>
+            <div class="t">${esc(c.task)}</div>
+          </div>`
+          )
+          .join("")}
+      </div>
+    </div>`
+      : "");
+
   $("#trips-root").innerHTML = `
-    <div class="trip-detail">
-      <a class="btn btn-secondary btn-sm back" href="#">← Todos los viajes</a>
-      <div class="detail-hero" style='${bgUrl(trip.photo_url)}'>
-        <div class="txt">
-          <h1>${esc(trip.name || trip.destination)}</h1>
-          <p>📍 ${esc(trip.destination)} · ${prettyDate(trip.start_date)} – ${prettyDate(trip.end_date)}</p>
+    ${accountBar(trip.name || trip.destination)}
+    <div class="detail-top">
+      <a class="btn btn-secondary btn-sm" href="#"><span class="arrow">←</span> Todos los viajes</a>
+    </div>
+    <div class="detail-grid">
+      <div>
+        ${blocks || `<div class="empty"><span class="label">Vacío</span><h2>Este viaje aún no tiene nada</h2><p class="muted">Añade vuelos, hoteles o actividades desde la app.</p></div>`}
+      </div>
+      <aside class="detail-side">
+        <div class="side-card">
+          ${trip.photo_url ? `<div class="photo" style='${bgUrl(trip.photo_url)}'></div>` : ""}
+          <span class="label">Destino</span>
+          <div style="font:800 34px/1.05 var(--f-display); font-stretch:125%; margin:6px 0 4px">${esc(placeCode(trip.destination))}</div>
+          <div class="muted small" style="margin-bottom:12px">${esc(trip.destination)}</div>
+          <div class="stat-row"><span>Salida</span><b>${esc(prettyDate(trip.start_date))}</b></div>
+          <div class="stat-row"><span>Vuelta</span><b>${esc(prettyDate(trip.end_date))}</b></div>
+          <div class="stat-row"><span>Duración</span><b>${daysBetween(trip.start_date, trip.end_date) || "—"} días</b></div>
+          ${checklist.length ? `<div class="stat-row"><span>Checklist</span><b>${done}/${checklist.length}</b></div>` : ""}
         </div>
-      </div>
-
-      <div class="stats">
-        <div class="stat"><div class="k">Duración</div><div class="v">${daysBetween(trip.start_date, trip.end_date) || "—"} días</div></div>
-        <div class="stat"><div class="k">Gastado</div><div class="v">${money(spent)}</div></div>
-        ${budget ? `<div class="stat"><div class="k">Presupuesto</div><div class="v">${money(budget)}</div></div>` : ""}
-        ${checklist.length ? `<div class="stat"><div class="k">Checklist</div><div class="v">${done}/${checklist.length}</div></div>` : ""}
-      </div>
-
-      ${trip.notes ? `<div class="card" style="padding:16px 20px"><div class="muted" style="white-space:pre-wrap">${esc(trip.notes)}</div></div>` : ""}
-
-      ${section("Vuelos", "--c-flights", flights, (f) =>
-        row(
-          esc([f.airline, f.flight_number].filter(Boolean).join(" ") || "Vuelo"),
-          esc([f.origin, f.destination].filter(Boolean).join(" → ")),
-          esc(when(f.date, f.time)) + (f.return_date ? `<br>Vuelta: ${esc(prettyDate(f.return_date))}` : "")
-        )
-      )}
-      ${section("Hoteles", "--c-hotels", hotels, (h) =>
-        row(
-          esc(h.name || "Hotel"),
-          esc([h.address, h.booking_code ? `Reserva ${h.booking_code}` : ""].filter(Boolean).join(" · ")),
-          `${esc(prettyDate(h.check_in))} – ${esc(prettyDate(h.check_out))}${h.price ? `<br>${money(h.price)}` : ""}`
-        )
-      )}
-      ${itineraryHtml}
-      ${section("Transporte", "--c-transport", transport, (t) =>
-        row(
-          esc([t.type, t.company].filter(Boolean).join(" · ") || "Transporte"),
-          esc([t.origin, t.destination].filter(Boolean).join(" → ")),
-          esc(when(t.date, t.time)) + (t.price ? `<br>${money(t.price)}` : "")
-        )
-      )}
-      ${section("Reservas", "--c-reservations", reservations, (r) =>
-        row(
-          esc(r.name || r.type || "Reserva"),
-          esc([r.type && r.name ? r.type : "", r.location, r.booking_code ? `Código ${r.booking_code}` : ""].filter(Boolean).join(" · ")),
-          esc(when(r.date, r.time)) + (r.price ? `<br>${money(r.price)}` : "")
-        )
-      )}
-      ${section("Gastos", "--c-expenses", expenses, (e) =>
-        row(esc(e.description || e.category || "Gasto"), esc(e.description ? e.category || "" : ""), `<b>${money(e.amount)}</b>`)
-      )}
-      ${section("Checklist", "--c-checklist", checklist, (c) =>
-        row(`${c.completed ? "✅" : "⬜"} ${esc(c.task)}`, "", "", c.completed ? "done" : "")
-      )}
+        <div class="side-card">
+          <span class="label">Gastado</span>
+          <div style="font:800 30px/1.1 var(--f-display); font-stretch:115%; margin-top:6px">${money(spent)}</div>
+          ${
+            budget
+              ? `<div class="meter ${spent > budget ? "over" : ""}"><i style="width:${pct}%"></i></div>
+                 <div class="muted small">${pct}% de ${money(budget)} de presupuesto</div>`
+              : `<div class="muted small">Sin presupuesto definido</div>`
+          }
+        </div>
+        ${trip.notes ? `<div class="side-card"><span class="label">Notas</span><p style="white-space:pre-wrap; margin:8px 0 0; color:var(--ink-2)">${esc(trip.notes)}</p></div>` : ""}
+      </aside>
     </div>`;
 }
 
@@ -424,12 +531,6 @@ $("#btn-reset").addEventListener("click", async (e) => {
   } catch (err) {
     $("#login-error").textContent = friendlyAuthError(err);
   }
-});
-
-$("#btn-logout").addEventListener("click", async () => {
-  const s = await loadFirebase();
-  await s.authMod.signOut(s.auth);
-  history.replaceState(null, "", location.pathname);
 });
 
 init();

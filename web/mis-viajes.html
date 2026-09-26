@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Mis viajes — Viajoo</title>
 <meta name="description" content="Consulta desde cualquier navegador los viajes que tienes sincronizados en Viajoo." />
-<meta name="theme-color" content="#6c5ce7" />
+<meta name="theme-color" content="#0d1230" />
 <meta name="robots" content="noindex" />
 <link rel="icon" href="../icons/icon-192.png" />
 <link rel="stylesheet" href="css/web.css" />
@@ -14,7 +14,7 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a class="brand" href="./"><img src="../icons/icon-192.png" alt="" />Viajoo</a>
+    <a class="brand" href="./"><img src="../icons/icon-192.png" alt="" /><b>Viajoo</b></a>
     <nav class="nav">
       <a class="hide-sm" href="./#funciones">Funciones</a>
       <a href="mis-viajes.html" aria-current="page">Mis viajes</a>
@@ -26,29 +26,32 @@
 <main class="wrap">
   <div id="view-loading" class="loading">
     <div class="spinner"></div>
-    <p>Cargando…</p>
+    <span class="label">Cargando</span>
   </div>
 
   <!-- Sin sesión: formulario de acceso -->
-  <div id="view-login" class="auth-box" hidden>
-    <div class="card">
-      <h2>Mis viajes</h2>
-      <p>Entra con la misma cuenta que usas en la app de Viajoo para ver tus viajes sincronizados.</p>
-
+  <div id="view-login" class="auth-grid" hidden>
+    <div class="intro">
+      <span class="label">Mis viajes</span>
+      <h1>Tus viajes, desde cualquier pantalla.</h1>
+      <p>Entra con la misma cuenta que usas en la app y consulta tus viajes sincronizados desde el ordenador. Aquí solo se consultan: para editarlos, abre la app.</p>
+    </div>
+    <div class="auth-card">
+      <h2>Iniciar sesión</h2>
       <button class="btn btn-secondary btn-block" id="btn-google" type="button">
         <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
         Continuar con Google
       </button>
 
-      <div class="divider">o con tu email</div>
+      <div class="divider"><span class="label">o con tu email</span></div>
 
       <form id="login-form" novalidate>
-        <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required /></label>
-        <label class="field"><span>Contraseña</span><input type="password" name="password" autocomplete="current-password" required /></label>
+        <label class="field"><span class="label">Email</span><input id="login-email" type="email" name="email" autocomplete="email" required /></label>
+        <label class="field"><span class="label">Contraseña</span><input id="login-password" type="password" name="password" autocomplete="current-password" required /></label>
         <p class="form-error" id="login-error" role="alert"></p>
-        <button class="btn btn-primary btn-block" type="submit" id="btn-login">Entrar</button>
+        <button class="btn btn-primary btn-block" type="submit" id="btn-login">Entrar <span class="arrow">→</span></button>
       </form>
-      <p class="muted" style="font-size:14px; margin:16px 0 0; text-align:center;">
+      <p class="muted small" style="margin:18px 0 0">
         <a href="#" id="btn-reset">¿Olvidaste tu contraseña?</a><br />
         ¿Aún no tienes cuenta? Créala desde la app, en Ajustes → Mi cuenta.
       </p>
@@ -57,23 +60,13 @@
 
   <!-- Con sesión: lista de viajes o detalle de uno -->
   <div id="view-trips" hidden>
-    <div class="account-bar">
-      <div>
-        <span class="readonly-pill">👁 Solo lectura</span>
-        <span class="who" id="who"></span>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <a class="btn btn-secondary btn-sm" href="../">Editar en la app</a>
-        <button class="btn btn-ghost btn-sm" id="btn-logout" type="button">Cerrar sesión</button>
-      </div>
-    </div>
     <div id="trips-root"></div>
   </div>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
-    <span>© <span data-year></span> Viajoo</span>
+    <span class="mono">© <span data-year></span> VIAJOO</span>
     <nav>
       <a href="./">Inicio</a>
       <a href="legal.html#privacidad">Privacidad</a>

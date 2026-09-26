@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Legal — Viajoo</title>
 <meta name="description" content="Aviso legal, privacidad, términos de uso, cookies y demás documentos legales de Viajoo." />
-<meta name="theme-color" content="#6c5ce7" />
+<meta name="theme-color" content="#0d1230" />
 <link rel="icon" href="../icons/icon-192.png" />
 <link rel="stylesheet" href="css/web.css" />
 </head>
@@ -13,7 +13,7 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a class="brand" href="./"><img src="../icons/icon-192.png" alt="" />Viajoo</a>
+    <a class="brand" href="./"><img src="../icons/icon-192.png" alt="" /><b>Viajoo</b></a>
     <nav class="nav">
       <a class="hide-sm" href="./#funciones">Funciones</a>
       <a href="mis-viajes.html">Mis viajes</a>
@@ -24,6 +24,7 @@
 
 <main class="wrap">
   <div class="page-head">
+    <span class="label">Legal</span>
     <h1>Información legal</h1>
     <p>Los mismos documentos que encontrarás dentro de la app, en Ajustes → Legal.</p>
   </div>
@@ -35,7 +36,7 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <span>© <span data-year></span> Viajoo</span>
+    <span class="mono">© <span data-year></span> VIAJOO</span>
     <nav>
       <a href="./">Inicio</a>
       <a href="../">Abrir app</a>
@@ -53,18 +54,22 @@
   for (const doc of LEGAL_DOCS) {
     const link = document.createElement("a");
     link.href = `#${doc.id}`;
-    link.textContent = doc.title;
+    link.innerHTML = `<span>${String(LEGAL_DOCS.indexOf(doc) + 1).padStart(2, "0")}</span>`;
+    link.append(doc.title);
     toc.appendChild(link);
 
     const art = document.createElement("article");
-    art.className = "legal-doc card";
+    art.className = "legal-doc";
     art.id = doc.id;
+    const num = document.createElement("span");
+    num.className = "label";
+    num.textContent = `Documento ${String(LEGAL_DOCS.indexOf(doc) + 1).padStart(2, "0")}`;
     const h = document.createElement("h2");
     h.textContent = doc.title;
     const body = document.createElement("div");
     body.className = "body";
     body.textContent = doc.text;
-    art.append(h, body);
+    art.append(num, h, body);
     docs.appendChild(art);
   }
 
