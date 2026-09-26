@@ -67,18 +67,20 @@ exports.flightStatus = onRequest(
       }
       const decoded = await admin.auth().verifyIdToken(idToken);
 
-      // 1b. Tope diario de consultas de pago, por cuenta.
-      const quota = await reserveDailyQuota(decoded.uid, "flight");
-      if (!quota.allowed) {
-        res.status(429).json({ error: "LIMIT_REACHED", limit: DAILY_QUERY_LIMIT });
-        return;
-      }
-
-      // 2. Leer los parámetros (número de vuelo y fecha).
+      // 2. Leer y validar los parámetros (número de vuelo y fecha) ANTES
+      // de gastar cupo: una petición inválida no debe consumir ninguna
+      // de las 2 consultas diarias.
       const flightNumber = req.query.flightNumber || (req.body && req.body.flightNumber);
       const date = req.query.date || (req.body && req.body.date);
       if (!flightNumber || !date) {
         res.status(400).json({ error: "Faltan flightNumber o date." });
+        return;
+      }
+
+      // 1b. Tope diario de consultas de pago, por cuenta.
+      const quota = await reserveDailyQuota(decoded.uid, "flight");
+      if (!quota.allowed) {
+        res.status(429).json({ error: "LIMIT_REACHED", limit: DAILY_QUERY_LIMIT });
         return;
       }
 
@@ -136,6 +138,12 @@ exports.flightStatus = onRequest(
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
 const AI_MODEL = "claude-sonnet-5";
+
+// Un viaje más largo que esto casi seguro trunca la respuesta de Claude
+// (max_tokens fijo) y acaba en un 502 "itinerario no válido" — mejor
+// rechazarlo antes de gastar una consulta diaria en una llamada
+// condenada a fallar.
+const MAX_ITINERARY_DAYS = 30;
 
 // Esquema que Claude debe rellenar. "tool_choice" fuerza a que la
 // respuesta sea siempre este objeto, nunca texto suelto ni Markdown.
@@ -263,14 +271,9 @@ exports.generateItinerary = onRequest(
       }
       const decoded = await admin.auth().verifyIdToken(idToken);
 
-      // 1b. Tope diario de consultas de pago, por cuenta.
-      const quota = await reserveDailyQuota(decoded.uid, "ai");
-      if (!quota.allowed) {
-        res.status(429).json({ error: "LIMIT_REACHED", limit: DAILY_QUERY_LIMIT });
-        return;
-      }
-
-      // 2. Leer y validar los parámetros del viaje.
+      // 2. Leer y validar los parámetros del viaje ANTES de gastar cupo:
+      // una petición inválida no debe consumir ninguna de las 2
+      // consultas diarias.
       const body = req.body || {};
       const mode = body.mode === "day" ? "day" : "full";
       const { destination, startDate, endDate, days, budget, currency, interests, targetDate, dayNumber, instructions, context } = body;
@@ -283,8 +286,19 @@ exports.generateItinerary = onRequest(
         res.status(400).json({ error: "Falta la duración del viaje (número de días)." });
         return;
       }
+      if (mode === "full" && Number(days) > MAX_ITINERARY_DAYS) {
+        res.status(400).json({ error: `El Copiloto IA solo genera itinerarios de hasta ${MAX_ITINERARY_DAYS} días de una vez.` });
+        return;
+      }
       if (mode === "day" && !targetDate) {
         res.status(400).json({ error: "Falta la fecha del día a regenerar." });
+        return;
+      }
+
+      // 1b. Tope diario de consultas de pago, por cuenta.
+      const quota = await reserveDailyQuota(decoded.uid, "ai");
+      if (!quota.allowed) {
+        res.status(429).json({ error: "LIMIT_REACHED", limit: DAILY_QUERY_LIMIT });
         return;
       }
 

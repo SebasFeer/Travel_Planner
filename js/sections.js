@@ -969,12 +969,24 @@ async function getCompanions(tripId) {
   return list.sort((a, b) => (a.id || 0) - (b.id || 0));
 }
 
+// "Quitar" a un acompañante no lo borra de verdad: se marca como
+// archivado para que deje de ofrecerse en gastos nuevos, pero su
+// nombre sigue disponible para los gastos ya divididos con él/ella
+// (ver computeExpenseBalances) — si se borrara del todo, su saldo
+// desaparecería del reparto sin que nadie lo hubiera saldado.
+function activeCompanions(companions) {
+  return companions.filter((c) => !c.archived);
+}
+
 // Balance neto por participante a partir de los gastos divididos y de
 // los pagos ya registrados para saldar cuentas ("settlementRecords"):
 // positivo = le deben, negativo = debe. La suma de todos los saldos
 // siempre da 0.
 function computeExpenseBalances(items, companions, settlementRecords = []) {
-  const participants = [{ id: EXPENSE_ME_ID, name: "Yo" }, ...companions.map((c) => ({ id: String(c.id), name: c.name }))];
+  const participants = [
+    { id: EXPENSE_ME_ID, name: "Yo" },
+    ...companions.map((c) => ({ id: String(c.id), name: c.archived ? `${c.name} (eliminado/a)` : c.name })),
+  ];
   const net = {};
   participants.forEach((p) => (net[p.id] = 0));
 
@@ -1035,7 +1047,7 @@ function openCompanionsSheet(trip, onClose) {
   });
 
   async function render() {
-    const companions = await getCompanions(trip.id);
+    const companions = activeCompanions(await getCompanions(trip.id));
     overlay.innerHTML = h`
       <div class="modal-sheet">
         <div class="modal-handle"></div>
@@ -1087,7 +1099,8 @@ function openCompanionsSheet(trip, onClose) {
       btn.addEventListener("click", async () => {
         const id = parseInt(btn.dataset.del, 10);
         if (!(await confirmAction("¿Quitar a esta persona del viaje? Los gastos ya divididos con ella mantienen su reparto guardado."))) return;
-        await Data.delete("companions", id);
+        const companion = companions.find((c) => c.id === id);
+        await Data.put("companions", { ...companion, archived: true });
         render();
       });
     });
@@ -1100,7 +1113,8 @@ function openCompanionsSheet(trip, onClose) {
 
 async function renderExpenses(trip) {
   const items = await Data.getAllByTrip("expenses", trip.id);
-  const companions = await getCompanions(trip.id);
+  const allCompanions = await getCompanions(trip.id);
+  const companions = activeCompanions(allCompanions);
   const settlementRecords = await Data.getAllByTrip("settlements", trip.id);
   items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
@@ -1173,7 +1187,7 @@ async function renderExpenses(trip) {
         .join("")
     : emptyState("💶", t("empty_expenses"));
 
-  const balances = computeExpenseBalances(items, companions, settlementRecords);
+  const balances = computeExpenseBalances(items, allCompanions, settlementRecords);
   const settlements = simplifyExpenseDebts(balances);
   const hasSplitExpenses = items.some((e) => Array.isArray(e.split_with) && e.split_with.length >= 2);
 
@@ -1213,7 +1227,7 @@ async function renderExpenses(trip) {
       </div>`
     : "";
 
-  const repartoHtml = companions.length
+  const repartoHtml = companions.length || hasSplitExpenses
     ? h`
       <div class="panel">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${hasSplitExpenses ? "0" : "8px"};">
@@ -1429,12 +1443,16 @@ function openCurrencyConverterSheet(trip = null) {
 // casillas de "con quién se comparte" (varias marcadas a la vez), que
 // solo tienen sentido cuando el viaje ya tiene acompañantes.
 async function openExpenseForm(trip, e, prefill) {
-  const companions = await getCompanions(trip.id);
   const initial = e || prefill || {};
-  const hasCompanions = companions.length > 0;
-  const paidByOptions = [{ id: EXPENSE_ME_ID, name: "Yo" }, ...companions.map((c) => ({ id: String(c.id), name: c.name }))];
   const splitInitial = Array.isArray(initial.split_with) ? initial.split_with.map(String) : [];
   const paidByInitial = String(initial.paid_by ?? EXPENSE_ME_ID);
+  // Un acompañante archivado (eliminado) sigue apareciendo aquí si este
+  // gasto ya lo tenía como pagador o en el reparto — si no, al editar
+  // el gasto se le reasignaría en silencio a otra persona al guardar.
+  const referencedIds = new Set([...splitInitial, paidByInitial]);
+  const companions = (await getCompanions(trip.id)).filter((c) => !c.archived || referencedIds.has(String(c.id)));
+  const hasCompanions = companions.length > 0;
+  const paidByOptions = [{ id: EXPENSE_ME_ID, name: "Yo" }, ...companions.map((c) => ({ id: String(c.id), name: c.archived ? `${c.name} (eliminado/a)` : c.name }))];
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";

@@ -10,11 +10,20 @@ const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const OSRM_URL = "https://router.project-osrm.org/route/v1/driving";
 
 // Nominatim pide un máximo de 1 petición por segundo desde el navegador.
+// Encadenado sobre una única promesa para que dos llamadas casi
+// simultáneas (por ejemplo, el mapa y el buscador de "Descubre" a la
+// vez) no lean lastRequestAt a la vez y calculen la misma espera: cada
+// una espera a que la anterior termine del todo antes de mirar el reloj.
 let lastRequestAt = 0;
-async function throttle() {
-  const wait = lastRequestAt + 1100 - Date.now();
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastRequestAt = Date.now();
+let throttleQueue = Promise.resolve();
+function throttle() {
+  const turn = throttleQueue.then(async () => {
+    const wait = lastRequestAt + 1100 - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastRequestAt = Date.now();
+  });
+  throttleQueue = turn.catch(() => {});
+  return turn;
 }
 
 function normalize(text) {
@@ -166,4 +175,4 @@ function optimizeRouteOrder(points) {
   return ordered;
 }
 
-export { geocode, geocodeAll, routeBetween, searchPlaces, optimizeRouteOrder };
+export { geocode, geocodeAll, routeBetween, searchPlaces, optimizeRouteOrder, throttle };
