@@ -10,6 +10,8 @@
 // el resto de la app.
 // ============================================================
 
+import { throttle } from "./geocode.js";
+
 const WIKI_API_BASE = "wikipedia.org/w/api.php";
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
@@ -211,6 +213,9 @@ async function searchPlaces(query, near, { limit = 6 } = {}) {
     const url =
       `${NOMINATIM_URL}?format=jsonv2&namedetails=1&limit=${limit}` +
       `&q=${encodeURIComponent(q)}`;
+    // Comparte el throttle de geocode.js: es la misma Nominatim, con el
+    // mismo límite de 1 petición/segundo desde el navegador.
+    await throttle();
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return [];
     const results = await res.json();

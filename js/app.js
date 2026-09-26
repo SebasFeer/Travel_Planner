@@ -163,7 +163,7 @@ function readFieldValue(f) {
  * Devuelve una promesa; se resuelve al guardar (con los valores),
  * o queda pendiente si se cancela (no se resuelve nunca, no pasa nada).
  */
-function showFormModal({ title, fields, initial, onSave, onDelete, deleteLabel }) {
+function showFormModal({ title, fields, initial, onSave, onDelete, deleteLabel, validate }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
 
@@ -216,6 +216,13 @@ function showFormModal({ title, fields, initial, onSave, onDelete, deleteLabel }
     for (const f of fields) {
       if (f.required && !values[f.name]) {
         toast(`Falta "${f.label}"`);
+        return;
+      }
+    }
+    if (validate) {
+      const error = validate(values);
+      if (error) {
+        toast(error);
         return;
       }
     }
@@ -919,6 +926,7 @@ function openSectionsSheet(trip) {
     { id: "flights", icon: "flights", label: t("section_flights") },
     { id: "hotels", icon: "hotels", label: t("section_hotels") },
     { id: "transport", icon: "transport", label: t("section_transport") },
+    { id: "reservations", icon: "reservations", label: t("section_reservations") },
     { id: "checklist", icon: "checklist", label: t("section_checklist") },
     { id: "calendar", icon: "calendar", label: t("section_calendar") },
   ];
@@ -2067,6 +2075,12 @@ async function openTripForm(trip, prefill) {
       { name: "budget", label: "Presupuesto (€)", type: "number", step: "0.01" },
       { name: "notes", label: "Notas", type: "textarea" },
     ],
+    validate: (values) => {
+      if (values.start_date && values.end_date && values.end_date < values.start_date) {
+        return "La fecha de fin no puede ser anterior a la de inicio";
+      }
+      return null;
+    },
     onDelete: trip
       ? async () => {
           await Data.deleteTripCascade(trip.id);

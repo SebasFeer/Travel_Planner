@@ -298,7 +298,7 @@ async function openAiPlannerSheet(trip, onApplied) {
   overlay.querySelector("#ai-cancel").addEventListener("click", () => overlay.remove());
 
   overlay.querySelector("#ai-generate").addEventListener("click", async () => {
-    if (!totalDays) {
+    if (!totalDays || totalDays < 1) {
       toast("Antes pon fecha de inicio y fin del viaje (editar viaje)");
       return;
     }
