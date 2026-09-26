@@ -1914,6 +1914,71 @@ async function hasProAccess() {
 }
 
 // ------------------------------------------------------------
+// LÍMITE DE CONSULTAS DE PAGO — el Copiloto de IA y los avisos de
+// estado de vuelo, a diferencia del resto de funciones con cuenta,
+// llaman a APIs externas de pago desde la Cloud Function (Claude,
+// AeroDataBox). Mientras no haya cobro real integrado, cada cuenta
+// puede usarlas PAID_QUERY_LIMIT veces; al intentarlo una vez más se
+// avisa de que las consultas ilimitadas llegarán con la futura
+// suscripción, en vez de dejarlas sin ningún tope (esto sí tiene un
+// coste real por llamada, a diferencia de las demás funciones con
+// cuenta). El contador se guarda localmente por cuenta
+// (Data.settingGet/Set), igual que el resto de ajustes de esta app:
+// no es a prueba de manipulación, pero basta mientras no haya pago.
+// ------------------------------------------------------------
+
+const PAID_QUERY_LIMIT = 2;
+
+function paidQueryCountKey(feature) {
+  const uid = currentUser()?.uid || "anon";
+  return `paid_query_count_${feature}_${uid}`;
+}
+
+async function getPaidQueryCount(feature) {
+  const raw = await Data.settingGet(paidQueryCountKey(feature));
+  return typeof raw === "number" ? raw : 0;
+}
+
+async function bumpPaidQueryCount(feature) {
+  const count = (await getPaidQueryCount(feature)) + 1;
+  await Data.settingSet(paidQueryCountKey(feature), count);
+  return count;
+}
+
+function openPaidQueryLimitSheet(reasonText) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Límite de consultas gratis alcanzado</h2>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+        ${escapeHtml(reasonText || `Ya usaste tus ${PAID_QUERY_LIMIT} consultas gratis para esta función.`)}
+      </p>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+        Muy pronto podrás tener consultas ilimitadas con una suscripción.
+      </p>
+      <div class="modal-actions"><button class="btn btn-primary" id="paid-limit-close">Entendido</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#paid-limit-close").addEventListener("click", () => overlay.remove());
+}
+
+/** Comprueba si aún quedan consultas gratis para `feature` ("ai" o
+ * "flight"); si no quedan, muestra el aviso y devuelve false. No
+ * consume ninguna consulta por sí sola: eso se hace aparte con
+ * bumpPaidQueryCount(), justo tras completarse la llamada real. */
+async function checkPaidQueryLimit(feature, reasonText) {
+  const count = await getPaidQueryCount(feature);
+  if (count >= PAID_QUERY_LIMIT) {
+    openPaidQueryLimitSheet(reasonText);
+    return false;
+  }
+  return true;
+}
+
+// ------------------------------------------------------------
 // VENTANA DE REGISTRO — reemplaza a los simples toasts de "esto
 // necesita cuenta" allí donde tiene sentido detenerse un momento a
 // explicar qué se gana, en vez de solo avisar y seguir. Solo se
@@ -1925,8 +1990,8 @@ async function hasProAccess() {
 const ACCOUNT_FEATURES_LIST = [
   "Viajes ilimitados (el plan gratis permite hasta 2 a la vez)",
   "Compartir viajes con código o QR",
-  "Copiloto de viajes con IA",
-  "Avisos de estado de vuelo",
+  `Copiloto de viajes con IA (${PAID_QUERY_LIMIT} usos gratis)`,
+  `Avisos de estado de vuelo (${PAID_QUERY_LIMIT} usos gratis)`,
   "Ordenar la ruta del mapa por cercanía",
   "Conversor de moneda",
   "Guardar el mapa y el itinerario en PDF",
@@ -2067,7 +2132,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openRegisterInviteSheet, hasProAccess };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openRegisterInviteSheet, hasProAccess, PAID_QUERY_LIMIT, checkPaidQueryLimit, bumpPaidQueryCount, openPaidQueryLimitSheet };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
@@ -2740,6 +2805,13 @@ async function openThemeSheet() {
 const NOTIF_KEY = "notifications_enabled";
 const FLIGHT_ALERTS_KEY = "flight_alerts_enabled";
 const NOTIFIED_SET_KEY = "notified_reminders";
+// Este chequeo se repite cada 15 minutos mientras un vuelo esté
+// dentro de las 24h previas a su salida (ver checkAndNotifyToday);
+// sin guardar el resultado, cada repaso volvería a gastar una de las
+// PAID_QUERY_LIMIT consultas gratis del vuelo. Se guarda una vez por
+// vuelo (incluido "no se encontró nada") y se reutiliza el resto de
+// repasos de esas mismas 24 horas.
+const FLIGHT_STATUS_CACHE_KEY = "flight_status_query_cache";
 
 const FLIGHT_LEAD_HOURS = 24;
 const HOTEL_RESERVATION_LEAD_HOURS = 24;
@@ -2788,7 +2860,7 @@ async function openNotificationsSheet() {
       <p style="color:var(--muted); font-size:12px; line-height:1.5;">
         ${
           pro
-            ? "Añade el retraso y la puerta de embarque a los avisos de hoy, cuando estén disponibles."
+            ? `Añade el retraso y la puerta de embarque a los avisos de hoy, cuando estén disponibles (${PAID_QUERY_LIMIT} usos gratis por cuenta; luego, próximamente por suscripción).`
             : "Función Pro — regístrate para activarla."
         }
       </p>
@@ -2876,8 +2948,11 @@ async function checkAndNotifyToday() {
     const notified = await getNotifiedSet();
     const flightAlertsOn = await Data.settingGet(FLIGHT_ALERTS_KEY);
     const useFlightStatus = flightAlertsOn && (await hasProAccess()) && isFlightStatusConfigured();
+    const flightStatusCacheRaw = await Data.settingGet(FLIGHT_STATUS_CACHE_KEY);
+    const flightStatusCache = flightStatusCacheRaw && typeof flightStatusCacheRaw === "object" ? flightStatusCacheRaw : {};
     let idToken = null;
     let changed = false;
+    let flightStatusCacheChanged = false;
 
     async function fire(key, body) {
       if (notified[key]) return;
@@ -2903,12 +2978,32 @@ async function checkAndNotifyToday() {
 
         let extra = "";
         if (useFlightStatus && f.flight_number) {
-          if (!idToken) idToken = await getIdToken();
-          if (idToken) {
-            const info = await getFlightStatus(f.flight_number, f.date, idToken);
+          const cacheKey = String(f.id);
+          if (cacheKey in flightStatusCache) {
+            const info = flightStatusCache[cacheKey];
             if (info) {
               if (info.delayMin > 0) extra += ` · retraso de ${info.delayMin} min`;
               if (info.gate) extra += ` · puerta ${info.gate}`;
+            }
+          } else if ((await getPaidQueryCount("flight")) >= PAID_QUERY_LIMIT) {
+            // Sin ventana emergente (esto corre en segundo plano, cada
+            // 15 min): un aviso único en el mismo canal de
+            // notificaciones que el resto.
+            await fire(
+              "paidlimit:flight",
+              `✈️ Límite de ${PAID_QUERY_LIMIT} avisos de vuelo con datos en vivo alcanzado. Consultas ilimitadas próximamente con la suscripción.`
+            );
+          } else {
+            if (!idToken) idToken = await getIdToken();
+            if (idToken) {
+              const info = await getFlightStatus(f.flight_number, f.date, idToken);
+              flightStatusCache[cacheKey] = info || null;
+              flightStatusCacheChanged = true;
+              await bumpPaidQueryCount("flight");
+              if (info) {
+                if (info.delayMin > 0) extra += ` · retraso de ${info.delayMin} min`;
+                if (info.gate) extra += ` · puerta ${info.gate}`;
+              }
             }
           }
         }
@@ -2940,6 +3035,7 @@ async function checkAndNotifyToday() {
     }
 
     if (changed) await Data.settingSet(NOTIFIED_SET_KEY, notified);
+    if (flightStatusCacheChanged) await Data.settingSet(FLIGHT_STATUS_CACHE_KEY, flightStatusCache);
   } catch (err) {
     // sin permiso, sin soporte, o cualquier fallo: no pasa nada
   }
@@ -3324,6 +3420,12 @@ hace falta para usar una función Pro es tener una cuenta creada
 registro para llevar la cuenta de quién usa estas funciones mientras
 se termina de integrar un cobro de verdad; estas condiciones se
 aplican de forma orientativa para cuando eso ocurra.
+
+Dos de estas funciones (el copiloto de viajes con IA y los avisos de
+estado de vuelo) tienen un coste real por cada consulta a un servicio
+externo, así que además del registro tienen un límite de 2 usos
+gratis por cuenta. Al superarlo, se avisa de que las consultas
+ilimitadas llegarán con la futura suscripción.
 
 2. Qué incluye Pro (cuando se active el cobro real)
 Viajes ilimitados, compartir viajes, avisos de estado de vuelo,
