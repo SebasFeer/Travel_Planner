@@ -9,7 +9,7 @@ import {
   uid,
 } from "./utils.js";
 import { geocodeAll, routeBetween, optimizeRouteOrder } from "./geocode.js";
-import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet, hasProAccess } from "./app.js";
+import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker, openRegisterInviteSheet, hasProAccess } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
@@ -1270,7 +1270,7 @@ async function renderExpenses(trip) {
   if (converterBtn) {
     converterBtn.addEventListener("click", async () => {
       if (!(await hasProAccess())) {
-        openProUpsellSheet("El conversor de moneda es una función Pro.");
+        openRegisterInviteSheet("El conversor de moneda requiere tener una cuenta.");
         return;
       }
       openCurrencyConverterSheet(trip);
@@ -1919,7 +1919,7 @@ async function composeStaticMap(centerLat, centerLng, zoom, widthPx, heightPx, p
  */
 async function exportMapPdf(trip, located, dayLabel) {
   if (!(await hasProAccess())) {
-    openProUpsellSheet("Guardar el mapa en PDF es una función Pro.");
+    openRegisterInviteSheet("Guardar el mapa en PDF requiere tener una cuenta.");
     return;
   }
   if (!window.jspdf) {
@@ -2036,7 +2036,7 @@ const PDF_COLORS = {
 
 async function exportItineraryPdf(trip) {
   if (!(await hasProAccess())) {
-    openProUpsellSheet("Descargar el itinerario en PDF es una función Pro.");
+    openRegisterInviteSheet("Descargar el itinerario en PDF requiere tener una cuenta.");
     return;
   }
   if (!window.jspdf) {
@@ -2353,7 +2353,7 @@ async function renderMap(trip) {
     if (optimizeBtn) {
       optimizeBtn.addEventListener("click", async () => {
         if (!showOptimized && !(await hasProAccess())) {
-          openProUpsellSheet("Ordenar la ruta por cercanía es una función Pro.");
+          openRegisterInviteSheet("Ordenar la ruta por cercanía requiere tener una cuenta.");
           return;
         }
         mapRouteMode = showOptimized ? "time" : "optimal";
