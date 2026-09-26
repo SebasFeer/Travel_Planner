@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Mis viajes — Viajoo</title>
+<meta name="description" content="Viajoo en la web: tus viajes, vuelos, hoteles, itinerario, gastos y checklist, sincronizados con la app." />
+<meta name="theme-color" content="#0d1230" />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="stylesheet" href="css/web.css" />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="../icons/icon-192.png" alt="" /><b>Viajoo</b></a>
+    <nav class="nav">
+      <a class="hide-sm" href="./">Inicio</a>
+      <span id="user-slot" style="display:flex; gap:10px; align-items:center; margin-left:8px"></span>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap app-main" id="app">
+  <div class="loading"><div class="spinner"></div><span class="label">Cargando</span></div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span class="mono">© <span data-year></span> VIAJOO</span>
+    <nav>
+      <a href="./">Inicio</a>
+      <a href="legal.html#privacidad">Privacidad</a>
+      <a href="legal.html#terminos">Términos</a>
+    </nav>
+  </div>
+</footer>
+
+<script>document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new Date().getFullYear()));</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

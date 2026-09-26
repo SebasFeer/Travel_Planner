@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Viajoo — Tu organizador de viajes en el bolsillo</title>
+<meta name="description" content="Viajoo organiza tus vuelos, hoteles, itinerario, gastos y checklist en un solo sitio. Funciona sin conexión, en iPhone, Android y ordenador, sin pasar por ninguna tienda de apps." />
+<meta name="theme-color" content="#0d1230" />
+<meta property="og:title" content="Viajoo — Tu organizador de viajes en el bolsillo" />
+<meta property="og:description" content="Vuelos, hoteles, itinerario, gastos y checklist de cada viaje, en un solo sitio y sin conexión." />
+<meta property="og:image" content="../icons/icon-512.png" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
+<link rel="stylesheet" href="css/web.css" />
+</head>
+<body>
+
+<header class="site-header on-dark">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../icons/icon-192.png" alt="" /><b>Viajoo</b></a>
+    <nav class="nav">
+      <a class="hide-sm" href="#destinos">Destinos</a>
+      <a class="hide-sm" href="#funciones">Funciones</a>
+      <a class="hide-sm" href="#pro">Pro</a>
+      <a class="hide-sm" href="#instalar">Instalar</a>
+      <a class="hide-sm" href="../">App móvil</a>
+      <a class="btn btn-amber btn-sm" href="mis-viajes.html">Entrar</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero" style="padding:0">
+    <div class="hero-photo"><img src="../img/wonders/machu-picchu.webp" alt="" fetchpriority="high" /></div>
+    <div class="wrap">
+      <div>
+        <span class="label">Organizador de viajes · App web gratuita</span>
+        <h1>Todo tu viaje, <em>a la hora.</em></h1>
+        <p class="lead">
+          Vuelos, hoteles, itinerario, reservas, gastos y checklist de cada viaje en un solo panel.
+          Viajoo funciona sin conexión y se instala en el móvil sin pasar por ninguna tienda.
+        </p>
+        <div class="hero-ctas">
+          <a class="btn btn-amber" href="mis-viajes.html">Planificar un viaje <span class="arrow">→</span></a>
+          <a class="btn btn-on-dark" href="#instalar">Instalar en el móvil</a>
+        </div>
+        <div class="hero-meta">
+          <div><span class="label">Plataformas</span><b>iPhone · Android · Ordenador</b></div>
+          <div><span class="label">Registro</span><b>Opcional</b></div>
+          <div><span class="label">Sin conexión</span><b>Sí, con mapa</b></div>
+        </div>
+      </div>
+
+      <div class="board" aria-label="Ejemplo del panel de un viaje a Lisboa">
+        <div class="board-head">
+          <b>Lisboa · Día 1</b>
+          <span class="clock" id="clock">08:05</span>
+        </div>
+        <div class="board-cols"><span>Hora</span><span>Plan</span><span>Ref.</span><span>Estado</span></div>
+        <div class="board-row">
+          <span class="flap time">08:35</span>
+          <span class="what"><span class="flap" data-flap>Vuelo MAD → LIS</span><small><i class="cat-dot" style="background:var(--c-flights)"></i>TAP · Puerta B32</small></span>
+          <span class="flap" data-flap>TP1027</span>
+          <span class="status st-board">Embarque</span>
+        </div>
+        <div class="board-row">
+          <span class="flap time">11:10</span>
+          <span class="what"><span class="flap" data-flap>Aerobús al centro</span><small><i class="cat-dot" style="background:var(--c-transport)"></i>Transporte · 4,60 €</small></span>
+          <span class="flap" data-flap>L1</span>
+          <span class="status st-plan">Previsto</span>
+        </div>
+        <div class="board-row">
+          <span class="flap time">15:00</span>
+          <span class="what"><span class="flap" data-flap>Hotel Alfama Patio</span><small><i class="cat-dot" style="background:var(--c-hotels)"></i>Check-in · 5 noches</small></span>
+          <span class="flap" data-flap>AX8812</span>
+          <span class="status st-ok">Confirmado</span>
+        </div>
+        <div class="board-row">
+          <span class="flap time">17:30</span>
+          <span class="what"><span class="flap" data-flap>Tranvía 28</span><small><i class="cat-dot" style="background:var(--c-itinerary)"></i>Itinerario · Martim Moniz</small></span>
+          <span class="flap" data-flap>—</span>
+          <span class="status st-plan">Previsto</span>
+        </div>
+        <div class="board-row">
+          <span class="flap time">21:00</span>
+          <span class="what"><span class="flap" data-flap>Cena de fado</span><small><i class="cat-dot" style="background:var(--c-reservations)"></i>Reserva · Clube de Fado</small></span>
+          <span class="flap" data-flap>F-221</span>
+          <span class="status st-ok">Confirmado</span>
+        </div>
+      </div>
+    </div>
+    <span class="scroll-hint" aria-hidden="true"></span>
+  </section>
+
+  <section class="destinations" id="destinos">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <span class="label">Destinos</span>
+          <h2>Del Coliseo a Petra, cada viaje en su sitio.</h2>
+        </div>
+        <p>Viajoo busca fotos reales de tu destino, tus hoteles y tus actividades para que cada viaje tenga su propia cara.</p>
+      </div>
+    </div>
+    <div class="marquee"><figure class="dest-card"><img src="../img/wonders/machu-picchu.webp" alt="Machu Picchu" loading="lazy" /><span class="tag">CUZ</span><figcaption><b>Machu Picchu</b><span>Perú</span></figcaption></figure><figure class="dest-card"><img src="../img/wonders/petra.webp" alt="Petra" loading="lazy" /><span class="tag">AQJ</span><figcaption><b>Petra</b><span>Jordania</span></figcaption></figure><figure class="dest-card"><img src="../img/wonders/colosseum.webp" alt="Coliseo" loading="lazy" /><span class="tag">FCO</span><figcaption><b>Coliseo</b><span>Roma, Italia</span></figcaption></figure><figure class="dest-card"><img src="../img/wonders/taj-mahal.webp" alt="Taj Mahal" loading="lazy" /><span class="tag">AGR</span><figcaption><b>Taj Mahal</b><span>Agra, India</span></figcaption></figure><figure class="dest-card"><img src="../img/wonders/great-wall.webp" alt="Gran Muralla" loading="lazy" /><span class="tag">PEK</span><figcaption><b>Gran Muralla</b><span>Pekín, China</span></figcaption></figure><figure class="dest-card"><img src="../img/wonders/christ-redeemer.webp" alt="Cristo Redentor" loading="lazy" /><span class="tag">GIG</span><figcaption><b>Cristo Redentor</b><span>Río de Janeiro</span></figcaption></figure><figure class="dest-card"><img src="../img/wonders/chichen-itza.webp" alt="Chichén Itzá" loading="lazy" /><span class="tag">CUN</span><figcaption><b>Chichén Itzá</b><span>Yucatán, México</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/machu-picchu.webp" alt="Machu Picchu" loading="lazy" /><span class="tag">CUZ</span><figcaption><b>Machu Picchu</b><span>Perú</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/petra.webp" alt="Petra" loading="lazy" /><span class="tag">AQJ</span><figcaption><b>Petra</b><span>Jordania</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/colosseum.webp" alt="Coliseo" loading="lazy" /><span class="tag">FCO</span><figcaption><b>Coliseo</b><span>Roma, Italia</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/taj-mahal.webp" alt="Taj Mahal" loading="lazy" /><span class="tag">AGR</span><figcaption><b>Taj Mahal</b><span>Agra, India</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/great-wall.webp" alt="Gran Muralla" loading="lazy" /><span class="tag">PEK</span><figcaption><b>Gran Muralla</b><span>Pekín, China</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/christ-redeemer.webp" alt="Cristo Redentor" loading="lazy" /><span class="tag">GIG</span><figcaption><b>Cristo Redentor</b><span>Río de Janeiro</span></figcaption></figure><figure class="dest-card" aria-hidden="true"><img src="../img/wonders/chichen-itza.webp" alt="Chichén Itzá" loading="lazy" /><span class="tag">CUN</span><figcaption><b>Chichén Itzá</b><span>Yucatán, México</span></figcaption></figure></div>
+  </section>
+
+  <section id="funciones" style="padding-top:24px">
+    <div class="wrap story">
+      <div class="story-row">
+        <div class="story-media reveal">
+          <div class="story-photo parallax"><img src="../img/wonders/colosseum.webp" alt="El Coliseo de Roma" loading="lazy" /></div>
+          <div class="story-float">
+            <span class="label">Roma · 3 días</span>
+            <div class="line"><span>✈ Vuelo IB 3230</span><b>07:15</b></div>
+            <div class="line"><span>🏨 Hotel Monti</span><b>2 noches</b></div>
+            <div class="line"><span>✓ Checklist</span><b>8/10</b></div>
+          </div>
+        </div>
+        <div class="story-copy reveal">
+          <span class="step">01 · ANTES</span>
+          <h3>Planifícalo todo en un solo sitio.</h3>
+          <p>Vuelos, hoteles, actividades y la maleta. Todo lo que hoy tienes repartido entre correos, capturas y notas.</p>
+          <ul class="feat-list">
+            <li style="--accent:var(--c-flights)"><div><b>Vuelos y hoteles</b><span>Horarios, vuelta, entrada, salida y código de reserva.</span></div></li>
+            <li style="--accent:var(--c-itinerary)"><div><b>Itinerario por días</b><span>Actividades con hora y lugar, ordenables arrastrando.</span></div></li>
+            <li style="--accent:var(--c-checklist)"><div><b>Checklist</b><span>Con una plantilla lista para no olvidar nada.</span></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="story-row">
+        <div class="story-media reveal">
+          <div class="story-photo parallax"><img src="../img/wonders/petra.webp" alt="El Tesoro de Petra" loading="lazy" /></div>
+          <div class="story-float">
+            <span class="label">Hoy · Petra</span>
+            <div class="line"><span>🗺 Siq y el Tesoro</span><b>08:00</b></div>
+            <div class="line"><span>🍽 Comida en Wadi Musa</span><b>14:00</b></div>
+            <div class="line"><span>📍 Mapa sin conexión</span><b>Listo</b></div>
+          </div>
+        </div>
+        <div class="story-copy reveal">
+          <span class="step">02 · DURANTE</span>
+          <h3>Contigo, incluso sin cobertura.</h3>
+          <p>La app abre sin internet y te dice qué toca hoy. El mapa del destino se descarga antes de salir.</p>
+          <ul class="feat-list">
+            <li style="--accent:var(--c-transport)"><div><b>Mapa sin conexión</b><span>Consulta el destino sin gastar datos.</span></div></li>
+            <li style="--accent:var(--c-reservations)"><div><b>Aviso del día</b><span>Si hoy tienes vuelo o actividad, lo ves nada más abrir.</span></div></li>
+            <li style="--accent:var(--c-hotels)"><div><b>Descubre el destino</b><span>Sitios cercanos y conversor de moneda con el cambio del día.</span></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="story-row">
+        <div class="story-media reveal">
+          <div class="story-photo parallax"><img src="../img/wonders/taj-mahal.webp" alt="El Taj Mahal" loading="lazy" /></div>
+          <div class="story-float">
+            <span class="label">Gastos · Agra</span>
+            <div class="line"><span>Total del viaje</span><b>1.284,50 €</b></div>
+            <div class="line"><span>Ana te debe</span><b>62,00 €</b></div>
+            <div class="line"><span>Presupuesto</span><b>86%</b></div>
+          </div>
+        </div>
+        <div class="story-copy reveal">
+          <span class="step">03 · DESPUÉS</span>
+          <h3>Las cuentas claras y el viaje guardado.</h3>
+          <p>Reparte gastos con quien viajas, exporta el viaje y tenlo a salvo en tu cuenta.</p>
+          <ul class="feat-list">
+            <li style="--accent:var(--c-expenses)"><div><b>Gastos compartidos</b><span>Por categoría, y quién le debe a quién.</span></div></li>
+            <li style="--accent:var(--c-itinerary)"><div><b>PDF y calendario</b><span>El viaje entero en PDF o en tu calendario.</span></div></li>
+            <li style="--accent:var(--c-flights)"><div><b>Copia en la nube</b><span>Con tu cuenta, en todos tus dispositivos.</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pro" style="padding-block:120px 48px">
+    <div class="wrap">
+      <div class="pro-band reveal">
+        <img src="../img/wonders/great-wall.webp" alt="" loading="lazy" />
+        <div>
+          <span class="label">Viajoo Pro</span>
+          <h2>Para viajar acompañado y sin sorpresas.</h2>
+          <p>Las funciones Pro necesitan una cuenta gratuita y, por ahora, no tienen ningún coste. Consulta las <a href="legal.html#suscripcion">condiciones de suscripción</a>.</p>
+        </div>
+        <div class="pro-cards">
+          <div class="pro-card"><span class="code">SHR</span><h4>Viajes compartidos</h4><p>Invita con un código de 6 caracteres o un QR y planificad el mismo viaje.</p></div>
+          <div class="pro-card"><span class="code">AI</span><h4>Copiloto con IA</h4><p>Una propuesta de itinerario a partir del destino, las fechas y tus gustos.</p></div>
+          <div class="pro-card"><span class="code">FLT</span><h4>Estado de vuelo</h4><p>Retrasos y puerta de embarque sin salir de la app.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="instalar">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="label">Instalar</span>
+          <h2>En tu pantalla de inicio en tres pasos.</h2>
+        </div>
+        <p>Viajoo es una app web: no pasa por la App Store ni por Google Play, se instala desde el navegador y se actualiza sola.</p>
+      </div>
+      <div class="install reveal">
+        <div class="install-card">
+          <header><h3>iPhone y iPad</h3><span class="label">Safari</span></header>
+          <ol class="steps">
+            <li><span>Abre <a href="../">Viajoo</a> en <b>Safari</b>.</span></li>
+            <li><span>Toca <b>Compartir</b>, el cuadrado con la flecha hacia arriba.</span></li>
+            <li><span>Elige <b>Añadir a pantalla de inicio</b>.</span></li>
+          </ol>
+        </div>
+        <div class="install-card">
+          <header><h3>Android y ordenador</h3><span class="label">Chrome · Edge</span></header>
+          <ol class="steps">
+            <li><span>Abre <a href="../">Viajoo</a> en <b>Chrome</b> o <b>Edge</b>.</span></li>
+            <li><span>Abre el menú <b>⋮</b> o el icono de instalar de la barra de direcciones.</span></li>
+            <li><span>Elige <b>Instalar aplicación</b>.</span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-block:40px 120px">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="label">Preguntas frecuentes</span>
+          <h2>Lo que suele preguntarse.</h2>
+        </div>
+      </div>
+      <div class="faq reveal">
+        <div>
+          <details>
+            <summary>¿Necesito crear una cuenta?</summary>
+            <p>No. Viajoo funciona completa guardando todo en tu dispositivo. La cuenta sirve para tener copia en la nube, usar tus viajes en varios dispositivos, verlos desde esta web o usar las funciones Pro.</p>
+          </details>
+          <details>
+            <summary>¿Funciona sin internet?</summary>
+            <p>Sí. Una vez abierta, la app y tus datos están en el dispositivo. Solo necesitas conexión para lo que depende de fuera, como fotos nuevas, el cambio de moneda o el estado de un vuelo.</p>
+          </details>
+          <details>
+            <summary>¿Puedo usar Viajoo desde el ordenador?</summary>
+            <p>Sí. <a href="mis-viajes.html">Entra en la web</a> con la misma cuenta de la app: puedes crear y editar viajes, y todo se sincroniza con el móvil.</p>
+          </details>
+        </div>
+        <div>
+          <details>
+            <summary>¿Cuánto cuesta?</summary>
+            <p>Las funciones básicas son gratuitas. Las funciones Pro no cobran nada por ahora; tienes el detalle en las <a href="legal.html#suscripcion">condiciones de suscripción</a>.</p>
+          </details>
+          <details>
+            <summary>¿Qué pasa con mis datos?</summary>
+            <p>Por defecto no salen de tu dispositivo. Si activas la cuenta, se guardan en Firebase (Google) bajo tu usuario. Todo el detalle está en la <a href="legal.html#privacidad">política de privacidad</a>.</p>
+          </details>
+          <details>
+            <summary>¿Qué pasa si borro los datos del navegador?</summary>
+            <p>Sin cuenta, se perderían los viajes de ese dispositivo. Con la cuenta iniciada, al volver a entrar se descargan de la nube.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <img src="../img/wonders/christ-redeemer.webp" alt="" loading="lazy" />
+    <div class="wrap">
+      <span class="label" style="color:var(--amber)">Próxima salida</span>
+      <h2>Tu próximo viaje <em>empieza aquí.</em></h2>
+      <p>Crea el viaje, añade el vuelo y el hotel, y llévalo todo en el bolsillo.</p>
+      <a class="btn btn-amber" href="mis-viajes.html">Entrar en Viajoo <span class="arrow">→</span></a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span class="mono">© <span data-year></span> VIAJOO</span>
+    <nav>
+      <a href="mis-viajes.html">Entrar</a>
+      <a href="../">App móvil</a>
+      <a href="legal.html#privacidad">Privacidad</a>
+      <a href="legal.html#terminos">Términos</a>
+      <a href="legal.html#cookies">Cookies</a>
+      <a href="legal.html#aviso-legal">Aviso legal</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new Date().getFullYear()));
+
+  // La cabecera es transparente sobre la foto y se vuelve sólida al bajar.
+  const header = document.querySelector(".site-header");
+  const onScroll = () => header.classList.toggle("scrolled", window.scrollY > 40);
+  onScroll();
+  addEventListener("scroll", onScroll, { passive: true });
+
+  // Reloj del panel con la hora local del visitante.
+  const clock = document.getElementById("clock");
+  const tick = () => {
+    const d = new Date();
+    clock.textContent = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+  tick();
+  setInterval(tick, 15000);
+
+  // Efecto de panel de lamas al cargar: cada texto baraja letras un
+  // momento y se asienta en su valor. El texto final ya está en el
+  // HTML, así que sin JS (o con movimiento reducido) se ve igual.
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    document.querySelectorAll("[data-flap]").forEach((el, i) => {
+      const final = el.textContent;
+      const start = performance.now() + i * 70;
+      const dur = 700;
+      const step = (now) => {
+        const p = Math.min(1, Math.max(0, (now - start) / dur));
+        const settled = Math.floor(p * final.length);
+        el.textContent = [...final]
+          .map((c, k) => (k < settled || c === " " ? c : CHARS[(Math.random() * CHARS.length) | 0]))
+          .join("");
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = final;
+      };
+      requestAnimationFrame(step);
+    });
+  }
+</script>
+</body>
+</html>
