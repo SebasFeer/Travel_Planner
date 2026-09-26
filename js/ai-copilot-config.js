@@ -18,6 +18,6 @@
 // necesidad de tocar esta URL.)
 // ============================================================
 
-const AI_COPILOT_ENDPOINT = "";
+const AI_COPILOT_ENDPOINT = "https://us-central1-travel-planner-e16e1.cloudfunctions.net/generateItinerary";
 
 export { AI_COPILOT_ENDPOINT };
