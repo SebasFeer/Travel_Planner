@@ -13,6 +13,43 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
+// ------------------------------------------------------------
+// LÍMITE DIARIO DE CONSULTAS DE PAGO — flightStatus y
+// generateItinerary llaman a APIs externas de pago (AeroDataBox,
+// Claude). Se guarda un contador por cuenta y por día en Firestore
+// (colección "paid_query_usage", solo accesible desde aquí con el
+// Admin SDK — firestore.rules la deniega al cliente por defecto), así
+// el tope de 2 consultas/día es real por cuenta y no se puede esquivar
+// usando otro dispositivo o borrando los datos locales del navegador.
+// ------------------------------------------------------------
+const DAILY_QUERY_LIMIT = 2;
+
+function todayUtcString() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD en UTC
+}
+
+/** Intenta reservar un uso diario para `feature` ("ai" o "flight") de
+ * este usuario. Devuelve { allowed: true } y consume el uso si quedaba
+ * cupo, o { allowed: false } si ya se agotaron los DAILY_QUERY_LIMIT
+ * usos de hoy — sin tocar el contador en ese caso. */
+async function reserveDailyQuota(uid, feature) {
+  const today = todayUtcString();
+  const ref = admin.firestore().collection("paid_query_usage").doc(`${uid}_${feature}_${today}`);
+  return admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const count = snap.exists ? snap.data().count || 0 : 0;
+    if (count >= DAILY_QUERY_LIMIT) {
+      return { allowed: false };
+    }
+    tx.set(
+      ref,
+      { uid, feature, date: today, count: count + 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+    return { allowed: true };
+  });
+}
+
 // Se guarda con `firebase functions:secrets:set AERODATABOX_KEY`
 // (ver instrucciones de despliegue). Nunca se escribe en el código.
 const AERODATABOX_KEY = defineSecret("AERODATABOX_KEY");
@@ -28,7 +65,14 @@ exports.flightStatus = onRequest(
         res.status(401).json({ error: "Falta el token de sesión." });
         return;
       }
-      await admin.auth().verifyIdToken(idToken);
+      const decoded = await admin.auth().verifyIdToken(idToken);
+
+      // 1b. Tope diario de consultas de pago, por cuenta.
+      const quota = await reserveDailyQuota(decoded.uid, "flight");
+      if (!quota.allowed) {
+        res.status(429).json({ error: "LIMIT_REACHED", limit: DAILY_QUERY_LIMIT });
+        return;
+      }
 
       // 2. Leer los parámetros (número de vuelo y fecha).
       const flightNumber = req.query.flightNumber || (req.body && req.body.flightNumber);
@@ -49,13 +93,27 @@ exports.flightStatus = onRequest(
       });
 
       if (!apiRes.ok) {
+        const errText = await apiRes.text().catch(() => "");
+        console.error("AeroDataBox error:", apiRes.status, errText);
         res.status(apiRes.status).json({ error: "La API de vuelos no respondió correctamente." });
         return;
       }
 
-      const data = await apiRes.json();
+      // AeroDataBox puede devolver 200 con el cuerpo vacío cuando no
+      // encuentra el vuelo (en vez de un array vacío o un 404), lo que
+      // rompería un .json() directo. Se trata igual que "sin datos".
+      const rawText = await apiRes.text();
+      let data = null;
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText);
+        } catch (parseErr) {
+          console.error("AeroDataBox: respuesta no JSON:", rawText.slice(0, 200));
+        }
+      }
       res.status(200).json(data);
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: "Error interno consultando el vuelo." });
     }
   }
@@ -203,7 +261,14 @@ exports.generateItinerary = onRequest(
         res.status(401).json({ error: "Falta el token de sesión." });
         return;
       }
-      await admin.auth().verifyIdToken(idToken);
+      const decoded = await admin.auth().verifyIdToken(idToken);
+
+      // 1b. Tope diario de consultas de pago, por cuenta.
+      const quota = await reserveDailyQuota(decoded.uid, "ai");
+      if (!quota.allowed) {
+        res.status(429).json({ error: "LIMIT_REACHED", limit: DAILY_QUERY_LIMIT });
+        return;
+      }
 
       // 2. Leer y validar los parámetros del viaje.
       const body = req.body || {};

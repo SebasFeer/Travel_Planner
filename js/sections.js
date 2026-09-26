@@ -2282,7 +2282,7 @@ async function exportItineraryPdf(trip) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(...PDF_COLORS.muted);
-    doc.text("TravelPlanner", margin, pageH - 20);
+    doc.text("Viajoo", margin, pageH - 20);
     doc.text(`Página ${p} de ${pageCount}`, pageW - margin, pageH - 20, { align: "right" });
     doc.setTextColor(...PDF_COLORS.dark);
   }
@@ -2752,7 +2752,7 @@ async function exportTripToIcs(trip) {
     return;
   }
 
-  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TravelPlanner//ES", "CALSCALE:GREGORIAN", ...events, "END:VCALENDAR"].join("\r\n");
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Viajoo//ES", "CALSCALE:GREGORIAN", ...events, "END:VCALENDAR"].join("\r\n");
   const filename = `calendario-${(trip.destination || trip.name || "viaje").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.ics`;
   download(filename, ics, "text/calendar");
   toast("Calendario descargado — ábrelo con tu app de calendario para añadirlo");

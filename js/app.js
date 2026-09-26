@@ -1568,7 +1568,7 @@ async function renderHome() {
         <div class="hero-brand">
           <span class="hero-logo">${brandMark()}</span>
           <div>
-            <p class="hero-brand-name">Travel Planner</p>
+            <p class="hero-brand-name">Viajoo</p>
             <p class="hero-brand-tag">${t("brand_tagline")}</p>
           </div>
         </div>
@@ -1917,21 +1917,26 @@ async function hasProAccess() {
 // LÍMITE DE CONSULTAS DE PAGO — el Copiloto de IA y los avisos de
 // estado de vuelo, a diferencia del resto de funciones con cuenta,
 // llaman a APIs externas de pago desde la Cloud Function (Claude,
-// AeroDataBox). Mientras no haya cobro real integrado, cada cuenta
-// puede usarlas PAID_QUERY_LIMIT veces; al intentarlo una vez más se
-// avisa de que las consultas ilimitadas llegarán con la futura
-// suscripción, en vez de dejarlas sin ningún tope (esto sí tiene un
-// coste real por llamada, a diferencia de las demás funciones con
-// cuenta). El contador se guarda localmente por cuenta
-// (Data.settingGet/Set), igual que el resto de ajustes de esta app:
-// no es a prueba de manipulación, pero basta mientras no haya pago.
+// AeroDataBox). Cada cuenta puede usarlas PAID_QUERY_LIMIT veces AL
+// DÍA; al intentarlo una vez más se avisa de que las consultas
+// ilimitadas llegarán con la futura suscripción.
+//
+// El contador de aquí abajo es solo un espejo local (Data.settingGet/
+// Set, con la fecha de hoy en la clave para que se reinicie solo cada
+// día) pensado para no abrir formularios/hacer una llamada de red que
+// ya sabemos que va a fallar. La cuenta que de verdad manda vive en
+// Firestore, junto al UID, dentro de la propia Cloud Function
+// (reserveDailyQuota en functions/index.js): por eso el tope no se
+// puede esquivar usando otro dispositivo o borrando los datos locales
+// — si el servidor rechaza la llamada por límite (ver
+// syncPaidQueryLimitReached), este espejo local se pone al día.
 // ------------------------------------------------------------
 
 const PAID_QUERY_LIMIT = 2;
 
 function paidQueryCountKey(feature) {
   const uid = currentUser()?.uid || "anon";
-  return `paid_query_count_${feature}_${uid}`;
+  return `paid_query_count_${feature}_${uid}_${todayString()}`;
 }
 
 async function getPaidQueryCount(feature) {
@@ -1945,15 +1950,30 @@ async function bumpPaidQueryCount(feature) {
   return count;
 }
 
+/** El servidor ha rechazado una llamada por haberse agotado el cupo
+ * diario de esta cuenta (posiblemente consumido desde otro
+ * dispositivo): pone el espejo local al día, sin más. */
+async function markPaidQueryLimitReached(feature) {
+  await Data.settingSet(paidQueryCountKey(feature), PAID_QUERY_LIMIT);
+}
+
+/** Igual que markPaidQueryLimitReached, pero además muestra el aviso
+ * — para cuando el rechazo ocurre en primer plano, en respuesta
+ * directa a algo que acaba de tocar la persona. */
+async function syncPaidQueryLimitReached(feature, reasonText) {
+  await markPaidQueryLimitReached(feature);
+  openPaidQueryLimitSheet(reasonText);
+}
+
 function openPaidQueryLimitSheet(reasonText) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.innerHTML = h`
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 class="modal-title">Límite de consultas gratis alcanzado</h2>
+      <h2 class="modal-title">Límite diario alcanzado</h2>
       <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
-        ${escapeHtml(reasonText || `Ya usaste tus ${PAID_QUERY_LIMIT} consultas gratis para esta función.`)}
+        ${escapeHtml(reasonText || `Ya usaste tus ${PAID_QUERY_LIMIT} consultas gratis de hoy para esta función.`)}
       </p>
       <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
         Muy pronto podrás tener consultas ilimitadas con una suscripción.
@@ -1990,8 +2010,8 @@ async function checkPaidQueryLimit(feature, reasonText) {
 const ACCOUNT_FEATURES_LIST = [
   "Viajes ilimitados (el plan gratis permite hasta 2 a la vez)",
   "Compartir viajes con código o QR",
-  `Copiloto de viajes con IA (${PAID_QUERY_LIMIT} usos gratis)`,
-  `Avisos de estado de vuelo (${PAID_QUERY_LIMIT} usos gratis)`,
+  `Copiloto de viajes con IA (${PAID_QUERY_LIMIT} usos gratis al día)`,
+  `Avisos de estado de vuelo (${PAID_QUERY_LIMIT} usos gratis al día)`,
   "Ordenar la ruta del mapa por cercanía",
   "Conversor de moneda",
   "Guardar el mapa y el itinerario en PDF",
@@ -2111,7 +2131,7 @@ function openBackupSheet() {
   overlay.querySelector("#btn-export").addEventListener("click", async () => {
     const dump = await Data.exportAll();
     const stamp = todayString();
-    download(`travelplanner-backup-${stamp}.json`, JSON.stringify(dump, null, 2));
+    download(`viajoo-backup-${stamp}.json`, JSON.stringify(dump, null, 2));
     toast("Copia exportada");
   });
 
@@ -2132,7 +2152,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openRegisterInviteSheet, hasProAccess, PAID_QUERY_LIMIT, checkPaidQueryLimit, bumpPaidQueryCount, openPaidQueryLimitSheet };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openRegisterInviteSheet, hasProAccess, PAID_QUERY_LIMIT, checkPaidQueryLimit, bumpPaidQueryCount, openPaidQueryLimitSheet, syncPaidQueryLimitReached };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
@@ -2417,48 +2437,11 @@ async function afterLogin(user) {
     return;
   }
 
-  // Si este dispositivo todavía no tiene ningún viaje creado, no hay
-  // nada que se pueda perder al traer la copia de la nube: se
-  // descarga sola, sin preguntar. Solo se pide elegir manualmente
-  // cuando ambos lados tienen datos y podría haber que sustituir algo.
-  const localTrips = await Data.getAll("trips");
-  if (!localTrips.length) {
-    toast("Sesión iniciada. Descargando tus viajes…");
-    await pullFromCloud();
-    await renderApp();
-    return;
-  }
-
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
-  overlay.innerHTML = h`
-    <div class="modal-sheet">
-      <div class="modal-handle"></div>
-      <h2 class="modal-title">Ya tienes una copia en la nube</h2>
-      <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
-        Hay datos guardados de antes en tu cuenta. ¿Qué quieres hacer?
-      </p>
-      <div class="modal-actions">
-        <button class="btn btn-primary" id="merge-pull">${icon("download")} Usar los datos de la nube (sustituye los de este móvil)</button>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="merge-push">${icon("upload")} Usar los datos de este móvil (sustituye los de la nube)</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-
-  overlay.querySelector("#merge-pull").addEventListener("click", async () => {
-    overlay.remove();
-    await pullFromCloud();
-    toast("Datos de la nube cargados");
-    await renderApp();
-  });
-  overlay.querySelector("#merge-push").addEventListener("click", async () => {
-    overlay.remove();
-    await pushToCloud();
-    toast("Tus datos de este móvil se han subido");
-    await renderApp();
-  });
+  // Siempre que ya exista una copia en la nube, se descarga y sustituye
+  // los datos de este dispositivo sin preguntar (la nube manda).
+  toast("Sesión iniciada. Descargando tus viajes…");
+  await pullFromCloud();
+  await renderApp();
 }
 
 // ============================================================
@@ -2860,7 +2843,7 @@ async function openNotificationsSheet() {
       <p style="color:var(--muted); font-size:12px; line-height:1.5;">
         ${
           pro
-            ? `Añade el retraso y la puerta de embarque a los avisos de hoy, cuando estén disponibles (${PAID_QUERY_LIMIT} usos gratis por cuenta; luego, próximamente por suscripción).`
+            ? `Añade el retraso y la puerta de embarque a los avisos de hoy, cuando estén disponibles (${PAID_QUERY_LIMIT} usos gratis al día por cuenta; luego, próximamente por suscripción).`
             : "Función Pro — regístrate para activarla."
         }
       </p>
@@ -2956,7 +2939,7 @@ async function checkAndNotifyToday() {
 
     async function fire(key, body) {
       if (notified[key]) return;
-      new Notification("TravelPlanner", { body });
+      new Notification("Viajoo", { body });
       notified[key] = Date.now();
       changed = true;
     }
@@ -2991,18 +2974,31 @@ async function checkAndNotifyToday() {
             // notificaciones que el resto.
             await fire(
               "paidlimit:flight",
-              `✈️ Límite de ${PAID_QUERY_LIMIT} avisos de vuelo con datos en vivo alcanzado. Consultas ilimitadas próximamente con la suscripción.`
+              `✈️ Límite de ${PAID_QUERY_LIMIT} avisos de vuelo con datos en vivo alcanzado hoy. Consultas ilimitadas próximamente con la suscripción.`
             );
           } else {
             if (!idToken) idToken = await getIdToken();
             if (idToken) {
               const info = await getFlightStatus(f.flight_number, f.date, idToken);
-              flightStatusCache[cacheKey] = info || null;
-              flightStatusCacheChanged = true;
-              await bumpPaidQueryCount("flight");
-              if (info) {
-                if (info.delayMin > 0) extra += ` · retraso de ${info.delayMin} min`;
-                if (info.gate) extra += ` · puerta ${info.gate}`;
+              if (info && info.limitReached) {
+                // El límite lo acaba de imponer el servidor (por
+                // ejemplo, ya se gastó desde otro dispositivo hoy):
+                // se sincroniza el espejo local y se avisa una vez,
+                // sin marcar este vuelo en caché (mañana vuelve a
+                // haber cupo y se reintenta solo).
+                await markPaidQueryLimitReached("flight");
+                await fire(
+                  "paidlimit:flight",
+                  `✈️ Límite de ${PAID_QUERY_LIMIT} avisos de vuelo con datos en vivo alcanzado hoy. Consultas ilimitadas próximamente con la suscripción.`
+                );
+              } else {
+                flightStatusCache[cacheKey] = info || null;
+                flightStatusCacheChanged = true;
+                await bumpPaidQueryCount("flight");
+                if (info) {
+                  if (info.delayMin > 0) extra += ` · retraso de ${info.delayMin} min`;
+                  if (info.gate) extra += ` · puerta ${info.gate}`;
+                }
               }
             }
           }
@@ -3077,7 +3073,7 @@ const LEGAL_NOTICE_TEXT = `
 1. Identificación del titular
 En cumplimiento del deber de información de la Ley 34/2002, de 11 de
 julio, de Servicios de la Sociedad de la Información y de Comercio
-Electrónico (LSSI-CE), se informa de que TravelPlanner es un proyecto
+Electrónico (LSSI-CE), se informa de que Viajoo es un proyecto
 personal cuyo titular es:
 
 Titular: [NOMBRE Y APELLIDOS]
@@ -3085,20 +3081,20 @@ DNI/NIF: [DNI/NIF]
 Domicilio: [DOMICILIO]
 Correo de contacto: [EMAIL DE CONTACTO]
 
-Por ahora TravelPlanner es una aplicación personal en fase de
+Por ahora Viajoo es una aplicación personal en fase de
 desarrollo y pruebas, sin actividad económica real todavía: la
 función Pro no cobra nada mientras tanto (ver "Condiciones de
 suscripción"). Si eso cambia, este aviso se actualizará con los datos
 de actividad económica que correspondan.
 
 2. Objeto
-TravelPlanner es una aplicación web (PWA) para organizar viajes:
+Viajoo es una aplicación web (PWA) para organizar viajes:
 itinerario, vuelos, hoteles, gastos, documentos y contenido
 relacionado, guardado principalmente en el propio dispositivo de
 quien la usa.
 
 3. Condiciones de acceso y uso
-El acceso a TravelPlanner es gratuito, salvo por las funciones
+El acceso a Viajoo es gratuito, salvo por las funciones
 marcadas como "Pro" (ver Condiciones de suscripción). Usar la
 aplicación implica aceptar este Aviso Legal, los Términos y
 Condiciones de Uso, y la Política de Privacidad.
@@ -3120,7 +3116,7 @@ Responsable del tratamiento
 Puedes escribir a [EMAIL DE CONTACTO] para cualquier duda sobre esta
 política o para ejercer tus derechos.
 
-1. Qué datos guarda TravelPlanner
+1. Qué datos guarda Viajoo
 Los datos de tus viajes (vuelos, hoteles, itinerario, transporte, reservas,
 gastos y checklist) se guardan en tu propio dispositivo, en el
 almacenamiento local del navegador (IndexedDB). No se envían a ningún
@@ -3196,7 +3192,7 @@ guarda tu huella o tu cara, solo la confirmación de que el gesto se
 completó. Nadie más que tú puede ver ni recuperar tu PIN.
 
 10. Analítica y publicidad
-TravelPlanner no usa herramientas de analítica ni de seguimiento, y no
+Viajoo no usa herramientas de analítica ni de seguimiento, y no
 muestra publicidad dentro de la app.
 
 11. Base legal y conservación de tus datos
@@ -3224,7 +3220,7 @@ RGPD (cláusulas contractuales tipo u otro mecanismo equivalente que
 ofrezca cada proveedor).
 
 14. Menores de edad
-TravelPlanner no está dirigida a menores de 14 años. Si eres menor de
+Viajoo no está dirigida a menores de 14 años. Si eres menor de
 edad, necesitas el consentimiento de tus padres o tutores para crear
 una cuenta o activar funciones que impliquen guardar datos en la nube.
 
@@ -3237,13 +3233,13 @@ const TERMS_OF_USE_TEXT = `
 Última actualización: ${new Date().getFullYear()}
 
 1. Objeto y aceptación
-Estas condiciones regulan el uso de TravelPlanner, una aplicación para
+Estas condiciones regulan el uso de Viajoo, una aplicación para
 organizar viajes. Al usarla, aceptas estas condiciones, el Aviso Legal
 y la Política de Privacidad. Si no estás de acuerdo, no uses la
 aplicación.
 
 2. Quién puede usarla
-TravelPlanner no está dirigida a menores de 14 años. Si eres menor de
+Viajoo no está dirigida a menores de 14 años. Si eres menor de
 edad, necesitas el consentimiento de tus padres o tutores para crear
 una cuenta.
 
@@ -3254,7 +3250,7 @@ cuenta. Avísanos en [EMAIL DE CONTACTO] si sospechas un uso no
 autorizado.
 
 4. Uso aceptable
-Te comprometes a usar TravelPlanner de forma lícita, sin:
+Te comprometes a usar Viajoo de forma lícita, sin:
 - Intentar acceder a datos de otras personas usuarias sin autorización.
 - Usar la función de compartir viajes para distribuir contenido
   ilegal, ofensivo o que infrinja derechos de terceros.
@@ -3268,7 +3264,7 @@ ti (y a quien invites, si compartes un viaje), nunca para usarlos con
 otro fin. Ver también Propiedad intelectual.
 
 6. Disponibilidad del servicio
-TravelPlanner depende en parte de servicios externos gratuitos (mapas,
+Viajoo depende en parte de servicios externos gratuitos (mapas,
 tipos de cambio, geocodificación, IA...) que pueden fallar o dejar de
 estar disponibles sin previo aviso; la app está pensada para seguir
 funcionando con lo que ya tengas guardado localmente aunque eso pase.
@@ -3278,11 +3274,11 @@ ininterrumpida.
 7. Cambios en la app y en estas condiciones
 Podemos añadir, cambiar o retirar funciones, y actualizar estas
 condiciones. Si el cambio es importante, avisaremos dentro de la app.
-Seguir usando TravelPlanner después de un cambio implica que lo
+Seguir usando Viajoo después de un cambio implica que lo
 aceptas.
 
 8. Limitación de responsabilidad
-TravelPlanner se ofrece "tal cual". Dentro de lo que permite la ley, no
+Viajoo se ofrece "tal cual". Dentro de lo que permite la ley, no
 respondemos de decisiones de viaje que tomes basándote en datos de la
 app (tipos de cambio, estado de vuelos, itinerarios generados por
 IA...) ni de fallos de los servicios externos que consulta. Revisa
@@ -3304,13 +3300,13 @@ const INTELLECTUAL_PROPERTY_TEXT = `
 Última actualización: ${new Date().getFullYear()}
 
 1. Titularidad
-El código, el diseño, la marca "TravelPlanner" y los contenidos propios
+El código, el diseño, la marca "Viajoo" y los contenidos propios
 de la aplicación (textos, iconos e interfaz) son propiedad de
 [NOMBRE Y APELLIDOS], salvo el software de terceros con licencia propia
 (ver Licencias).
 
 2. Uso permitido
-Puedes usar TravelPlanner para organizar tus propios viajes. No está
+Puedes usar Viajoo para organizar tus propios viajes. No está
 permitido copiar, modificar, distribuir o hacer ingeniería inversa de
 la aplicación sin permiso, salvo lo que permita la ley o la licencia
 del software de terceros que incluye.
@@ -3347,12 +3343,12 @@ revisarlo.
 const COOKIES_TEXT = `
 Última actualización: ${new Date().getFullYear()}
 
-1. TravelPlanner no usa cookies de rastreo ni publicitarias
+1. Viajoo no usa cookies de rastreo ni publicitarias
 Esta aplicación no coloca cookies propias ni de terceros con fines de
 analítica, publicidad o seguimiento entre sitios.
 
 2. Qué guarda tu navegador entonces
-En vez de cookies, TravelPlanner guarda tus datos en dos almacenes
+En vez de cookies, Viajoo guarda tus datos en dos almacenes
 propios del navegador, que solo esta app puede leer y que nunca se
 envían a ningún sitio salvo que actives tú la copia en la nube:
 - IndexedDB: tus viajes, vuelos, hoteles, gastos, itinerario, y el
@@ -3379,7 +3375,7 @@ ocurre si decides iniciar sesión.
 
 5. Cómo desactivarlo
 Puedes bloquear el almacenamiento local desde los ajustes de tu
-navegador, pero ten en cuenta que TravelPlanner necesita IndexedDB
+navegador, pero ten en cuenta que Viajoo necesita IndexedDB
 para guardar tus viajes: si lo bloqueas por completo, la app no podrá
 funcionar.
 `.trim();
@@ -3413,7 +3409,7 @@ const SUBSCRIPTION_TERMS_TEXT = `
 Última actualización: ${new Date().getFullYear()}
 
 1. Estado actual: sin cobro real, pero con registro obligatorio
-TravelPlanner Pro está todavía en fase de pruebas: no hay ningún
+Viajoo Pro está todavía en fase de pruebas: no hay ningún
 sistema de pago real integrado. Mientras esto sea así, lo único que
 hace falta para usar una función Pro es tener una cuenta creada
 (gratis, con email o con Google) — no hay ningún cargo. Pedimos el
@@ -3424,7 +3420,7 @@ aplican de forma orientativa para cuando eso ocurra.
 Dos de estas funciones (el copiloto de viajes con IA y los avisos de
 estado de vuelo) tienen un coste real por cada consulta a un servicio
 externo, así que además del registro tienen un límite de 2 usos
-gratis por cuenta. Al superarlo, se avisa de que las consultas
+gratis por cuenta AL DÍA. Al superarlo, se avisa de que las consultas
 ilimitadas llegarán con la futura suscripción.
 
 2. Qué incluye Pro (cuando se active el cobro real)
@@ -3462,7 +3458,7 @@ antelación razonable a quienes ya tengan una suscripción activa.
 const THIRD_PARTY_LICENSES_TEXT = `
 Última actualización: ${new Date().getFullYear()}
 
-TravelPlanner usa las siguientes librerías de código abierto y fuentes
+Viajoo usa las siguientes librerías de código abierto y fuentes
 de terceros. Se listan aquí en cumplimiento de sus propias licencias,
 que exigen dar crédito a su autoría:
 
@@ -3495,7 +3491,7 @@ function openLegalSheet() {
       <div class="modal-handle"></div>
       <h2 class="modal-title">${icon("shield")} Legal</h2>
       <p style="color:var(--muted); font-size:12.5px; line-height:1.6; margin-top:-8px;">
-        Documentos legales de TravelPlanner. Son plantillas con una
+        Documentos legales de Viajoo. Son plantillas con una
         estructura estándar, con los datos identificativos del titular
         pendientes de rellenar — no sustituyen la revisión de un
         abogado antes de publicar la app.

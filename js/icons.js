@@ -95,7 +95,7 @@ function icon(name, extraClass = "") {
 }
 
 /**
- * Logo de TravelPlanner: un avión de papel trazando la ruta punteada
+ * Logo de Viajoo: un avión de papel trazando la ruta punteada
  * hasta el destino. A diferencia de icon(), usa relleno (no trazo de
  * un solo color) y su propio viewBox de 100x100, así que va aparte
  * en vez de vivir en PATHS.

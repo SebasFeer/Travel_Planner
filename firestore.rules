@@ -1,11 +1,17 @@
 rules_version = '2';
 
 // ============================================================
-// firestore.rules — Reglas de seguridad de TravelPlanner.
+// firestore.rules — Reglas de seguridad de Viajoo.
 //
 // Reflejan exactamente lo que usa cloud.js hoy:
 //   - users/{uid}         -> copia de seguridad íntegra del usuario
 //   - shared_trips/{code} -> un viaje compartido por código de 6 caracteres
+//
+// paid_query_usage/* (contador diario de consultas de pago por cuenta,
+// usado por functions/index.js) NO tiene regla propia a propósito: cae
+// en el bloqueo por defecto de más abajo, así ningún cliente puede
+// leerlo ni tocarlo directamente — solo el Admin SDK de la Cloud
+// Function, que no pasa por estas reglas.
 //
 // Nota sobre "Pro": hoy el plan gratuito/premium se controla solo en
 // el cliente (pro.js, guardado local). Estas reglas NO comprueban el

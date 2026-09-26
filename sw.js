@@ -1,13 +1,17 @@
-// Service worker: cachea el "app shell" para que TravelPlanner
+// Service worker: cachea el "app shell" para que Viajoo
 // abra incluso sin conexión (los datos ya viven en IndexedDB,
 // que no depende del service worker).
 
-const CACHE_NAME = "travelplanner-v36";
+const CACHE_NAME = "viajoo-v37";
 
 // Caché de teselas del mapa: va SEPARADA a propósito y con nombre
 // fijo (sin número de versión de la app), para que sobreviva a las
 // actualizaciones. Si fuera parte de CACHE_NAME, cada vez que
 // subiéramos cambios se borraría el mapa descargado sin conexión.
+// OJO: se deja con el nombre antiguo ("travelplanner-...") a
+// propósito pese al cambio de marca a "Viajoo" — es solo una clave
+// interna de almacenamiento, no algo visible, y cambiarla borraría
+// de golpe el mapa sin conexión de quien ya lo tuviera descargado.
 const TILE_CACHE_NAME = "travelplanner-tiles-v1";
 const TILE_HOST = "tile.openstreetmap.org";
 

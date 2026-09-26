@@ -21,7 +21,9 @@ function isFlightStatusConfigured() {
  * cloud.js) para que la Cloud Function sepa que quien pregunta ha
  * iniciado sesión en la app.
  *
- * Devuelve algo como { status, delayMin, gate, terminal } o null.
+ * Devuelve { status, delayMin, gate, terminal }, { limitReached: true }
+ * si la cuenta ya agotó su cupo diario en el servidor, o null si no
+ * hay datos (sin conexión, vuelo no encontrado, etc.).
  *
  * Nota: el formato exacto de la respuesta de AeroDataBox puede variar
  * algo según el plan/versión; si al probarlo ves que no encaja del
@@ -39,6 +41,7 @@ async function getFlightStatus(flightNumber, isoDate, idToken) {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${idToken}` },
     });
+    if (res.status === 429) return { limitReached: true };
     if (!res.ok) return null;
 
     const results = await res.json();

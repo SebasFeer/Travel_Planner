@@ -94,8 +94,8 @@ async function enableBiometric() {
     const cred = await navigator.credentials.create({
       publicKey: {
         challenge,
-        rp: { name: "TravelPlanner" },
-        user: { id: userId, name: "travelplanner-local", displayName: "TravelPlanner" },
+        rp: { name: "Viajoo" },
+        user: { id: userId, name: "viajoo-local", displayName: "Viajoo" },
         pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
         authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
         timeout: 60000,
