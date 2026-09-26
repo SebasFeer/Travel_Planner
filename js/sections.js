@@ -2804,4 +2804,4 @@ async function exportTripToIcs(trip) {
   toast("Calendario descargado — ábrelo con tu app de calendario para añadirlo");
 }
 
-export { TABS, renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs, openCurrencyConverterSheet };
+export { TABS, renderSection, renderPrintArea, exportItineraryPdf, exportTripToIcs, openCurrencyConverterSheet, bookingSearchUrl };
