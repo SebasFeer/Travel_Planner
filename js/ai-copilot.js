@@ -11,16 +11,15 @@
 import { AI_COPILOT_ENDPOINT } from "./ai-copilot-config.js";
 import { getIdToken } from "./cloud.js";
 import { Data } from "./db.js";
-import { h, toast, state, withTransition, renderApp, openProUpsellSheet } from "./app.js";
+import { h, toast, state, withTransition, renderApp, openProUpsellSheet, hasProAccess } from "./app.js";
 import { escapeHtml, formatDatePretty, money, daysBetween } from "./utils.js";
-import { isPro } from "./pro.js";
 
 async function checkAiCopilotAccess() {
   if (!isAiCopilotConfigured()) {
     toast("El Copiloto IA todavía no está desplegado en esta app (ver docs/DEPLOY_AI_COPILOT.md)");
     return false;
   }
-  if (!(await isPro())) {
+  if (!(await hasProAccess())) {
     openProUpsellSheet("El Copiloto de viajes con IA es una función Pro.");
     return false;
   }
