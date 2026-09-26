@@ -3090,12 +3090,35 @@ async function checkAndNotifyToday() {
 // ============================================================
 // FELICITACIÓN DE CUMPLEAÑOS — usa la fecha de nacimiento guardada en
 // el perfil (ver saveBirthDate/profile_birth_date en cloud.js/afterLogin)
-// para saludar una vez al año, el día que toque. A propósito NO depende
-// del permiso de notificaciones del navegador (mucha gente no lo da):
-// el toast en pantalla lo ve todo el mundo con sesión iniciada; la
+// para saludar una vez al año, el día que toque, con una ventana
+// grande (no un simple toast, para que se note de verdad). A propósito
+// NO depende del permiso de notificaciones del navegador (mucha gente
+// no lo da): la ventana la ve todo el mundo con sesión iniciada; la
 // notificación del navegador es solo un extra para quien las activó.
 // ============================================================
 const BIRTHDAY_GREETED_KEY = "birthday_greeted_year";
+
+function openBirthdayCelebrationSheet(firstName) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay birthday-overlay";
+  overlay.innerHTML = h`
+    <div class="modal-sheet birthday-sheet">
+      <div class="birthday-hero">
+        <div class="birthday-confetti" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <img class="birthday-emoji" src="img/birthday-cake.webp" alt="" aria-hidden="true" />
+        <h2 class="birthday-title">¡Feliz cumpleaños${firstName ? `, ${escapeHtml(firstName)}` : ""}!</h2>
+        <p class="birthday-sub">Que este año te lleve a todos los destinos que sueñas.</p>
+      </div>
+      <div class="modal-actions" style="margin-top:18px;">
+        <button class="btn btn-primary" id="birthday-close">¡Gracias!</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  overlay.querySelector("#birthday-close").addEventListener("click", () => overlay.remove());
+}
 
 async function checkBirthday() {
   try {
@@ -3115,10 +3138,9 @@ async function checkBirthday() {
     await Data.settingSet(BIRTHDAY_GREETED_KEY, now.getFullYear());
 
     const firstName = user.displayName ? user.displayName.trim().split(/\s+/)[0] : "";
-    const message = `🎉 ¡Feliz cumpleaños${firstName ? ", " + firstName : ""}! Que este año venga cargado de viajes.`;
-    toast(message);
+    openBirthdayCelebrationSheet(firstName);
     if ("Notification" in window && Notification.permission === "granted" && (await Data.settingGet(NOTIF_KEY))) {
-      new Notification("Viajoo", { body: message });
+      new Notification("Viajoo", { body: `🎉 ¡Feliz cumpleaños${firstName ? ", " + firstName : ""}!` });
     }
   } catch (err) {
     // sin fecha guardada, sin sesión, o cualquier fallo: no pasa nada
