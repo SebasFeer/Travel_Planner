@@ -1223,7 +1223,7 @@ async function openDiscoverSheet(trip) {
 // ------------------------------------------------------------
 
 async function openShareTripSheet(trip) {
-  if (!(await isPro())) {
+  if (!(await hasProAccess())) {
     openProUpsellSheet("Compartir viajes con otras personas es una función Pro.");
     return;
   }
@@ -1395,7 +1395,7 @@ async function openQrScannerSheet(onResult) {
 // ------------------------------------------------------------
 
 async function openJoinTripSheet() {
-  if (!(await isPro())) {
+  if (!(await hasProAccess())) {
     openProUpsellSheet("Unirte a un viaje compartido es una función Pro.");
     return;
   }
@@ -1711,7 +1711,7 @@ async function renderHome() {
   root.querySelector("#btn-settings").addEventListener("click", () => openSettingsSheet());
   root.querySelector("#btn-ai-plan-trip").addEventListener("click", () => openAiNewTripSheet());
   root.querySelector("#btn-currency-converter").addEventListener("click", async () => {
-    if (!(await isPro())) {
+    if (!(await hasProAccess())) {
       openProUpsellSheet("El conversor de moneda es una función Pro.");
       return;
     }
@@ -1780,7 +1780,7 @@ async function runDestinationSearch(query, container, knownCoords) {
     return;
   }
 
-  const pro = await isPro();
+  const pro = await hasProAccess();
   const hotelLimit = pro ? 6 : 3;
   const poiLimit = pro ? 10 : 5;
 
@@ -1901,11 +1901,24 @@ async function collectUpcomingEvents(trips) {
 const FREE_TRIP_LIMIT = 2;
 
 // ------------------------------------------------------------
-// VENTANA DE SUSCRIPCIÓN PRO — reemplaza a los simples toasts de
-// "esto es función Pro" allí donde tiene sentido detenerse un
-// momento a explicar qué se gana, en vez de solo avisar y seguir.
-// Mientras no haya un cobro real integrado, el botón activa el modo
-// Pro de pruebas (Ajustes → Modo desarrollador) igual que antes.
+// ACCESO A FUNCIONES PRO — mientras no haya un cobro real integrado,
+// tener una cuenta (registrarte) es lo que desbloquea las funciones
+// Pro, en vez de un pago. Esto nos deja llevar la cuenta de quién
+// está interesado sin cobrar todavía nada. El interruptor de
+// Ajustes → Modo desarrollador sigue funcionando aparte, como atajo
+// para probar sin tener que crear una cuenta.
+// ------------------------------------------------------------
+
+async function hasProAccess() {
+  return !!currentUser() || (await isPro());
+}
+
+// ------------------------------------------------------------
+// VENTANA DE REGISTRO PARA FUNCIONES PRO — reemplaza a los simples
+// toasts de "esto es función Pro" allí donde tiene sentido detenerse
+// un momento a explicar qué se gana, en vez de solo avisar y seguir.
+// Solo se muestra cuando falta iniciar sesión (ver hasProAccess): si
+// ya hay cuenta, esta ventana ni se llega a abrir.
 // ------------------------------------------------------------
 
 const PRO_FEATURES_LIST = [
@@ -1924,8 +1937,12 @@ function openProUpsellSheet(reasonText) {
   overlay.innerHTML = h`
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 class="modal-title">✨ Suscríbete a Pro</h2>
+      <h2 class="modal-title">✨ Regístrate para usar esta función</h2>
       ${reasonText ? `<p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:-8px;">${escapeHtml(reasonText)}</p>` : ""}
+      <p style="color:var(--muted); font-size:13px; line-height:1.6;">
+        Las funciones básicas de TravelPlanner siguen sin necesitar cuenta.
+        Para estas, de momento:
+      </p>
       <div class="panel" style="margin-top:4px;">
         ${PRO_FEATURES_LIST.map(
           (f) =>
@@ -1933,28 +1950,28 @@ function openProUpsellSheet(reasonText) {
         ).join("")}
       </div>
       <p style="color:var(--muted); font-size:11.5px; line-height:1.5; margin-top:10px;">
-        Todavía no hay un cobro real integrado: mientras se termina de
-        construir, puedes activar el modo Pro de pruebas para usarlo
-        sin coste.
+        Todavía no hay ningún cobro real: crear la cuenta es gratis y
+        te da acceso a todo lo de arriba mientras se termina de
+        construir el pago.
       </p>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="pro-upsell-activate">✨ Activar Pro (modo prueba)</button>
+        <button class="btn btn-primary" id="pro-upsell-register">✨ Crear cuenta / Iniciar sesión</button>
       </div>
       <div class="modal-actions"><button class="btn btn-ghost" id="pro-upsell-close">Ahora no</button></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
   overlay.querySelector("#pro-upsell-close").addEventListener("click", () => overlay.remove());
-  overlay.querySelector("#pro-upsell-activate").addEventListener("click", () => {
+  overlay.querySelector("#pro-upsell-register").addEventListener("click", () => {
     overlay.remove();
-    openDevModeSheet();
+    renderAuthForm();
   });
 }
 
 async function openTripForm(trip, prefill) {
   if (!trip) {
     const trips = await Data.getAll("trips");
-    if (trips.length >= FREE_TRIP_LIMIT && !(await isPro())) {
+    if (trips.length >= FREE_TRIP_LIMIT && !(await hasProAccess())) {
       openProUpsellSheet(`El plan gratis permite tener hasta ${FREE_TRIP_LIMIT} viajes a la vez.`);
       return;
     }
@@ -2055,7 +2072,7 @@ function openBackupSheet() {
   });
 }
 
-export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet };
+export { state, root, h, toast, refresh, showFormModal, confirmAction, renderApp, openTripForm, withTransition, installSwipeBack, installAndroidBackHandling, installModalSwipeToClose, installReturnSplash, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet, hasProAccess };
 
 // ============================================================
 // SEGURIDAD — PIN de bloqueo local
@@ -2742,7 +2759,7 @@ async function openNotificationsSheet() {
   const enabled = enabledRaw === true || enabledRaw === 1;
   const permission = "Notification" in window ? Notification.permission : "unsupported";
 
-  const pro = await isPro();
+  const pro = await hasProAccess();
   const flightAlertsRaw = await Data.settingGet(FLIGHT_ALERTS_KEY);
   const flightAlertsOn = flightAlertsRaw === true || flightAlertsRaw === 1;
 
@@ -2769,15 +2786,15 @@ async function openNotificationsSheet() {
           ${enabled ? "🔕 Desactivar notificaciones" : "🔔 Activar notificaciones"}
         </button>
       </div>
-      <div class="field-check" style="margin-top:14px; ${pro ? "" : "opacity:0.5;"}">
-        <input type="checkbox" id="flight-alerts-check" ${flightAlertsOn ? "checked" : ""} ${pro ? "" : "disabled"} />
+      <div class="field-check" style="margin-top:14px;">
+        <input type="checkbox" id="flight-alerts-check" ${flightAlertsOn ? "checked" : ""} />
         <label for="flight-alerts-check" style="margin:0;">✈️ Avisos de estado de vuelo (Pro)</label>
       </div>
       <p style="color:var(--muted); font-size:12px; line-height:1.5;">
         ${
           pro
             ? "Añade el retraso y la puerta de embarque a los avisos de hoy, cuando estén disponibles."
-            : "Función Pro — actívala en Ajustes → Modo desarrollador mientras la probamos."
+            : "Función Pro — regístrate para activarla."
         }
       </p>
       <div class="modal-actions"><button class="btn btn-ghost" id="notif-close">Cerrar</button></div>
@@ -2787,12 +2804,16 @@ async function openNotificationsSheet() {
   overlay.querySelector("#notif-close").addEventListener("click", () => overlay.remove());
 
   const flightCheck = overlay.querySelector("#flight-alerts-check");
-  if (pro) {
-    flightCheck.addEventListener("change", async () => {
-      await Data.settingSet(FLIGHT_ALERTS_KEY, flightCheck.checked);
-      toast(flightCheck.checked ? "Avisos de vuelo activados" : "Avisos de vuelo desactivados");
-    });
-  }
+  flightCheck.addEventListener("change", async () => {
+    if (!pro) {
+      flightCheck.checked = false;
+      overlay.remove();
+      openProUpsellSheet("Los avisos de estado de vuelo son una función Pro.");
+      return;
+    }
+    await Data.settingSet(FLIGHT_ALERTS_KEY, flightCheck.checked);
+    toast(flightCheck.checked ? "Avisos de vuelo activados" : "Avisos de vuelo desactivados");
+  });
 
   overlay.querySelector("#notif-toggle").addEventListener("click", async () => {
     if (enabled) {
@@ -2859,7 +2880,7 @@ async function checkAndNotifyToday() {
 
     const notified = await getNotifiedSet();
     const flightAlertsOn = await Data.settingGet(FLIGHT_ALERTS_KEY);
-    const useFlightStatus = flightAlertsOn && (await isPro()) && isFlightStatusConfigured();
+    const useFlightStatus = flightAlertsOn && (await hasProAccess()) && isFlightStatusConfigured();
     let idToken = null;
     let changed = false;
 
@@ -3014,12 +3035,14 @@ gastos y checklist) se guardan en tu propio dispositivo, en el
 almacenamiento local del navegador (IndexedDB). No se envían a ningún
 servidor salvo que actives voluntariamente la copia en la nube.
 
-2. Cuenta y copia en la nube (opcional)
+2. Cuenta y copia en la nube
 Si creas una cuenta (con email y contraseña, o con tu cuenta de Google),
 tus datos se guardan también en Firebase (Google) bajo tu usuario, para
 poder recuperarlos en otro dispositivo. Puedes cerrar sesión y eliminar tu
-cuenta cuando quieras. Sin cuenta, la app funciona igualmente de forma
-100% local.
+cuenta cuando quieras. Las funciones básicas siguen funcionando sin
+cuenta, de forma 100% local; las funciones Pro, en cambio, sí piden tener
+una cuenta creada (gratuita, sin ningún cobro todavía) — ver Condiciones
+de suscripción Pro.
 
 3. Servicios externos que puede consultar la app
 Para mostrar mapas, calcular rutas, encontrar fotos e imágenes reales de
@@ -3298,12 +3321,14 @@ haya un equipo de soporte dedicado.
 const SUBSCRIPTION_TERMS_TEXT = `
 Última actualización: ${new Date().getFullYear()}
 
-1. Estado actual: sin cobro real
+1. Estado actual: sin cobro real, pero con registro obligatorio
 TravelPlanner Pro está todavía en fase de pruebas: no hay ningún
-sistema de pago real integrado. Mientras esto sea así, activar "Pro"
-desde Ajustes → Modo desarrollador no supone ningún cargo, y estas
-condiciones se aplican de forma orientativa, para cuando exista un
-cobro de verdad.
+sistema de pago real integrado. Mientras esto sea así, lo único que
+hace falta para usar una función Pro es tener una cuenta creada
+(gratis, con email o con Google) — no hay ningún cargo. Pedimos el
+registro para llevar la cuenta de quién usa estas funciones mientras
+se termina de integrar un cobro de verdad; estas condiciones se
+aplican de forma orientativa para cuando eso ocurra.
 
 2. Qué incluye Pro (cuando se active el cobro real)
 Viajes ilimitados, compartir viajes, avisos de estado de vuelo,

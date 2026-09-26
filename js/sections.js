@@ -9,11 +9,10 @@ import {
   uid,
 } from "./utils.js";
 import { geocodeAll, routeBetween, optimizeRouteOrder } from "./geocode.js";
-import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet } from "./app.js";
+import { state, root, h, toast, showFormModal, confirmAction, renderApp, withTransition, openDiscoverSheet, openMapsAppPicker, openProUpsellSheet, hasProAccess } from "./app.js";
 import { findDestinationPhoto } from "./photo.js";
 import { icon } from "./icons.js";
 import { isAiCopilotConfigured, openAiPlannerSheet, openAiDayRegenerateSheet } from "./ai-copilot.js";
-import { isPro } from "./pro.js";
 import { TOP_CURRENCIES, ALL_CURRENCIES, convertCurrency } from "./currency.js";
 import { t } from "./i18n.js";
 
@@ -1270,7 +1269,7 @@ async function renderExpenses(trip) {
   const converterBtn = document.getElementById("open-currency-converter");
   if (converterBtn) {
     converterBtn.addEventListener("click", async () => {
-      if (!(await isPro())) {
+      if (!(await hasProAccess())) {
         openProUpsellSheet("El conversor de moneda es una función Pro.");
         return;
       }
@@ -1919,7 +1918,7 @@ async function composeStaticMap(centerLat, centerLng, zoom, widthPx, heightPx, p
  * ni de que el Service Worker esté listo.
  */
 async function exportMapPdf(trip, located, dayLabel) {
-  if (!(await isPro())) {
+  if (!(await hasProAccess())) {
     openProUpsellSheet("Guardar el mapa en PDF es una función Pro.");
     return;
   }
@@ -2036,7 +2035,7 @@ const PDF_COLORS = {
 };
 
 async function exportItineraryPdf(trip) {
-  if (!(await isPro())) {
+  if (!(await hasProAccess())) {
     openProUpsellSheet("Descargar el itinerario en PDF es una función Pro.");
     return;
   }
@@ -2353,7 +2352,7 @@ async function renderMap(trip) {
     const optimizeBtn = document.getElementById("map-route-optimize");
     if (optimizeBtn) {
       optimizeBtn.addEventListener("click", async () => {
-        if (!showOptimized && !(await isPro())) {
+        if (!showOptimized && !(await hasProAccess())) {
           openProUpsellSheet("Ordenar la ruta por cercanía es una función Pro.");
           return;
         }
